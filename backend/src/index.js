@@ -22,7 +22,9 @@ app.use((req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
-sequelize.sync({ alter: true })
+
+// تغییر مهم: alter را به false تغییر دادیم تا از ساخت ایندکس‌های تکراری جلوگیری شود
+sequelize.sync({ alter: false })
   .then(() => {
     console.log('جداول دیتابیس همگام‌سازی شدند.');
     app.listen(PORT, () => console.log(`سرور روی پورت ${PORT} در حال اجراست`));

@@ -1,172 +1,207 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { api } from "@/services/api";
+import { IranianPlateInput } from "@/driver/components/IranianPlateInput";
 import {
   Truck,
   Phone,
   Loader2,
   User,
   CreditCard,
-  Award,
   ArrowRight,
+  ShieldCheck,
+  Ruler,
+  IdCard,
+  Award,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-const DEV_OTP_ENABLED = true;
 const FIXED_OTP_CODE = "1234";
 
 // ================= توابع اعتبارسنجی =================
-const validateMobile = (mobile) => {
-  if (!mobile) return false;
-  let str = String(mobile).replace(/[\s\-\(\)]/g, "");
-  if (str.startsWith("+98")) str = "0" + str.slice(3);
-  if (str.startsWith("0098")) str = "0" + str.slice(4);
-  if (str.startsWith("98") && str.length === 12) str = "0" + str.slice(2);
-  if (/^9\d{9}$/.test(str)) str = "0" + str;
-  return /^09[0-9]\d{8}$/.test(str);
-};
-
+const validateMobile = (mobile) =>
+  /^09[0-9]\d{8}$/.test(mobile.replace(/[\s\-\(\)]/g, ""));
 const validateNationalId = (code) => {
   if (!/^\d{10}$/.test(code)) return false;
-  if (/^(\d)\1{9}$/.test(code)) return false;
-  const check = parseInt(code[9], 10);
-  let sum = 0;
-  for (let i = 0; i < 9; i++) sum += parseInt(code[i], 10) * (10 - i);
-  const remainder = sum % 11;
-  return (
-    (remainder < 2 && check === remainder) ||
-    (remainder >= 2 && check === 11 - remainder)
-  );
+  const check = +code[9];
+  const sum =
+    code
+      .split("")
+      .slice(0, 9)
+      .reduce((acc, x, i) => acc + +x * (10 - i), 0) % 11;
+  return sum < 2 ? check === sum : check === 11 - sum;
 };
-
-const validateDrivingLicense = (license) => {
-  if (!/^\d{10}$/.test(license)) return false;
-  if (/^(\d)\1{9}$/.test(license)) return false;
-  return true;
-};
+const validateDrivingLicense = (license) => /^\d{10}$/.test(license);
+const validateSmartCard = (code) => /^\d{7}$/.test(code);
 // ======================================================
 
 export function DriverLogin() {
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const navigate = useNavigate();
 
-  const [mode, setMode] = useState("login"); // "login" | "register"
-  const [step, setStep] = useState("idle"); // "idle" | "sent"
-
-  const [mobile, setMobile] = useState("");
-  const [code, setCode] = useState("");
-
-  // فیلدهای ثبت‌نام
-  const [name, setName] = useState("");
-  const [nationalCode, setNationalCode] = useState("");
-  const [licenseNumber, setLicenseNumber] = useState("");
+  const [mode, setMode] = useState("login");
+  const [step, setStep] = useState("phone");
+  const [rememberMe, setRememberMe] = useState(true);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const getErrorMessage = (error, fallback) => {
-    if (error.response?.data?.message) return error.response.data.message;
-    if (error.response?.data?.error) return error.response.data.error;
-    return fallback;
-  };
+  const [mobile, setMobile] = useState("");
+  const [code, setCode] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [nationalCode, setNationalCode] = useState("");
+  const [licenseNumber, setLicenseNumber] = useState("");
+  const [tractorType, setTractorType] = useState("");
+  const [trailerType, setTrailerType] = useState("");
+  const [smartCardNumber, setSmartCardNumber] = useState("");
+  const [plate, setPlate] = useState({
+    part1: "",
+    letter: "",
+    part2: "",
+    iranCode: "",
+  });
+
+  const handleError = (e, fallback) =>
+    setError(e.response?.data?.message || e.response?.data?.error || fallback);
 
   const handleSendOtp = async () => {
-    if (!validateMobile(mobile)) {
-      setError("شماره موبایل وارد شده نامعتبر است.");
-      return;
-    }
-
-    if (mode === "register") {
-      if (!name.trim()) return setError("نام و نام خانوادگی الزامی است.");
-      if (!validateNationalId(nationalCode))
-        return setError("کد ملی وارد شده نامعتبر است.");
-      if (!validateDrivingLicense(licenseNumber))
-        return setError("شماره گواهینامه نامعتبر است (باید ۱۰ رقم باشد).");
-    }
-
+    if (!validateMobile(mobile))
+      return setError("شماره موبایل وارد شده نامعتبر است.");
     setLoading(true);
     setError("");
-
     try {
-      // Send the mode to the backend so it can apply the correct validation
-      await api.post("/auth/request-otp", { mobile, mode });
-      setStep("sent");
-
-      if (DEV_OTP_ENABLED) {
-        setCode(FIXED_OTP_CODE);
-      }
+      await api.post("/auth/request-otp", { mobile });
+      setStep("otp");
+      setCode(FIXED_OTP_CODE);
     } catch (e) {
-      setError(getErrorMessage(e, "خطا در ارتباط با سرور"));
+      handleError(e, "خطا در ارتباط با سرور");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleVerify = async () => {
+  const handleVerifyOtp = async () => {
+    if (code.length !== 4) return setError("کد ۴ رقمی را وارد کنید.");
+    setLoading(true);
+    setError("");
+
+    if (mode === "register") {
+      if (code !== FIXED_OTP_CODE) {
+        setError("کد وارد شده اشتباه است.");
+        setLoading(false);
+        return;
+      }
+      setStep("personal");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const res = await api.post("/auth/verify-otp", { mobile, code });
+      login(res.data.token, res.data.driver || res.data.user, rememberMe);
+      navigate("/dashboard", { replace: true });
+    } catch (e) {
+      handleError(
+        e,
+        "کد اشتباه است یا حسابی یافت نشد. لطفاً تب ثبت‌نام را انتخاب کنید.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePersonalSubmit = () => {
+    if (!firstName.trim()) return setError("نام الزامی است.");
+    if (!lastName.trim()) return setError("نام خانوادگی الزامی است.");
+    if (!validateNationalId(nationalCode))
+      return setError("کد ملی وارد شده معتبر نیست.");
+    if (!validateDrivingLicense(licenseNumber))
+      return setError("شماره گواهینامه باید دقیقاً ۱۰ رقم باشد.");
+
+    setError("");
+    setStep("vehicle");
+  };
+
+  const handleVehicleSubmit = async () => {
+    if (!tractorType) return setError("نوع کشنده را انتخاب کنید.");
+    if (!trailerType) return setError("نوع گاری را انتخاب کنید.");
+    if (!plate.part1 || !plate.letter || !plate.part2 || !plate.iranCode)
+      return setError("پلاک خودرو را کامل وارد کنید.");
+    if (!validateSmartCard(smartCardNumber))
+      return setError("شماره هوشمند باید دقیقاً ۷ رقم باشد.");
+
     setLoading(true);
     setError("");
 
     try {
-      let res;
-      // Trigger correct endpoint based on selected mode
-      if (mode === "login") {
-        res = await api.post("/auth/verify-otp", { mobile, code: code.trim() });
+      const res = await api.post("/auth/register-driver", {
+        mobile,
+        code,
+        name: `${firstName} ${lastName}`.trim(),
+        nationalCode,
+        licenseNumber,
+        tractorType,
+        trailerType,
+        smartCardNumber,
+        plate: `${plate.part1}-${plate.letter}-${plate.part2}-${plate.iranCode}`,
+        phone_number: mobile,
+        first_name: firstName,
+        last_name: lastName,
+        national_id: nationalCode,
+        license_number: licenseNumber,
+        tractor_type: tractorType,
+        trailer_type: trailerType,
+        smart_card_number: smartCardNumber,
+      });
+
+      const newToken = res.data?.token;
+      const newUserData = res.data?.user || res.data?.driver;
+
+      if (newToken) {
+        login(newToken, newUserData, rememberMe);
       } else {
-        res = await api.post("/auth/register-driver", {
-          mobile,
-          code: code.trim(),
-          name,
-          nationalCode,
-          licenseNumber,
-        });
+        throw new Error(
+          "بک‌اند پس از ثبت‌نام توکن ورود (Token) را ارسال نکرد.",
+        );
       }
 
-      if (!res.data?.token) {
-        setError("سرور توکن ورود را برنگرداند.");
-        return;
-      }
-
-      // Automatically Login and Redirect
-      login(res.data.token, res.data.user);
       navigate("/dashboard", { replace: true });
     } catch (e) {
-      setError(getErrorMessage(e, "کد اشتباه است یا خطایی رخ داد."));
+      setError(
+        e.response?.data?.message ||
+          e.response?.data?.error ||
+          e.message ||
+          "خطا در ثبت اطلاعات.",
+      );
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
-      <div className="relative w-full max-w-md">
+    <div
+      className="min-h-screen bg-slate-900 flex items-center justify-center p-4"
+      dir="rtl"
+    >
+      <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg mb-4">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-blue-600 shadow-lg mb-4">
             <Truck className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-white">Xbar راننده</h1>
         </div>
 
-        <div className="rounded-3xl bg-white/95 backdrop-blur-xl shadow-2xl p-6 sm:p-8">
-          {DEV_OTP_ENABLED && step !== "idle" && (
-            <div className="mb-4 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-700">
-              حالت توسعه فعال است؛ کد ورود: {FIXED_OTP_CODE}
-            </div>
-          )}
-
-          {step === "idle" && (
-            <>
-              {/* Tab Switcher */}
+        <div className="rounded-3xl bg-white shadow-2xl p-6 sm:p-8">
+          {step === "phone" && (
+            <div className="animate-in fade-in zoom-in-95 duration-300">
               <div className="flex bg-slate-100 p-1.5 rounded-xl mb-6">
                 <button
                   onClick={() => {
                     setMode("login");
                     setError("");
                   }}
-                  className={`flex-1 py-2.5 rounded-lg font-bold text-sm transition-all ${
-                    mode === "login"
-                      ? "bg-white shadow text-blue-600"
-                      : "text-slate-500 hover:text-slate-700"
-                  }`}
+                  className={`flex-1 py-2.5 rounded-lg font-bold text-sm transition-all ${mode === "login" ? "bg-white shadow text-blue-600" : "text-slate-500"}`}
                 >
                   ورود
                 </button>
@@ -175,19 +210,14 @@ export function DriverLogin() {
                     setMode("register");
                     setError("");
                   }}
-                  className={`flex-1 py-2.5 rounded-lg font-bold text-sm transition-all ${
-                    mode === "register"
-                      ? "bg-white shadow text-blue-600"
-                      : "text-slate-500 hover:text-slate-700"
-                  }`}
+                  className={`flex-1 py-2.5 rounded-lg font-bold text-sm transition-all ${mode === "register" ? "bg-white shadow text-blue-600" : "text-slate-500"}`}
                 >
-                  ثبت نام
+                  ثبت‌نام
                 </button>
               </div>
 
-              {/* Shared Field: Mobile */}
               <div className="relative mb-4">
-                <Phone className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <Phone className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                 <input
                   type="tel"
                   value={mobile}
@@ -195,72 +225,34 @@ export function DriverLogin() {
                     setMobile(e.target.value);
                     setError("");
                   }}
-                  placeholder="شماره موبایل (مثال: 09123456789)"
-                  maxLength={14}
+                  placeholder="شماره موبایل (مثال: 0912...)"
                   dir="ltr"
-                  className="w-full rounded-xl border-2 border-slate-200 py-3.5 pr-11 pl-4 focus:border-blue-500 focus:outline-none transition-colors"
+                  maxLength={11}
+                  className="w-full rounded-xl border-2 border-slate-200 py-3.5 pr-12 pl-4 focus:border-blue-500 focus:outline-none"
                 />
               </div>
 
-              {/* Extra Fields specifically for Registration */}
-              {mode === "register" && (
-                <div className="space-y-4 mb-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                  <div className="relative">
-                    <User className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                    <input
-                      type="text"
-                      value={name}
-                      onChange={(e) => {
-                        setName(e.target.value);
-                        setError("");
-                      }}
-                      placeholder="نام و نام خانوادگی"
-                      className="w-full rounded-xl border-2 border-slate-200 py-3.5 pr-11 pl-4 focus:border-blue-500 focus:outline-none transition-colors"
-                    />
-                  </div>
-                  <div className="relative">
-                    <CreditCard className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                    <input
-                      type="tel"
-                      value={nationalCode}
-                      onChange={(e) => {
-                        setNationalCode(e.target.value.replace(/\D/g, ""));
-                        setError("");
-                      }}
-                      placeholder="کد ملی (۱۰ رقم)"
-                      maxLength={10}
-                      dir="ltr"
-                      className="w-full rounded-xl border-2 border-slate-200 py-3.5 pr-11 pl-4 focus:border-blue-500 focus:outline-none transition-colors"
-                    />
-                  </div>
-                  <div className="relative">
-                    <Award className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                    <input
-                      type="tel"
-                      value={licenseNumber}
-                      onChange={(e) => {
-                        setLicenseNumber(e.target.value.replace(/\D/g, ""));
-                        setError("");
-                      }}
-                      placeholder="شماره گواهینامه (۱۰ رقم)"
-                      maxLength={10}
-                      dir="ltr"
-                      className="w-full rounded-xl border-2 border-slate-200 py-3.5 pr-11 pl-4 focus:border-blue-500 focus:outline-none transition-colors"
-                    />
-                  </div>
-                </div>
-              )}
+              <label className="flex items-center gap-2 mb-6 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+                />
+                <span className="text-sm text-slate-600 font-medium">
+                  مرا در این دستگاه به خاطر بسپار
+                </span>
+              </label>
 
               {error && (
                 <p className="text-sm text-red-500 mb-4 text-center font-medium">
                   {error}
                 </p>
               )}
-
               <button
                 onClick={handleSendOtp}
-                disabled={mobile.length < 10 || loading}
-                className="w-full flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3.5 font-bold text-white disabled:opacity-60 transition-transform active:scale-[0.98]"
+                disabled={loading}
+                className="w-full flex items-center justify-center rounded-xl bg-blue-600 py-3.5 font-bold text-white hover:bg-blue-700 disabled:opacity-60 transition-all"
               >
                 {loading ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
@@ -268,28 +260,26 @@ export function DriverLogin() {
                   "دریافت کد تأیید"
                 )}
               </button>
-            </>
+            </div>
           )}
 
-          {step === "sent" && (
+          {step === "otp" && (
             <div className="animate-in slide-in-from-right-4 duration-300">
               <button
-                onClick={() => setStep("idle")}
-                className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 mb-5"
+                onClick={() => setStep("phone")}
+                className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 mb-6"
               >
-                <ArrowRight className="w-4 h-4" />
-                اصلاح اطلاعات / بازگشت
+                <ArrowRight className="w-4 h-4" /> اصلاح شماره
               </button>
-
-              <h2 className="text-lg font-bold text-slate-800 mb-2">
-                کد تأیید را وارد کنید
+              <h2 className="text-xl font-bold text-slate-800 mb-2">
+                کد تأیید
               </h2>
-              <p className="text-sm text-slate-500 mb-5">
-                کد پیامک شده به شماره{" "}
+              <p className="text-sm text-slate-500 mb-6">
+                کد به{" "}
                 <span dir="ltr" className="font-bold text-slate-700">
                   {mobile}
                 </span>{" "}
-                را وارد کنید.
+                پیامک شد.
               </p>
 
               <input
@@ -302,7 +292,7 @@ export function DriverLogin() {
                 }}
                 placeholder="----"
                 dir="ltr"
-                className="w-full text-center text-3xl font-bold tracking-[0.5em] rounded-xl border-2 border-slate-200 py-4 mb-4 focus:border-green-500 focus:outline-none transition-colors"
+                className="w-full text-center text-3xl font-bold tracking-[0.5em] rounded-xl border-2 border-slate-200 py-4 mb-6 focus:border-green-500 focus:outline-none"
               />
 
               {error && (
@@ -310,18 +300,224 @@ export function DriverLogin() {
                   {error}
                 </p>
               )}
-
               <button
-                onClick={handleVerify}
-                disabled={code.trim().length < 4 || loading}
-                className="w-full flex items-center justify-center gap-2 rounded-xl bg-green-600 px-4 py-3.5 font-bold text-white disabled:opacity-60 transition-transform active:scale-[0.98]"
+                onClick={handleVerifyOtp}
+                disabled={loading || code.length < 4}
+                className="w-full flex items-center justify-center rounded-xl bg-green-600 py-3.5 font-bold text-white hover:bg-green-700 disabled:opacity-60 transition-all"
               >
                 {loading ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
                 ) : mode === "login" ? (
                   "تأیید و ورود"
                 ) : (
-                  "تأیید و تکمیل ثبت نام"
+                  "تأیید و ادامه"
+                )}
+              </button>
+            </div>
+          )}
+
+          {step === "personal" && (
+            <div className="animate-in slide-in-from-right-4 duration-300">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
+                  <User size={24} />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-800">
+                    اطلاعات شخصی
+                  </h2>
+                  <p className="text-xs text-slate-500">
+                    مشخصات هویتی خود را وارد کنید.
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-4 mb-6">
+                <div className="relative">
+                  <User className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                  <input
+                    type="text"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    placeholder="نام خود را وارد کنید"
+                    className="w-full rounded-xl border-2 border-slate-200 py-3 pr-12 pl-4 focus:border-blue-500 focus:outline-none"
+                  />
+                </div>
+                <div className="relative">
+                  <User className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                  <input
+                    type="text"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    placeholder="نام خانوادگی خود را وارد کنید"
+                    className="w-full rounded-xl border-2 border-slate-200 py-3 pr-12 pl-4 focus:border-blue-500 focus:outline-none"
+                  />
+                </div>
+                <div className="relative">
+                  <IdCard className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                  <input
+                    type="tel"
+                    maxLength={10}
+                    dir="ltr"
+                    value={nationalCode}
+                    onChange={(e) => {
+                      setNationalCode(e.target.value.replace(/\D/g, ""));
+                      setError("");
+                    }}
+                    placeholder="کد ملی (۱۰ رقم)"
+                    className="w-full rounded-xl border-2 border-slate-200 py-3 pr-12 pl-4 focus:border-blue-500 focus:outline-none"
+                  />
+                </div>
+                <div className="relative">
+                  <Award className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                  <input
+                    type="tel"
+                    maxLength={10}
+                    dir="ltr"
+                    value={licenseNumber}
+                    onChange={(e) => {
+                      setLicenseNumber(e.target.value.replace(/\D/g, ""));
+                      setError("");
+                    }}
+                    placeholder="شماره گواهینامه (۱۰ رقم)"
+                    className="w-full rounded-xl border-2 border-slate-200 py-3 pr-12 pl-4 focus:border-blue-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {error && (
+                <p className="text-sm text-red-500 mb-4 text-center font-medium">
+                  {error}
+                </p>
+              )}
+              <button
+                onClick={handlePersonalSubmit}
+                disabled={loading}
+                className="w-full flex items-center justify-center rounded-xl bg-blue-600 py-3.5 font-bold text-white hover:bg-blue-700 disabled:opacity-60 transition-all"
+              >
+                {loading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  "تأیید اطلاعات و ادامه"
+                )}
+              </button>
+            </div>
+          )}
+
+          {step === "vehicle" && (
+            <div className="animate-in slide-in-from-right-4 duration-300">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600">
+                  <Truck size={24} />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-800">
+                    اطلاعات خودرو
+                  </h2>
+                  <p className="text-xs text-slate-500">
+                    پروفایل خود را تکمیل کنید.
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-4 mb-6">
+                {/* کشنده */}
+                <div className="relative">
+                  <Truck className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                  <select
+                    value={tractorType}
+                    onChange={(e) => setTractorType(e.target.value)}
+                    className="w-full rounded-xl border-2 border-slate-200 py-3 pr-12 pl-4 focus:border-blue-500 focus:outline-none bg-white appearance-none cursor-pointer"
+                  >
+                    <option value="">نوع کشنده را انتخاب کنید</option>
+                    <option value="trailer">تریلی (مفصلی)</option>
+                    <option value="truck">کامیون (جفت/تک)</option>
+                    <option value="pickup">وانت/نیسان</option>
+                  </select>
+                </div>
+
+                {/* گاری */}
+                <div className="relative">
+                  <Truck className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                  <select
+                    value={trailerType}
+                    onChange={(e) => setTrailerType(e.target.value)}
+                    className="w-full rounded-xl border-2 border-slate-200 py-3 pr-12 pl-4 focus:border-blue-500 focus:outline-none bg-white appearance-none cursor-pointer"
+                  >
+                    <option value="">نوع گاری را انتخاب کنید</option>
+                    <option value="flatbed">کفی</option>
+                    <option value="tent">چادری (ترانزیت)</option>
+                    <option value="refrigerator">یخچالی</option>
+                  </select>
+                </div>
+
+                {/* ابعاد بارگیر */}
+                <div className="relative">
+                  <Ruler className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="ابعاد بارگیر (نیازمند تصمیم کارفرما)"
+                    disabled
+                    className="w-full rounded-xl border-2 border-slate-200 py-3 pr-12 pl-4 bg-slate-50 text-slate-400 cursor-not-allowed"
+                  />
+                </div>
+
+                {/* پلاک */}
+                <div className="pt-2">
+                  <label className="block text-xs font-bold text-slate-600 mb-2">
+                    شماره پلاک خودرو
+                  </label>
+                  <IranianPlateInput
+                    value={plate}
+                    onChange={(val) => {
+                      setPlate(val);
+                      setError("");
+                    }}
+                  />
+                </div>
+
+                {/* شماره هوشمند */}
+                <div className="pt-2">
+                  <label className="block text-xs font-bold text-slate-600 mb-2">
+                    شماره هوشمند خودرو
+                  </label>
+                  <div className="relative">
+                    <CreditCard className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                    <input
+                      type="tel"
+                      maxLength={7}
+                      dir="ltr"
+                      value={smartCardNumber}
+                      onChange={(e) => {
+                        setSmartCardNumber(e.target.value.replace(/\D/g, ""));
+                        setError("");
+                      }}
+                      placeholder="مثال: ۴۱۲۱۳۹۴"
+                      className="w-full rounded-xl border-2 border-slate-200 py-3 pr-12 pl-4 focus:border-blue-500 focus:outline-none"
+                    />
+                  </div>
+                  <p className="mt-2 text-[11px] text-amber-600 flex items-center gap-1 bg-amber-50 p-2 rounded-lg border border-amber-100 leading-relaxed">
+                    <ShieldCheck className="w-4 h-4 shrink-0" />
+                    دقت کنید: شماره هوشمند خودروی شما باید با شماره پلاک شما
+                    تطابق داشته باشد.
+                  </p>
+                </div>
+              </div>
+
+              {error && (
+                <p className="text-sm text-red-500 mb-4 text-center font-medium">
+                  {error}
+                </p>
+              )}
+              <button
+                onClick={handleVehicleSubmit}
+                disabled={loading}
+                className="w-full flex items-center justify-center rounded-xl bg-green-600 py-3.5 font-bold text-white hover:bg-green-700 disabled:opacity-60 transition-all"
+              >
+                {loading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  "تأیید اطلاعات و ورود به سایت"
                 )}
               </button>
             </div>
