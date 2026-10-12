@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>دانلود پروژه</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, sans-serif;
+      background: #0f172a;
+      color: #f1f5f9;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 16px;
+      padding: 40px;
+      max-width: 420px;
+      width: 90%;
+      text-align: center;
+      box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+    }
+    .icon { font-size: 56px; margin-bottom: 16px; }
+    h1 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+    p { color: #94a3b8; font-size: 14px; line-height: 1.6; margin-bottom: 28px; }
+    button {
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 14px 32px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      transition: background 0.2s;
+    }
+    button:hover { background: #1d4ed8; }
+    button:disabled { background: #475569; cursor: not-allowed; }
+    .status { margin-top: 16px; font-size: 13px; color: #64748b; }
+    .success { color: #22c55e; }
+    .error { color: #ef4444; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">📦</div>
+    <h1>دانلود فایل پروژه</h1>
+    <p>فایل ZIP شامل کل کد پروژه (فرانت‌اند + بک‌اند) است.</p>
+    <button id="btn" onclick="downloadZip()">دانلود پروژه (ZIP)</button>
+    <div class="status" id="status"></div>
+  </div>
+
+  <script>
+    async function downloadZip() {
+      const btn = document.getElementById('btn');
+      const status = document.getElementById('status');
+      btn.disabled = true;
+      btn.textContent = 'در حال آماده‌سازی...';
+      status.textContent = '';
+      status.className = 'status';
+      try {
+        const res = await fetch('/xbar-driver-project.zip');
+        if (!res.ok) throw new Error('فایل پیدا نشد');
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'xbar-driver-project.zip';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        status.textContent = 'دانلود با موفقیت شروع شد!';
+        status.className = 'status success';
+        btn.textContent = 'دانلود پروژه (ZIP)';
+        btn.disabled = false;
+      } catch (e) {
+        status.textContent = 'خطا: ' + e.message;
+        status.className = 'status error';
+        btn.textContent = 'دانلود پروژه (ZIP)';
+        btn.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>
