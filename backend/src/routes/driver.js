@@ -1,8 +1,12 @@
 const express = require('express');
+const { Op } = require('sequelize');
 const { authMiddleware } = require('../middleware/auth');
 // IMPORTANT: exact file-name casing (Driver.js). '../models/driver' breaks on Linux/macOS
 // and can load the model twice on Windows.
 const Driver = require('../models/Driver');
+const { Shipment } = require('../models');
+const { toMissionDto } = require('../utils/missionMapper');
+const { filterNearbyMissions, filterMissionsByRoute, MAX_RADIUS_KM } = require('../services/missionSearch');
 
 const router = express.Router();
 
@@ -46,9 +50,115 @@ router.get('/profile', authMiddleware, async (req, res) => {
   }
 });
 
-// The panel also calls these right after the profile. It already tolerates failures,
-// but returning empty lists removes the 404 noise from the console.
 router.get('/vehicles', authMiddleware, (_req, res) => res.json({ vehicles: [] }));
-router.get('/missions', authMiddleware, (_req, res) => res.json({ missions: [] }));
+
+// GET /api/driver/missions
+// همان مجموعه‌ی قبلی: پیشنهادهای باز (status=Offered) + مأموریت‌هایی که به این
+// راننده اختصاص دارند (فعال/سوابق). این لیست پایه برای سه تب صفحه‌ی
+// «مأموریت‌ها» (پیشنهادها/فعال/سوابق) است و با قابلیت جست‌وجوی مکانی جدید
+// (نهایتاً جایگزین/تکمیل‌کننده‌ی همان تب «پیشنهادها») جایگزین نمی‌شود.
+router.get('/missions', authMiddleware, async (req, res) => {
+  try {
+    const rows = await Shipment.findAll({
+      where: {
+        [Op.or]: [{ status: 'Offered' }, { driverId: req.user.id }],
+      },
+      order: [['createdAt', 'DESC']],
+    });
+    return res.json({ missions: rows.map(toMissionDto) });
+  } catch (error) {
+    console.error('Missions Fetch Error:', error);
+    return res.status(500).json({ error: 'خطای سرور در دریافت مأموریت‌ها' });
+  }
+});
+
+// POST /api/driver/missions/:id/change-status
+router.post('/missions/:id/change-status', authMiddleware, async (req, res) => {
+  try {
+    const { status } = req.body;
+    const mission = await Shipment.findByPk(req.params.id);
+    if (!mission) {
+      return res.status(404).json({ error: 'مأموریت پیدا نشد' });
+    }
+
+    const update = { status };
+    if (status === 'Accepted') update.driverId = req.user.id;
+    if (status === 'InTransit') update.moveStartedAt = new Date();
+    if (status === 'WaybillIssued') update.visibleDestinationExact = true;
+    if (status === 'Completed') update.completedAt = new Date();
+    if (status === 'Cancelled' || status === 'Declined') update.cancelledAt = new Date();
+
+    await mission.update(update);
+    return res.json({ message: 'وضعیت بروزرسانی شد', status: mission.status });
+  } catch (error) {
+    console.error('Mission Status Update Error:', error);
+    return res.status(500).json({ error: 'خطای سرور در بروزرسانی وضعیت' });
+  }
+});
+
+// GET /api/driver/missions/nearby?lat=..&lng=..&destProvince=..(اختیاری)
+//
+// بخش «بارهای اطراف من»: فقط روی بارهای هنوز پیشنهادنشده (status=Offered)
+// اعمال می‌شود تا مأموریت‌های فعال/سوابق راننده دست‌نخورده باقی بمانند.
+// شعاع حداکثر ۱۰۰ کیلومتر از روی مختصات واقعی GPS و originLat/originLng
+// محموله محاسبه می‌شود (نه نام استان).
+router.get('/missions/nearby', authMiddleware, async (req, res) => {
+  try {
+    const lat = Number(req.query.lat);
+    const lng = Number(req.query.lng);
+    const destProvince = typeof req.query.destProvince === 'string' && req.query.destProvince.trim()
+      ? req.query.destProvince.trim()
+      : null;
+
+    if (Number.isNaN(lat) || Number.isNaN(lng)) {
+      return res.status(400).json({ error: 'مختصات جغرافیایی نامعتبر است.' });
+    }
+
+    const offeredShipments = await Shipment.findAll({ where: { status: 'Offered' } });
+    const matches = filterNearbyMissions(offeredShipments, {
+      driverLat: lat,
+      driverLng: lng,
+      destProvinceName: destProvince,
+    });
+
+    const missions = matches.map(({ shipment, distanceKm }) => ({
+      ...toMissionDto(shipment),
+      distanceKm,
+    }));
+
+    return res.json({ missions, radiusKm: MAX_RADIUS_KM });
+  } catch (error) {
+    console.error('Nearby Missions Error:', error);
+    return res.status(500).json({ error: 'خطای سرور در جست‌وجوی بارهای اطراف' });
+  }
+});
+
+// GET /api/driver/missions/search?originCityId=&originProvinceId=&destCityId=&destProvinceId=
+//
+// بخش «جست‌وجوی دستی»: تطبیق بارهای پیشنهادی (status=Offered) با مبدأ/مقصد
+// انتخاب‌شده‌ی راننده از فهرست شهرها/استان‌ها.
+router.get('/missions/search', authMiddleware, async (req, res) => {
+  try {
+    const { originCityId, originProvinceId, destCityId, destProvinceId } = req.query;
+
+    if (!originCityId && !originProvinceId && !destCityId && !destProvinceId) {
+      return res.status(400).json({ error: 'حداقل یک فیلتر مبدأ یا مقصد باید انتخاب شود.' });
+    }
+
+    const offeredShipments = await Shipment.findAll({ where: { status: 'Offered' } });
+    const matches = filterMissionsByRoute(offeredShipments, {
+      originCityId: originCityId || null,
+      originProvinceId: originProvinceId || null,
+      destCityId: destCityId || null,
+      destProvinceId: destProvinceId || null,
+    });
+
+    const missions = matches.map(({ shipment }) => toMissionDto(shipment));
+    return res.json({ missions });
+  } catch (error) {
+    console.error('Mission Route Search Error:', error);
+    return res.status(500).json({ error: 'خطای سرور در جست‌وجوی مسیر' });
+  }
+});
 
 module.exports = router;

@@ -6,7 +6,9 @@ const Shipment = sequelize.define('Shipment', {
     trackingCode: { type: DataTypes.STRING, unique: true, allowNull: false },
 
     // مبدأ
-    originCityId: { type: DataTypes.INTEGER },
+    // BIGINT: شناسه‌های شهرهای ایران در منبع iranCities.json بزرگ‌تر از محدوده‌ی
+    // INT هستند (مثلاً 1000001001101) و با INTEGER به‌صورت خاموش truncate می‌شدند.
+    originCityId: { type: DataTypes.BIGINT },
     originZoneId: { type: DataTypes.INTEGER },
     originCity: { type: DataTypes.STRING },
     originArea: { type: DataTypes.STRING },
@@ -15,7 +17,7 @@ const Shipment = sequelize.define('Shipment', {
     originAddress: { type: DataTypes.TEXT },
 
     // مقصد
-    destCityId: { type: DataTypes.INTEGER },
+    destCityId: { type: DataTypes.BIGINT },
     destZoneId: { type: DataTypes.INTEGER },
     destCity: { type: DataTypes.STRING },
     destArea: { type: DataTypes.STRING },

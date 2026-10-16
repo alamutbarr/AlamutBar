@@ -9,6 +9,7 @@ const sequelize = require('./db');
 require('./models/Driver');
 const authRoutes = require('./routes/auth');
 const driverRoutes = require('./routes/driver');
+const locationRoutes = require('./routes/location');
 
 const app = express();
 app.use(cors());
@@ -16,6 +17,7 @@ app.use(express.json());
 app.get('/health', (_req, res) => res.json({ ok: true }));
 app.use('/api/auth', authRoutes);
 app.use('/api/driver', driverRoutes);
+app.use('/api/location', locationRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ error: `مسیر پیدا نشد: ${req.method} ${req.path}` });

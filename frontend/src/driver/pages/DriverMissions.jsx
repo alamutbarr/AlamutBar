@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { MissionCard } from '@/driver/components/MissionCard';
 import { EmptyState } from '@/driver/components/EmptyState';
 import { ListSkeleton } from '@/driver/components/ListSkeleton';
+import { MissionSearchEntry } from '@/driver/missionSearch/MissionSearchEntry';
 import { isOffered, isMissionActive, isHistory } from '@/driver/driverFormat';
 import { Package, CheckCircle2, History, Inbox } from 'lucide-react';
 const tabs = [
@@ -48,6 +49,11 @@ export function DriverMissions({ missions, loading, onMissionClick, }) {
 
       {/* Content */}
       <div className="px-4 lg:px-6 pb-6">
+        {/* جست‌وجوی مکانی فقط در تب «پیشنهادها» معنا دارد: این دو روش فقط روی
+            بارهای هنوز پیشنهاد نشده (status=Offered) اعمال می‌شوند و مأموریت‌های
+            فعال/سوابق راننده (تب‌های دیگر) را دست‌نخورده نگه می‌دارند. */}
+        {tab === 'offered' && <MissionSearchEntry onMissionClick={onMissionClick} />}
+
         {loading ? (<ListSkeleton count={3}/>) : filtered.length === 0 ? (<EmptyState icon={<Inbox className="w-8 h-8"/>} title={tab === 'offered'
                 ? 'پیشنهاد مأموریت جدیدی نیست'
                 : tab === 'active'
