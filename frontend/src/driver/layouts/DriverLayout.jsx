@@ -2,7 +2,6 @@ import { LayoutDashboard, ListTodo, User, Truck, LogOut, } from 'lucide-react';
 const navItems = [
     { key: 'dashboard', label: 'داشبورد', icon: LayoutDashboard },
     { key: 'missions', label: 'مأموریت‌ها', icon: ListTodo },
-    { key: 'vehicles', label: 'خودروها', icon: Truck },
     { key: 'profile', label: 'پروفایل', icon: User },
 ];
 export function DriverLayout({ current, onNavigate, onLogout, driverName, children, }) {
@@ -60,7 +59,7 @@ export function DriverLayout({ current, onNavigate, onLogout, driverName, childr
       </div>
 
       {/* Mobile bottom nav */}
-      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-white border-t border-slate-200 grid grid-cols-4">
+      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-white border-t border-slate-200 grid grid-cols-3">
         {navItems.map((item) => {
             const Icon = item.icon;
             const active = current === item.key;

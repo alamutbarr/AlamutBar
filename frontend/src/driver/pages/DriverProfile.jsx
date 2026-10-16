@@ -1,5 +1,5 @@
-import { User, Phone, CreditCard, Award, Calendar, Truck, ShieldCheck, ShieldAlert, Clock, Star, CheckCircle2, X, } from 'lucide-react';
-export function DriverProfile({ driver, vehicles, onLogout, }) {
+import { User, Phone, CreditCard, Award, Calendar, ShieldCheck, ShieldAlert, Clock, Star, CheckCircle2, X, } from 'lucide-react';
+export function DriverProfile({ driver, onLogout, }) {
     const verified = driver.verifiedStatus === 'verified';
     return (<div className="max-w-2xl mx-auto p-4 lg:p-6 space-y-4">
       {/* Profile header */}
@@ -51,28 +51,6 @@ export function DriverProfile({ driver, vehicles, onLogout, }) {
         <div className="space-y-2">
           <VerifyRow label="احراز هویت" status={driver.verifiedStatus}/>
           <VerifyRow label="گواهینامه رانندگی" status={driver.verifiedStatus}/>
-          {vehicles.map((v) => (<VerifyRow key={v.id} label={`کارت خودرو ${v.typeName}`} status={v.verifiedStatus}/>))}
-        </div>
-      </div>
-
-      {/* Vehicles summary */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <h3 className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
-          <Truck className="w-4 h-4 text-blue-500"/>
-          خودروهای ثبت‌شده
-        </h3>
-        <div className="space-y-2">
-          {vehicles.map((v) => (<div key={v.id} className="flex items-center justify-between rounded-xl bg-slate-50 p-3">
-              <div>
-                <p className="text-sm font-medium text-slate-700">{v.typeName}</p>
-                <p className="text-xs text-slate-500" dir="ltr">{v.plate}</p>
-              </div>
-              <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${v.active
-                ? 'bg-green-50 text-green-700 border border-green-200'
-                : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>
-                {v.active ? 'فعال' : 'غیرفعال'}
-              </span>
-            </div>))}
         </div>
       </div>
 

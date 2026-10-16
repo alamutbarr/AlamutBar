@@ -7,7 +7,6 @@ import { DriverDashboard } from "@/driver/pages/DriverDashboard";
 import { DriverMissions } from "@/driver/pages/DriverMissions";
 import { DriverMissionDetail } from "@/driver/pages/DriverMissionDetail";
 import { DriverProfile } from "@/driver/pages/DriverProfile";
-import { DriverVehicles } from "@/driver/pages/DriverVehicles";
 import { DriverLayout } from "@/driver/layouts/DriverLayout";
 
 function getProfileError(error) {
@@ -33,7 +32,6 @@ export default function App() {
   const location = useLocation();
 
   const [driver, setDriver] = useState(null);
-  const [vehicles, setVehicles] = useState([]);
   const [missions, setMissions] = useState([]);
   const [selectedMission, setSelectedMission] = useState(null);
   const [profileLoading, setProfileLoading] = useState(false);
@@ -45,7 +43,6 @@ export default function App() {
 
     if (!token) {
       setDriver(null);
-      setVehicles([]);
       setMissions([]);
       setSelectedMission(null);
       setProfileError("");
@@ -54,7 +51,6 @@ export default function App() {
     }
 
     setDriver(null);
-    setVehicles([]);
     setMissions([]);
     setSelectedMission(null);
     setProfileError("");
@@ -83,14 +79,6 @@ export default function App() {
     }
 
     async function loadOptionalData() {
-      try {
-        const res = await api.get("/driver/vehicles");
-        if (!cancelled) setVehicles(Array.isArray(res.data?.vehicles) ? res.data.vehicles : []);
-      } catch (error) {
-        console.warn("Could not load driver vehicles:", error);
-        if (!cancelled) setVehicles([]);
-      }
-
       try {
         const res = await api.get("/driver/missions");
         if (!cancelled) setMissions(Array.isArray(res.data?.missions) ? res.data.missions : []);
@@ -188,7 +176,6 @@ export default function App() {
           element={
             <DriverDashboard
               driver={driver}
-              vehicles={vehicles}
               missions={missions}
               gpsStatus="active"
               onNavigate={(path) => navigate(`/${path}`)}
@@ -231,8 +218,7 @@ export default function App() {
             />
           ) : <Navigate to="/missions" replace />}
         />
-        <Route path="/vehicles" element={<DriverVehicles vehicles={vehicles} />} />
-        <Route path="/profile" element={<DriverProfile driver={driver} vehicles={vehicles} onLogout={logout} />} />
+        <Route path="/profile" element={<DriverProfile driver={driver} onLogout={logout} />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </DriverLayout>

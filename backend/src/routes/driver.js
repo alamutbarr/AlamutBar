@@ -50,8 +50,6 @@ router.get('/profile', authMiddleware, async (req, res) => {
   }
 });
 
-router.get('/vehicles', authMiddleware, (_req, res) => res.json({ vehicles: [] }));
-
 // GET /api/driver/missions
 // همان مجموعه‌ی قبلی: پیشنهادهای باز (status=Offered) + مأموریت‌هایی که به این
 // راننده اختصاص دارند (فعال/سوابق). این لیست پایه برای سه تب صفحه‌ی

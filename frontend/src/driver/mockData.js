@@ -11,41 +11,6 @@ export const mockDriver = {
   sessionPolicy: 'persistent',
 };
 
-export const mockVehicles = [
-  {
-    id: 'veh-001',
-    type: 'trailer',
-    typeName: 'تریلی ۱۸ چرخ',
-    plate: '12-الف-345-22',
-    capacityTons: 24,
-    volumeM3: 90,
-    verifiedStatus: 'verified',
-    active: true,
-    techSpec: {
-      axleCount: 6,
-      fuelType: 'دیزل',
-      year: 1402,
-      insuranceExpiry: '1404/06/20',
-    },
-  },
-  {
-    id: 'veh-002',
-    type: 'khavar',
-    typeName: 'خاور ۹۰۲',
-    plate: '45-ب-678-11',
-    capacityTons: 12,
-    volumeM3: 45,
-    verifiedStatus: 'pending',
-    active: false,
-    techSpec: {
-      axleCount: 4,
-      fuelType: 'دیزل',
-      year: 1399,
-      insuranceExpiry: '1404/01/10',
-    },
-  },
-];
-
 const now = Date.now();
 const hour = 3600_000;
 const day = 24 * hour;

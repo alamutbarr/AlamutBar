@@ -2,7 +2,6 @@ import { MissionCard } from "@/driver/components/MissionCard";
 import { GpsBadge } from "@/driver/components/GpsBadge";
 import { SosButton } from "@/driver/components/SosButton";
 import {
-  formatWeight,
   isMissionActive,
   isOffered,
 } from "@/driver/driverFormat";
@@ -11,7 +10,6 @@ import {
   CheckCircle2,
   ChevronLeft,
   Star,
-  Truck,
   Bell,
   XCircle,
   Loader2,
@@ -19,7 +17,6 @@ import {
 
 export function DriverDashboard({
   driver,
-  vehicles,
   missions,
   gpsStatus,
   onNavigate,
@@ -31,7 +28,6 @@ export function DriverDashboard({
   const completedCount = missions
     ? missions.filter((m) => m.status === "Completed").length
     : 0;
-  const activeVehicle = vehicles ? vehicles.find((v) => v.active) : null;
 
   return (
     <div className="p-4 lg:p-6 max-w-4xl mx-auto space-y-5">
@@ -138,75 +134,24 @@ export function DriverDashboard({
         </div>
       )}
 
-      {/* Vehicle & Quick info */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {activeVehicle && (
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white">
-                <Truck className="w-5 h-5" />
-              </div>
-              <div>
-                <h4 className="text-sm font-bold text-slate-800">
-                  {activeVehicle.typeName}
-                </h4>
-                <p className="text-xs text-slate-500" dir="ltr">
-                  {activeVehicle.plate}
-                </p>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <InfoRow
-                label="ظرفیت"
-                value={formatWeight(activeVehicle.capacityTons)}
-              />
-              <InfoRow
-                label="حجم"
-                value={`${new Intl.NumberFormat("fa-IR").format(activeVehicle.volumeM3)} م³`}
-              />
-              <InfoRow
-                label="محور"
-                value={`${new Intl.NumberFormat("fa-IR").format(activeVehicle.techSpec.axleCount)} محور`}
-              />
-              <InfoRow
-                label="سال"
-                value={new Intl.NumberFormat("fa-IR").format(
-                  activeVehicle.techSpec.year,
-                )}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Quick actions */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h4 className="text-sm font-bold text-slate-800 mb-3">
-            اقدامات سریع
-          </h4>
-          <div className="space-y-2">
-            <button
-              onClick={() => onNavigate("missions")}
-              className="w-full flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-100 transition"
-            >
-              <span className="flex items-center gap-2">
-                <Package className="w-4 h-4 text-blue-500" />
-                مشاهده مأموریت‌ها
-              </span>
-              <ChevronLeft className="w-4 h-4 text-slate-400" />
-            </button>
-            <button
-              onClick={() => onNavigate("vehicles")}
-              className="w-full flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-100 transition"
-            >
-              <span className="flex items-center gap-2">
-                <Truck className="w-4 h-4 text-emerald-500" />
-                مدیریت خودروها
-              </span>
-              <ChevronLeft className="w-4 h-4 text-slate-400" />
-            </button>
-            <div className="pt-1">
-              <SosButton />
-            </div>
+      {/* Quick actions */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <h4 className="text-sm font-bold text-slate-800 mb-3">
+          اقدامات سریع
+        </h4>
+        <div className="space-y-2">
+          <button
+            onClick={() => onNavigate("missions")}
+            className="w-full flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-100 transition"
+          >
+            <span className="flex items-center gap-2">
+              <Package className="w-4 h-4 text-blue-500" />
+              مشاهده مأموریت‌ها
+            </span>
+            <ChevronLeft className="w-4 h-4 text-slate-400" />
+          </button>
+          <div className="pt-1">
+            <SosButton />
           </div>
         </div>
       </div>
@@ -233,15 +178,6 @@ function StatCard({ icon, label, value, color }) {
         {value}
       </div>
       <p className="text-xs text-slate-500 mt-0.5">{label}</p>
-    </div>
-  );
-}
-
-function InfoRow({ label, value }) {
-  return (
-    <div className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-1.5">
-      <span className="text-slate-500">{label}</span>
-      <span className="font-medium text-slate-700">{value}</span>
     </div>
   );
 }
