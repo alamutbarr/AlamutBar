@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { MissionCard } from '@/driver/components/MissionCard';
 import { EmptyState } from '@/driver/components/EmptyState';
 import { ListSkeleton } from '@/driver/components/ListSkeleton';
-import { MissionSearchEntry } from '@/driver/missionSearch/MissionSearchEntry';
+import { MissionSearchEntry, MODES } from '@/driver/missionSearch/MissionSearchEntry';
 import { isOffered, isMissionActive, isHistory } from '@/driver/driverFormat';
 import { Package, CheckCircle2, History, Inbox } from 'lucide-react';
 const tabs = [
@@ -12,6 +12,12 @@ const tabs = [
 ];
 export function DriverMissions({ missions, loading, onMissionClick, }) {
     const [tab, setTab] = useState('offered');
+    const [searchMode, setSearchMode] = useState(MODES.NONE);
+    const handleTabChange = (key) => {
+        setTab(key);
+        // با جابه‌جایی بین تب‌ها، حالت جست‌وجوی مکانی را ریست می‌کنیم
+        setSearchMode(MODES.NONE);
+    };
     const filtered = missions.filter((m) => {
         if (tab === 'offered')
             return isOffered(m);
@@ -34,7 +40,7 @@ export function DriverMissions({ missions, loading, onMissionClick, }) {
           {tabs.map((t) => {
             const Icon = t.icon;
             const active = tab === t.key;
-            return (<button key={t.key} onClick={() => setTab(t.key)} className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg py-2.5 text-sm font-medium transition-all ${active
+            return (<button key={t.key} onClick={() => handleTabChange(t.key)} className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg py-2.5 text-sm font-medium transition-all ${active
                     ? 'bg-white text-slate-800 shadow-sm'
                     : 'text-slate-500 hover:text-slate-700'}`}>
                 <Icon className="w-4 h-4"/>
@@ -52,9 +58,11 @@ export function DriverMissions({ missions, loading, onMissionClick, }) {
         {/* جست‌وجوی مکانی فقط در تب «پیشنهادها» معنا دارد: این دو روش فقط روی
             بارهای هنوز پیشنهاد نشده (status=Offered) اعمال می‌شوند و مأموریت‌های
             فعال/سوابق راننده (تب‌های دیگر) را دست‌نخورده نگه می‌دارند. */}
-        {tab === 'offered' && <MissionSearchEntry onMissionClick={onMissionClick} />}
+        {tab === 'offered' && <MissionSearchEntry mode={searchMode} onModeChange={setSearchMode} onMissionClick={onMissionClick} />}
 
-        {loading ? (<ListSkeleton count={3}/>) : filtered.length === 0 ? (<EmptyState icon={<Inbox className="w-8 h-8"/>} title={tab === 'offered'
+        {/* وقتی یکی از روش‌های جست‌وجوی مکانی فعال است، لیست عمومی پیشنهادها را
+            مخفی می‌کنیم تا فقط بارهای منطبق با همان دسته نمایش داده شوند. */}
+        {tab === 'offered' && searchMode !== MODES.NONE ? null : loading ? (<ListSkeleton count={3}/>) : filtered.length === 0 ? (<EmptyState icon={<Inbox className="w-8 h-8"/>} title={tab === 'offered'
                 ? 'پیشنهاد مأموریت جدیدی نیست'
                 : tab === 'active'
                     ? 'مأموریت فعالی ندارید'

@@ -4,20 +4,19 @@
 // (بارهای اطراف من / جست‌وجوی دستی) + نمایش بخش انتخاب‌شده. این کامپوننت
 // state داخلی خودش را دارد تا در هر دو صفحه بدون تداخل قابل استفاده باشد.
 
-import { useState } from 'react';
 import { MapPin, Search, ChevronDown } from 'lucide-react';
 import { NearbyMissionsPanel } from './NearbyMissionsPanel';
 import { ManualSearchPanel } from './ManualSearchPanel';
 
-const MODES = {
+export const MODES = {
   NONE: 'none',
   NEARBY: 'nearby',
   MANUAL: 'manual',
 };
 
-export function MissionSearchEntry({ onMissionClick }) {
-  const [mode, setMode] = useState(MODES.NONE);
-
+// کامپوننت کنترل‌شده: حالت انتخاب (none/nearby/manual) توسط والد مدیریت می‌شود
+// تا والد بتواند هنگام فعال بودن جست‌وجو، لیست پیشنهادهای عمومی را مخفی کند.
+export function MissionSearchEntry({ onMissionClick, mode, onModeChange }) {
   return (
     <div className="mb-5">
       <div className="grid grid-cols-2 gap-3 mb-4">
@@ -27,7 +26,7 @@ export function MissionSearchEntry({ onMissionClick }) {
           description="بر اساس موقعیت فعلی شما"
           active={mode === MODES.NEARBY}
           color="blue"
-          onClick={() => setMode(mode === MODES.NEARBY ? MODES.NONE : MODES.NEARBY)}
+          onClick={() => onModeChange(mode === MODES.NEARBY ? MODES.NONE : MODES.NEARBY)}
         />
         <ModeCard
           icon={<Search className="w-5 h-5" />}
@@ -35,12 +34,12 @@ export function MissionSearchEntry({ onMissionClick }) {
           description="انتخاب مبدأ و مقصد دلخواه"
           active={mode === MODES.MANUAL}
           color="emerald"
-          onClick={() => setMode(mode === MODES.MANUAL ? MODES.NONE : MODES.MANUAL)}
+          onClick={() => onModeChange(mode === MODES.MANUAL ? MODES.NONE : MODES.MANUAL)}
         />
       </div>
 
       {mode === MODES.NEARBY && (
-        <NearbyMissionsPanel onMissionClick={onMissionClick} onSwitchToManual={() => setMode(MODES.MANUAL)} />
+        <NearbyMissionsPanel onMissionClick={onMissionClick} onSwitchToManual={() => onModeChange(MODES.MANUAL)} />
       )}
       {mode === MODES.MANUAL && <ManualSearchPanel onMissionClick={onMissionClick} />}
     </div>
