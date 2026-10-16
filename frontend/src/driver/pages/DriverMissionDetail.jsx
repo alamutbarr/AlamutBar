@@ -38,7 +38,7 @@ export function DriverMissionDetail({ mission, onBack, onAccept, onDecline, onAc
     };
     return (<div className="max-w-2xl mx-auto pb-6">
       {/* Header */}
-      <div className="sticky top-0 lg:top-0 z-20 bg-white border-b border-slate-200 px-4 lg:px-6 py-3 flex items-center gap-3">
+      <div className="glass-strong sticky top-0 lg:top-0 z-20 border-b border-white/60 px-4 lg:px-6 py-3 flex items-center gap-3">
         <button onClick={onBack} className="flex items-center justify-center rounded-lg p-2 text-slate-600 hover:bg-slate-100 transition">
           <ArrowRight className="w-5 h-5"/>
         </button>
@@ -53,7 +53,7 @@ export function DriverMissionDetail({ mission, onBack, onAccept, onDecline, onAc
 
       <div className="p-4 lg:p-6 space-y-4">
         {/* Origin / Destination */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="glass-card anim-text rounded-2xl p-4">
           <div className="space-y-3">
             <div className="flex items-start gap-3">
               <div className="flex flex-col items-center pt-1">
@@ -90,7 +90,7 @@ export function DriverMissionDetail({ mission, onBack, onAccept, onDecline, onAc
         </div>
 
         {/* Cargo info */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="glass-card anim-text rounded-2xl p-4">
           <h3 className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
             <Package className="w-4 h-4 text-blue-500"/>
             اطلاعات بار
@@ -110,7 +110,7 @@ export function DriverMissionDetail({ mission, onBack, onAccept, onDecline, onAc
 
         {/* Offer actions */}
         {mission.status === 'Offered' && (<div className="flex gap-3">
-            <button onClick={handleDecline} disabled={actionLoading !== null} className="flex-1 flex items-center justify-center gap-2 rounded-xl border-2 border-slate-200 bg-white px-4 py-3.5 text-base font-bold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50 active:scale-[0.98]">
+            <button onClick={handleDecline} disabled={actionLoading !== null} className="flex-1 flex items-center justify-center gap-2 rounded-xl border-2 border-white/70 bg-white/60 px-4 py-3.5 text-base font-bold text-slate-600 backdrop-blur transition hover:bg-white/85 disabled:opacity-50 active:scale-[0.98]">
               {actionLoading === 'decline' ? <Loader2 className="w-5 h-5 animate-spin"/> : <XCircle className="w-5 h-5"/>}
               رد کردن
             </button>
@@ -122,7 +122,7 @@ export function DriverMissionDetail({ mission, onBack, onAccept, onDecline, onAc
 
         {/* Active mission: timeline */}
         {mission.status !== 'Offered' && mission.status !== 'Completed' && mission.status !== 'Cancelled' && mission.status !== 'Declined' && (<>
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="glass-card anim-text rounded-2xl p-4">
               <h3 className="text-sm font-bold text-slate-700 mb-3">مراحل مأموریت</h3>
               <StatusTimeline currentStatus={mission.status}/>
             </div>

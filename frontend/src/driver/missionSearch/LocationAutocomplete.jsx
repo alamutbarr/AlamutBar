@@ -124,7 +124,7 @@ export function LocationAutocomplete({ label, value, onChange, placeholder = 'ا
         onClick={() => {
           setOpen(true);
         }}
-        className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 cursor-text focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-500/20"
+        className="flex items-center gap-2 rounded-xl border border-white/60 bg-white/55 px-3 py-2.5 cursor-text transition focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-500/20"
       >
         {value?.type === 'province' ? (
           <Building2 className="w-4 h-4 text-blue-500 shrink-0" />
@@ -156,7 +156,7 @@ export function LocationAutocomplete({ label, value, onChange, placeholder = 'ا
       </div>
 
       {open && (
-        <div className="absolute z-40 mt-1.5 w-full max-h-64 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
+        <div className="glass-strong anim-pop absolute z-40 mt-1.5 w-full max-h-64 overflow-y-auto rounded-xl shadow-lg">
           {!isTyping && (
             <p className="px-3 pt-2.5 pb-1 text-[11px] font-medium text-slate-400">استان‌ها</p>
           )}
@@ -168,7 +168,7 @@ export function LocationAutocomplete({ label, value, onChange, placeholder = 'ا
                   <button
                     type="button"
                     onClick={() => handleSelectProvince(p)}
-                    className="flex w-full items-center gap-2 px-3 py-2.5 text-right text-sm text-slate-700 hover:bg-blue-50 transition"
+                    className="flex w-full items-center gap-2 px-3 py-2.5 text-right text-sm text-slate-700 transition hover:bg-white/70"
                   >
                     <Building2 className="w-3.5 h-3.5 text-blue-400 shrink-0" />
                     <span className="font-medium">استان {p.name}</span>
@@ -189,7 +189,7 @@ export function LocationAutocomplete({ label, value, onChange, placeholder = 'ا
                     <button
                       type="button"
                       onClick={() => handleSelectCity(c)}
-                      className="flex w-full items-center gap-2 px-3 py-2.5 text-right text-sm text-slate-700 hover:bg-emerald-50 transition"
+                      className="flex w-full items-center gap-2 px-3 py-2.5 text-right text-sm text-slate-700 transition hover:bg-white/70"
                     >
                       <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                       <span>

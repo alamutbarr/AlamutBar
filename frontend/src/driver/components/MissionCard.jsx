@@ -7,7 +7,7 @@ export function MissionCard({ mission, onClick, }) {
     const destLabel = mission.visibleDestinationExact
         ? mission.destExact.address
         : `${mission.destCity} — ${mission.destArea}`;
-    return (<button onClick={onClick} className="w-full text-right rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:shadow-md hover:border-slate-300 active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-blue-500/40">
+    return (<button onClick={onClick} className="glass-card w-full text-right rounded-2xl p-4 active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-blue-500/40">
       <div className="flex items-start justify-between gap-2 mb-3">
         <div className="flex items-center gap-2">
           <span className="rounded-lg bg-slate-900 px-2.5 py-1 text-xs font-bold text-white tracking-wide">

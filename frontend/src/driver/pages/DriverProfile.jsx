@@ -49,7 +49,7 @@ export function DriverProfile({ driver, onLogout, }) {
     };
     return (<div className="max-w-2xl mx-auto p-4 lg:p-6 space-y-4">
       {/* Profile header */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="glass-card anim-text rounded-2xl p-5">
         <div className="flex items-center gap-4">
           {/* عکس پروفایل: در صورت نبود عکس، حروف اول نام به صورت انگلیسی و بزرگ */}
           <div className="relative shrink-0">
@@ -105,13 +105,13 @@ export function DriverProfile({ driver, onLogout, }) {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="anim-text d-1 grid grid-cols-2 gap-3">
         <StatBox icon={<Award className="w-5 h-5"/>} label="تعداد مأموریت‌ها" value={new Intl.NumberFormat('fa-IR').format(driver.totalMissions)} color="blue"/>
         <StatBox icon={<Calendar className="w-5 h-5"/>} label="تاریخ عضویت" value={driver.joinedDate} color="slate"/>
       </div>
 
       {/* Personal info */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="glass-card anim-text d-2 rounded-2xl p-4">
         <h3 className="text-sm font-bold text-slate-700 mb-3">اطلاعات هویتی</h3>
         <div className="space-y-2">
           <InfoRow icon={<User className="w-4 h-4"/>} label="نام و نام خانوادگی" value={driver.name}/>
@@ -122,7 +122,7 @@ export function DriverProfile({ driver, onLogout, }) {
       </div>
 
       {/* Verification status */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="glass-card anim-text d-3 rounded-2xl p-4">
         <h3 className="text-sm font-bold text-slate-700 mb-3">وضعیت مدارک</h3>
         <div className="space-y-2">
           <VerifyRow label="احراز هویت" status={driver.verifiedStatus}/>
@@ -130,20 +130,8 @@ export function DriverProfile({ driver, onLogout, }) {
         </div>
       </div>
 
-      {/* Session info */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <h3 className="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
-          <Clock className="w-4 h-4 text-slate-400"/>
-          نشست (Session)
-        </h3>
-        <p className="text-xs text-slate-500">
-          نشست راننده بدون انقضای کوتاه‌مدت فعال است تا در مسیر نیازی به ورود مجدد نباشد.
-          برای خروج، دکمه زیر را بزنید.
-        </p>
-      </div>
-
       {/* Logout */}
-      <button onClick={onLogout} className="w-full flex items-center justify-center gap-2 rounded-xl border-2 border-red-200 bg-red-50 px-4 py-3.5 text-base font-bold text-red-600 transition hover:bg-red-100 active:scale-[0.98]">
+      <button onClick={onLogout} className="anim-text d-4 w-full flex items-center justify-center gap-2 rounded-xl border-2 border-red-200/80 bg-red-50/70 px-4 py-3.5 text-base font-bold text-red-600 backdrop-blur transition hover:bg-red-100/90 active:scale-[0.98]">
         <X className="w-5 h-5"/>
         خروج از حساب
       </button>
@@ -151,7 +139,7 @@ export function DriverProfile({ driver, onLogout, }) {
 }
 function StatBox({ icon, label, value, color }) {
     const cls = color === 'blue' ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-600';
-    return (<div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    return (<div className="glass-card rounded-2xl p-4">
       <div className={`inline-flex items-center justify-center rounded-xl ${cls} p-2 mb-2`}>
         {icon}
       </div>
@@ -160,7 +148,7 @@ function StatBox({ icon, label, value, color }) {
     </div>);
 }
 function InfoRow({ icon, label, value, ltr }) {
-    return (<div className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-2.5">
+    return (<div className="flex items-center justify-between rounded-xl border border-white/60 bg-white/55 px-4 py-2.5">
       <span className="flex items-center gap-2 text-sm text-slate-500">
         {icon}
         {label}
@@ -175,7 +163,7 @@ function VerifyRow({ label, status }) {
         rejected: { icon: <X className="w-4 h-4"/>, cls: 'text-red-600', text: 'رد شده' },
     };
     const c = config[status];
-    return (<div className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-2.5">
+    return (<div className="flex items-center justify-between rounded-xl border border-white/60 bg-white/55 px-4 py-2.5">
       <span className="text-sm text-slate-600">{label}</span>
       <span className={`flex items-center gap-1 text-xs font-medium ${c.cls}`}>
         {c.icon}

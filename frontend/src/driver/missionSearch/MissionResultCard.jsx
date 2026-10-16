@@ -14,7 +14,7 @@ export function MissionResultCard({ mission, onClick }) {
   return (
     <button
       onClick={onClick}
-      className="w-full text-right rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:shadow-md hover:border-slate-300 active:scale-[0.99]"
+      className="glass-card w-full text-right rounded-2xl p-4 active:scale-[0.99]"
     >
       <div className="space-y-2 mb-3">
         {originLabel && (

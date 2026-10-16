@@ -52,7 +52,7 @@ export function ManualSearchPanel({ onMissionClick }) {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
+      <div className="glass-card anim-text d-1 rounded-2xl p-4 space-y-3">
         <LocationAutocomplete label="مبدأ" value={origin} onChange={setOrigin} placeholder="انتخاب مبدأ..." />
         <div className="flex items-center justify-center">
           <ArrowLeftRight className="w-4 h-4 text-slate-300" />
@@ -82,8 +82,10 @@ export function ManualSearchPanel({ onMissionClick }) {
         />
       ) : missions ? (
         <div className="space-y-3">
-          {missions.map((m) => (
-            <MissionResultCard key={m.id} mission={m} onClick={() => onMissionClick?.(m)} />
+          {missions.map((m, index) => (
+            <div key={m.id} className="anim-text" style={{ animationDelay: `${Math.min(index, 6) * 55}ms` }}>
+              <MissionResultCard mission={m} onClick={() => onMissionClick?.(m)} />
+            </div>
           ))}
         </div>
       ) : null}

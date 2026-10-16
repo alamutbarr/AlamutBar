@@ -2,7 +2,7 @@ import { GpsBadge } from './GpsBadge';
 import { MapPin, Upload, Radio } from 'lucide-react';
 export function GpsPanel({ status, queueSize, onToggle, onSync, currentPoint, }) {
     const isActive = status === 'active';
-    return (<div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    return (<div className="glass-card anim-text rounded-2xl p-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="flex items-center gap-2 text-sm font-bold text-slate-700">
           <Radio className="w-4 h-4 text-blue-500"/>

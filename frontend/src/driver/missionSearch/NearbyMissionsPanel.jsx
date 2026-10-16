@@ -86,7 +86,7 @@ export function NearbyMissionsPanel({ onMissionClick, onSwitchToManual }) {
   // --- حالت اولیه: هنوز GPS درخواست نشده ---
   if (gpsStatus === 'idle') {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center">
+      <div className="glass-card anim-text rounded-2xl p-6 text-center">
         <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-500">
           <MapPin className="w-7 h-7" />
         </div>
@@ -109,7 +109,7 @@ export function NearbyMissionsPanel({ onMissionClick, onSwitchToManual }) {
   // --- در حال دریافت موقعیت مکانی ---
   if (gpsStatus === 'locating') {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center">
+      <div className="glass-card anim-text rounded-2xl p-6 text-center">
         <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-blue-500" />
         <p className="text-sm font-medium text-slate-600">در حال دریافت موقعیت مکانی...</p>
       </div>
@@ -119,7 +119,7 @@ export function NearbyMissionsPanel({ onMissionClick, onSwitchToManual }) {
   // --- خطای GPS ---
   if (gpsStatus === 'error') {
     return (
-      <div className="rounded-2xl border border-rose-200 bg-rose-50 p-6 text-center">
+      <div className="anim-text rounded-2xl border border-rose-200/70 bg-rose-50/60 p-6 text-center backdrop-blur-md">
         <AlertTriangle className="mx-auto mb-3 h-8 w-8 text-rose-500" />
         <p className="text-sm font-medium text-rose-700 mb-4">
           {GPS_ERROR_MESSAGES[errorCode] || GPS_ERROR_MESSAGES.unknown}
@@ -151,7 +151,7 @@ export function NearbyMissionsPanel({ onMissionClick, onSwitchToManual }) {
   return (
     <div className="space-y-4">
       {/* مبدأ فعلی (غیرقابل تغییر) */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-4">
+      <div className="glass-card anim-text d-1 rounded-2xl p-4">
         <p className="mb-1.5 text-xs font-medium text-slate-500">مبدأ فعلی شما</p>
         {provinceState.status === 'loading' && (
           <div className="flex items-center gap-2 text-sm text-slate-500">
@@ -191,7 +191,7 @@ export function NearbyMissionsPanel({ onMissionClick, onSwitchToManual }) {
       </div>
 
       {/* استان مقصد (اختیاری) */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-4">
+      <div className="glass-card anim-text d-2 rounded-2xl p-4">
         <div className="flex items-end gap-2">
           <div className="flex-1">
             <LocationAutocomplete
@@ -273,8 +273,10 @@ export function NearbyMissionsPanel({ onMissionClick, onSwitchToManual }) {
           />
         ) : missions ? (
           <div className="space-y-3">
-            {missions.map((m) => (
-              <MissionResultCard key={m.id} mission={m} onClick={() => onMissionClick?.(m)} />
+            {missions.map((m, index) => (
+              <div key={m.id} className="anim-text" style={{ animationDelay: `${Math.min(index, 6) * 55}ms` }}>
+                <MissionResultCard mission={m} onClick={() => onMissionClick?.(m)} />
+              </div>
             ))}
           </div>
         ) : null}

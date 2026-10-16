@@ -34,3 +34,132 @@ html {
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
+
+/* ============================================================
+   شیشه‌ای (Glassmorphism)
+   سطوح نیمه‌شفاف با blur برای منوها، تب‌ها و کارت لیست‌ها.
+   ============================================================ */
+.glass {
+  background-color: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+}
+.glass-soft {
+  background-color: rgba(255, 255, 255, 0.42);
+  backdrop-filter: blur(14px) saturate(150%);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+.glass-strong {
+  background-color: rgba(255, 255, 255, 0.76);
+  backdrop-filter: blur(20px) saturate(170%);
+  -webkit-backdrop-filter: blur(20px) saturate(170%);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+}
+.glass-card {
+  background-color: rgba(255, 255, 255, 0.62);
+  backdrop-filter: blur(14px) saturate(155%);
+  -webkit-backdrop-filter: blur(14px) saturate(155%);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 8px 28px -12px rgba(15, 23, 42, 0.22);
+  transition: background-color 220ms ease, box-shadow 220ms ease, border-color 220ms ease, transform 220ms ease;
+}
+.glass-card:hover {
+  background-color: rgba(255, 255, 255, 0.8);
+  border-color: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 16px 38px -14px rgba(15, 23, 42, 0.28);
+}
+.glass-overlay {
+  background-color: rgba(15, 23, 42, 0.28);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* ============================================================
+   انیمیشن‌ها با دیلی نسبی
+   هر عنصر با یک تأخیر کوچک نسبت به همسایه‌ی قبلی وارد می‌شود تا
+   جابه‌جایی بین تب‌ها و متن‌ها نرم و پله‌ای دیده شود.
+   ============================================================ */
+@keyframes xbar-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes xbar-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes xbar-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes xbar-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* انیمیشن ورود برای متن‌ها و محتوای تب‌ها */
+.anim-text {
+  animation: xbar-fade-up 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.anim-fade {
+  animation: xbar-fade-in 320ms ease-out both;
+}
+.anim-pop {
+  animation: xbar-pop 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.anim-slide {
+  animation: xbar-slide-in 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* تأخیرهای نسبی (پله‌ای) */
+.d-1 {
+  animation-delay: 60ms;
+}
+.d-2 {
+  animation-delay: 120ms;
+}
+.d-3 {
+  animation-delay: 180ms;
+}
+.d-4 {
+  animation-delay: 240ms;
+}
+.d-5 {
+  animation-delay: 300ms;
+}
+.d-6 {
+  animation-delay: 360ms;
+}
+
+/* احترام به تنظیم کاهش انیمیشن سیستم */
+@media (prefers-reduced-motion: reduce) {
+  .anim-text,
+  .anim-fade,
+  .anim-pop,
+  .anim-slide {
+    animation: none !important;
+  }
+}

@@ -33,19 +33,19 @@ export function DriverMissions({ missions, loading, onMissionClick, }) {
     return (<div className="max-w-2xl mx-auto">
       {/* Page header */}
       <div className="px-4 lg:px-6 pt-4 lg:pt-6 pb-3">
-        <h2 className="text-xl font-bold text-slate-800 mb-3">مأموریت‌ها</h2>
+        <h2 className="anim-text text-xl font-bold text-slate-800 mb-3">مأموریت‌ها</h2>
 
-        {/* Tabs */}
-        <div className="flex gap-1 rounded-xl bg-slate-100 p-1">
+        {/* Tabs (شیشه‌ای) */}
+        <div className="glass anim-fade d-1 flex gap-1 rounded-2xl p-1">
           {tabs.map((t) => {
             const Icon = t.icon;
             const active = tab === t.key;
-            return (<button key={t.key} onClick={() => handleTabChange(t.key)} className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg py-2.5 text-sm font-medium transition-all ${active
-                    ? 'bg-white text-slate-800 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-700'}`}>
-                <Icon className="w-4 h-4"/>
+            return (<button key={t.key} onClick={() => handleTabChange(t.key)} className={`flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-medium transition-all duration-300 ${active
+                    ? 'glass-strong text-blue-700 shadow-sm shadow-slate-900/5 ring-1 ring-blue-300/50'
+                    : 'text-slate-500 hover:bg-white/45 hover:text-slate-700'}`}>
+                <Icon className={`w-4 h-4 transition-colors duration-300 ${active ? 'text-blue-600' : 'text-slate-400'}`}/>
                 {t.label}
-                {counts[t.key] > 0 && (<span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums ${active ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-600'}`}>
+                {counts[t.key] > 0 && (<span className={`anim-pop rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums transition-colors duration-300 ${active ? 'bg-blue-100 text-blue-700' : 'bg-slate-200/80 text-slate-600'}`}>
                     {new Intl.NumberFormat('fa-IR').format(counts[t.key])}
                   </span>)}
               </button>);
@@ -53,26 +53,30 @@ export function DriverMissions({ missions, loading, onMissionClick, }) {
         </div>
       </div>
 
-      {/* Content */}
+      {/* Content — با هر تغییر تب، محتوا دوباره با انیمیشن و دیلی نسبی وارد می‌شود */}
       <div className="px-4 lg:px-6 pb-6">
-        {/* جست‌وجوی مکانی فقط در تب «پیشنهادها» معنا دارد: این دو روش فقط روی
-            بارهای هنوز پیشنهاد نشده (status=Offered) اعمال می‌شوند و مأموریت‌های
-            فعال/سوابق راننده (تب‌های دیگر) را دست‌نخورده نگه می‌دارند. */}
-        {tab === 'offered' && <MissionSearchEntry mode={searchMode} onModeChange={setSearchMode} onMissionClick={onMissionClick} />}
+        <div key={tab} className="anim-text">
+          {/* جست‌وجوی مکانی فقط در تب «پیشنهادها» معنا دارد: این دو روش فقط روی
+              بارهای هنوز پیشنهاد نشده (status=Offered) اعمال می‌شوند و مأموریت‌های
+              فعال/سوابق راننده (تب‌های دیگر) را دست‌نخورده نگه می‌دارند. */}
+          {tab === 'offered' && <MissionSearchEntry mode={searchMode} onModeChange={setSearchMode} onMissionClick={onMissionClick} />}
 
-        {/* وقتی یکی از روش‌های جست‌وجوی مکانی فعال است، لیست عمومی پیشنهادها را
-            مخفی می‌کنیم تا فقط بارهای منطبق با همان دسته نمایش داده شوند. */}
-        {tab === 'offered' && searchMode !== MODES.NONE ? null : loading ? (<ListSkeleton count={3}/>) : filtered.length === 0 ? (<EmptyState icon={<Inbox className="w-8 h-8"/>} title={tab === 'offered'
-                ? 'پیشنهاد مأموریت جدیدی نیست'
-                : tab === 'active'
-                    ? 'مأموریت فعالی ندارید'
-                    : 'سابقه‌ای موجود نیست'} description={tab === 'offered'
-                ? 'پیشنهادهای جدید در اینجا نمایش داده می‌شوند'
-                : tab === 'active'
-                    ? 'مأموریت‌های در حال انجام اینجا نمایش داده می‌شوند'
-                    : 'مأموریت‌های پایان‌یافته و لغوشده در اینجا نمایش داده می‌شوند'}/>) : (<div className="space-y-3">
-            {filtered.map((m) => (<MissionCard key={m.id} mission={m} onClick={() => onMissionClick(m)}/>))}
-          </div>)}
+          {/* وقتی یکی از روش‌های جست‌وجوی مکانی فعال است، لیست عمومی پیشنهادها را
+              مخفی می‌کنیم تا فقط بارهای منطبق با همان دسته نمایش داده شوند. */}
+          {tab === 'offered' && searchMode !== MODES.NONE ? null : loading ? (<ListSkeleton count={3}/>) : filtered.length === 0 ? (<EmptyState icon={<Inbox className="w-8 h-8"/>} title={tab === 'offered'
+                    ? 'پیشنهاد مأموریت جدیدی نیست'
+                    : tab === 'active'
+                        ? 'مأموریت فعالی ندارید'
+                        : 'سابقه‌ای موجود نیست'} description={tab === 'offered'
+                    ? 'پیشنهادهای جدید در اینجا نمایش داده می‌شوند'
+                    : tab === 'active'
+                        ? 'مأموریت‌های در حال انجام اینجا نمایش داده می‌شوند'
+                        : 'مأموریت‌های پایان‌یافته و لغوشده در اینجا نمایش داده می‌شوند'}/>) : (<div className="space-y-3">
+              {filtered.map((m, index) => (<div key={m.id} className="anim-text" style={{ animationDelay: `${Math.min(index, 6) * 55}ms` }}>
+                  <MissionCard mission={m} onClick={() => onMissionClick(m)}/>
+                </div>))}
+            </div>)}
+        </div>
       </div>
     </div>);
 }
