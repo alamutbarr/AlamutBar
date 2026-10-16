@@ -1,16 +1,78 @@
-import { User, Phone, CreditCard, Award, Calendar, ShieldCheck, ShieldAlert, Clock, Star, CheckCircle2, X, } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { User, Phone, CreditCard, Award, Calendar, ShieldCheck, ShieldAlert, Clock, Star, CheckCircle2, X, Camera, Trash2, Loader2, } from 'lucide-react';
+import { getInitials, readAvatar, saveAvatar, removeAvatar, fileToAvatarDataUrl, } from '@/driver/avatar';
 export function DriverProfile({ driver, onLogout, }) {
     const verified = driver.verifiedStatus === 'verified';
+    const initials = getInitials(driver.name);
+    const fileInputRef = useRef(null);
+    const [avatar, setAvatar] = useState(() => readAvatar(driver.id));
+    const [avatarBusy, setAvatarBusy] = useState(false);
+    const [avatarError, setAvatarError] = useState('');
+    // اگر راننده عوض شود، عکس ذخیره‌شده‌ی همان راننده بارگذاری می‌شود
+    useEffect(() => {
+        setAvatar(readAvatar(driver.id));
+        setAvatarError('');
+    }, [driver.id]);
+    const handlePickFile = () => {
+        setAvatarError('');
+        fileInputRef.current?.click();
+    };
+    const handleFileChange = async (event) => {
+        const file = event.target.files?.[0];
+        event.target.value = ''; // اجازه‌ی انتخاب دوباره‌ی همان فایل
+        if (!file)
+            return;
+        setAvatarBusy(true);
+        setAvatarError('');
+        try {
+            const dataUrl = await fileToAvatarDataUrl(file);
+            try {
+                saveAvatar(driver.id, dataUrl);
+            }
+            catch {
+                setAvatarError('ذخیره‌ی عکس در مرورگر ممکن نشد. حافظه‌ی مرورگر را آزاد کنید.');
+                return;
+            }
+            setAvatar(dataUrl);
+        }
+        catch (error) {
+            setAvatarError(error?.message || 'افزودن عکس ناموفق بود.');
+        }
+        finally {
+            setAvatarBusy(false);
+        }
+    };
+    const handleRemoveAvatar = () => {
+        removeAvatar(driver.id);
+        setAvatar(null);
+        setAvatarError('');
+    };
     return (<div className="max-w-2xl mx-auto p-4 lg:p-6 space-y-4">
       {/* Profile header */}
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex items-center gap-4">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/20">
-            <User className="w-8 h-8"/>
+          {/* عکس پروفایل: در صورت نبود عکس، حروف اول نام به صورت انگلیسی و بزرگ */}
+          <div className="relative shrink-0">
+            <button type="button" onClick={handlePickFile} title={avatar ? 'تغییر عکس پروفایل' : 'افزودن عکس پروفایل'} className="group relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl shadow-lg shadow-blue-500/20 ring-1 ring-black/5">
+              {avatar ? (<img src={avatar} alt="عکس پروفایل" className="h-full w-full object-cover"/>) : initials ? (<span className="flex h-full w-full select-none items-center justify-center bg-gradient-to-br from-blue-500 via-indigo-500 to-violet-600 text-2xl font-extrabold tracking-wide text-white">
+                  {initials}
+                </span>) : (<span className="flex h-full w-full items-center justify-center bg-gradient-to-br from-blue-500 via-indigo-500 to-violet-600 text-white">
+                  <User className="w-8 h-8"/>
+                </span>)}
+              <span className="absolute inset-0 flex items-center justify-center bg-slate-900/45 text-white opacity-0 transition group-hover:opacity-100">
+                {avatarBusy ? (<Loader2 className="w-5 h-5 animate-spin"/>) : (<Camera className="w-5 h-5"/>)}
+              </span>
+            </button>
+
+            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange}/>
+
+            {avatar && !avatarBusy && (<button type="button" onClick={handleRemoveAvatar} title="حذف عکس" className="absolute -bottom-1.5 -left-1.5 flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-rose-500 shadow-sm transition hover:bg-rose-50">
+                <Trash2 className="w-3.5 h-3.5"/>
+              </button>)}
           </div>
+
           <div className="flex-1 min-w-0">
             <h2 className="text-lg font-bold text-slate-800">{driver.name}</h2>
-            <p className="text-sm text-slate-500" dir="ltr">{driver.mobile}</p>
             <div className="mt-1.5 flex items-center gap-2">
               {verified ? (<span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700 border border-green-200">
                   <ShieldCheck className="w-3 h-3"/>
@@ -26,6 +88,20 @@ export function DriverProfile({ driver, onLogout, }) {
             </div>
           </div>
         </div>
+
+        {/* افزودن / تغییر / حذف عکس پروفایل */}
+        <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
+          <button type="button" onClick={handlePickFile} disabled={avatarBusy} className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-bold text-white transition hover:bg-blue-700 disabled:opacity-60 active:scale-[0.98]">
+            {avatarBusy ? (<Loader2 className="w-4 h-4 animate-spin"/>) : (<Camera className="w-4 h-4"/>)}
+            {avatar ? 'تغییر عکس پروفایل' : 'افزودن عکس پروفایل'}
+          </button>
+          {avatar && !avatarBusy && (<button type="button" onClick={handleRemoveAvatar} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3.5 py-2 text-xs font-medium text-slate-600 transition hover:bg-rose-50 hover:text-rose-600 active:scale-[0.98]">
+              <Trash2 className="w-4 h-4"/>
+              حذف عکس
+            </button>)}
+        </div>
+
+        {avatarError && (<p className="mt-2 text-xs font-medium text-rose-600">{avatarError}</p>)}
       </div>
 
       {/* Stats */}
