@@ -1,8 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
-import { User, Phone, CreditCard, Award, Calendar, ShieldCheck, ShieldAlert, Clock, Star, CheckCircle2, X, Camera, Trash2, Loader2, } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
+import { User, Phone, CreditCard, Award, Calendar, ShieldCheck, ShieldAlert, Star, X, Camera, Trash2, Loader2, } from 'lucide-react';
 import { getInitials, readAvatar, saveAvatar, removeAvatar, fileToAvatarDataUrl, } from '@/driver/avatar';
+import { isVerificationComplete } from '@/driver/verification';
+import { VerificationDocuments } from '@/driver/components/VerificationDocuments';
 export function DriverProfile({ driver, onLogout, }) {
-    const verified = driver.verifiedStatus === 'verified';
+    const location = useLocation();
+    const verificationRef = useRef(null);
+    const [verified, setVerified] = useState(() => isVerificationComplete(driver.id));
+    const [showVerifyNotice, setShowVerifyNotice] = useState(false);
     const initials = getInitials(driver.name);
     const fileInputRef = useRef(null);
     const [avatar, setAvatar] = useState(() => readAvatar(driver.id));
@@ -12,7 +18,20 @@ export function DriverProfile({ driver, onLogout, }) {
     useEffect(() => {
         setAvatar(readAvatar(driver.id));
         setAvatarError('');
+        setVerified(isVerificationComplete(driver.id));
     }, [driver.id]);
+
+    // اگر از مسیر «قبول مأموریت» بدون احراز هویت به این صفحه منتقل شده باشیم،
+    // اعلان اجباری‌بودن احراز هویت را نمایش می‌دهیم و به بخش مدارک می‌رویم.
+    useEffect(() => {
+        if (location.state?.verificationRequired) {
+            setShowVerifyNotice(true);
+            setTimeout(() => {
+                verificationRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 150);
+            window.history.replaceState({}, '');
+        }
+    }, [location.state]);
     const handlePickFile = () => {
         setAvatarError('');
         fileInputRef.current?.click();
@@ -48,6 +67,22 @@ export function DriverProfile({ driver, onLogout, }) {
         setAvatarError('');
     };
     return (<div className="max-w-2xl mx-auto p-4 lg:p-6 space-y-4">
+      {/* اعلان اجباری‌بودن احراز هویت (وقتی از مسیر قبول مأموریت آمده باشیم) */}
+      {showVerifyNotice && (<div className="anim-text rounded-2xl border border-rose-200/70 bg-rose-50/70 p-4 backdrop-blur">
+        <div className="flex items-start gap-2.5">
+          <ShieldAlert className="w-5 h-5 text-rose-500 shrink-0 mt-0.5"/>
+          <div className="flex-1">
+            <p className="text-sm font-bold text-rose-700">احراز هویت فرایندی اجباری است</p>
+            <p className="mt-1 text-xs leading-6 text-slate-600">
+              برای گرفتن بار باید ابتدا مدارک الزامی (گواهینامه رانندگی و عکس شخصی با کارت) را بارگذاری کنید.
+            </p>
+          </div>
+          <button type="button" onClick={() => setShowVerifyNotice(false)} className="shrink-0 text-slate-400 hover:text-slate-600 transition">
+            <X className="w-4 h-4"/>
+          </button>
+        </div>
+      </div>)}
+
       {/* Profile header */}
       <div className="glass-card anim-text rounded-2xl p-5">
         <div className="flex items-center gap-4">
@@ -79,7 +114,7 @@ export function DriverProfile({ driver, onLogout, }) {
                   احراز هویت شده
                 </span>) : (<span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700 border border-amber-200">
                   <ShieldAlert className="w-3 h-3"/>
-                  در انتظار تأیید
+                  نیازمند احراز هویت
                 </span>)}
               <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2.5 py-0.5 text-xs font-medium text-violet-700 border border-violet-200">
                 <Star className="w-3 h-3"/>
@@ -121,13 +156,10 @@ export function DriverProfile({ driver, onLogout, }) {
         </div>
       </div>
 
-      {/* Verification status */}
-      <div className="glass-card anim-text d-3 rounded-2xl p-4">
+      {/* Verification documents */}
+      <div ref={verificationRef} className="glass-card anim-text d-3 rounded-2xl p-4">
         <h3 className="text-sm font-bold text-slate-700 mb-3">وضعیت مدارک</h3>
-        <div className="space-y-2">
-          <VerifyRow label="احراز هویت" status={driver.verifiedStatus}/>
-          <VerifyRow label="گواهینامه رانندگی" status={driver.verifiedStatus}/>
-        </div>
+        <VerificationDocuments driverId={driver.id} onVerifiedChange={setVerified}/>
       </div>
 
       {/* Logout */}
@@ -154,20 +186,5 @@ function InfoRow({ icon, label, value, ltr }) {
         {label}
       </span>
       <span className="text-sm font-semibold text-slate-700" dir={ltr ? 'ltr' : 'rtl'}>{value}</span>
-    </div>);
-}
-function VerifyRow({ label, status }) {
-    const config = {
-        verified: { icon: <CheckCircle2 className="w-4 h-4"/>, cls: 'text-green-600', text: 'تأیید شده' },
-        pending: { icon: <Clock className="w-4 h-4"/>, cls: 'text-amber-600', text: 'در انتظار' },
-        rejected: { icon: <X className="w-4 h-4"/>, cls: 'text-red-600', text: 'رد شده' },
-    };
-    const c = config[status];
-    return (<div className="flex items-center justify-between rounded-xl border border-white/60 bg-white/55 px-4 py-2.5">
-      <span className="text-sm text-slate-600">{label}</span>
-      <span className={`flex items-center gap-1 text-xs font-medium ${c.cls}`}>
-        {c.icon}
-        {c.text}
-      </span>
     </div>);
 }

@@ -8,6 +8,7 @@ import { DriverMissions } from "@/driver/pages/DriverMissions";
 import { DriverMissionDetail } from "@/driver/pages/DriverMissionDetail";
 import { DriverProfile } from "@/driver/pages/DriverProfile";
 import { DriverLayout } from "@/driver/layouts/DriverLayout";
+import { isVerificationComplete } from "@/driver/verification";
 
 function getProfileError(error) {
   if (error?.message === "پاسخ بک‌اند شامل اطلاعات راننده نیست.") return error.message;
@@ -162,6 +163,16 @@ export default function App() {
     }
   };
 
+  // گرفتن بار (قبول مأموریت) مستلزم احراز هویت است؛ اگر کامل نباشد،
+  // کاربر به بخش مدارک پروفایل هدایت می‌شود و اعلان اجباری‌بودن نمایش می‌گیرد.
+  const handleAccept = (mission) => {
+    if (!isVerificationComplete(driver.id)) {
+      navigate("/profile", { state: { verificationRequired: true } });
+      return;
+    }
+    handleMissionAction(mission, "Accepted");
+  };
+
   return (
     <DriverLayout
       current={layoutCurrent}
@@ -204,7 +215,7 @@ export default function App() {
             <DriverMissionDetail
               mission={selectedMission}
               onBack={() => navigate(-1)}
-              onAccept={(mission) => handleMissionAction(mission, "Accepted")}
+              onAccept={handleAccept}
               onDecline={(mission) => handleMissionAction(mission, "Declined")}
               onAction={(mission, action) => {
                 const statusMap = {

@@ -206,7 +206,7 @@ export function NearbyMissionsPanel({ onMissionClick, onSwitchToManual }) {
       </div>
 
       {/* استان مقصد (اختیاری) */}
-      <div className="glass-card anim-text d-2 rounded-2xl p-4">
+      <div className="glass-card anim-text d-2 relative z-10 rounded-2xl p-4">
         <div className="flex items-end gap-2">
           <div className="flex-1">
             <LocationAutocomplete
