@@ -1,10 +1,11 @@
 // frontend/src/driver/missionSearch/NearbyMissionsPanel.jsx
 //
-// بخش «بارهای اطراف من»: دریافت GPS واقعی راننده -> تعیین استان از بک‌اند ->
-// جست‌وجوی بارها در شعاع ۱۰۰ کیلومتری + فیلتر اختیاری استان مقصد.
+// بخش «بارهای اطراف من»: دریافت GPS واقعی راننده -> تعیین استان -> نمایش
+// پلکانی بارها از نزدیک‌ترین (۵۰ کیلومتر) به دورترین تا پوشش کل استان
+// (۵۰ -> ۱۰۰ -> ۲۰۰ -> ...) با فیلتر اختیاری استان مقصد.
 
 import { useEffect, useState, useCallback } from 'react';
-import { MapPin, Navigation, Loader2, AlertTriangle, RotateCcw, X } from 'lucide-react';
+import { MapPin, Navigation, Loader2, AlertTriangle, RotateCcw, X, ChevronDown } from 'lucide-react';
 import { useGeolocation } from './useGeolocation';
 import { reverseGeocodeApi, fetchNearbyMissions } from './api';
 import { LocationAutocomplete } from './LocationAutocomplete';
@@ -28,7 +29,8 @@ export function NearbyMissionsPanel({ onMissionClick, onSwitchToManual }) {
   const [missions, setMissions] = useState(null);
   const [missionsLoading, setMissionsLoading] = useState(false);
   const [missionsError, setMissionsError] = useState(null);
-  const [radiusKm, setRadiusKm] = useState(100);
+  const [bands, setBands] = useState([]); // باندهای شعاعی دارای بار (صعودی)
+  const [revealedBands, setRevealedBands] = useState(1); // تعداد باندهای نمایش‌داده‌شده
 
   // به محض دریافت موفق مختصات GPS، استان را از بک‌اند تعیین می‌کنیم
   useEffect(() => {
@@ -66,7 +68,8 @@ export function NearbyMissionsPanel({ onMissionClick, onSwitchToManual }) {
     })
       .then((data) => {
         setMissions(data.missions ?? []);
-        setRadiusKm(data.radiusKm ?? 100);
+        setBands(data.bands ?? []);
+        setRevealedBands(1);
       })
       .catch(() => {
         setMissionsError('خطا در دریافت بارهای اطراف شما. لطفاً دوباره تلاش کنید.');
@@ -82,6 +85,18 @@ export function NearbyMissionsPanel({ onMissionClick, onSwitchToManual }) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gpsStatus, coords, destProvince]);
+
+  // نمایش پلکانی: ابتدا نزدیک‌ترین باند (۵۰ کیلومتر)، سپس با هر بار کلیک روی
+  // دکمه‌ی «نمایش بارهای دورتر» باند بعدی افزوده می‌شود تا کل استان پوشش داده شود.
+  const visibleBandKm = bands.length ? bands[revealedBands - 1] : null;
+  const visibleMissions = !missions
+    ? null
+    : visibleBandKm == null
+      ? missions
+      : missions.filter((m) => (m.bandKm ?? Number.MAX_SAFE_INTEGER) <= visibleBandKm);
+  const canExpand = bands.length > 0 && revealedBands < bands.length;
+  const nextBandKm = canExpand ? bands[revealedBands] : null;
+  const allRevealed = bands.length > 0 && revealedBands >= bands.length;
 
   // --- حالت اولیه: هنوز GPS درخواست نشده ---
   if (gpsStatus === 'idle') {
@@ -246,8 +261,8 @@ export function NearbyMissionsPanel({ onMissionClick, onSwitchToManual }) {
         ) : missions && missions.length === 0 ? (
           <EmptyState
             icon={<MapPin className="w-8 h-8" />}
-            title="باری در این محدوده پیدا نشد"
-            description={`در محدوده ${radiusKm} کیلومتری شما، باری با شرایط انتخاب‌شده پیدا نشد.`}
+            title="باری در اطراف شما پیدا نشد"
+            description={`در استان ${provinceState.data?.province || ''} باری پیشنهادی با شرایط انتخاب‌شده وجود ندارد.`}
             action={
               <div className="flex flex-wrap items-center justify-center gap-2">
                 {destProvince && (
@@ -272,13 +287,38 @@ export function NearbyMissionsPanel({ onMissionClick, onSwitchToManual }) {
             }
           />
         ) : missions ? (
-          <div className="space-y-3">
-            {missions.map((m, index) => (
-              <div key={m.id} className="anim-text" style={{ animationDelay: `${Math.min(index, 6) * 55}ms` }}>
-                <MissionResultCard mission={m} onClick={() => onMissionClick?.(m)} />
-              </div>
-            ))}
-          </div>
+          <>
+            <div className="flex items-center justify-between gap-2 text-xs">
+              <span className="font-medium text-slate-500">
+                {new Intl.NumberFormat('fa-IR').format(visibleMissions.length)} بار در محدوده{' '}
+                {new Intl.NumberFormat('fa-IR').format(visibleBandKm ?? 0)} کیلومتری
+              </span>
+              {allRevealed && (
+                <span className="shrink-0 font-medium text-emerald-600">
+                  کل استان {provinceState.data?.province || ''} پوشش داده شد
+                </span>
+              )}
+            </div>
+
+            <div className="space-y-3">
+              {visibleMissions.map((m, index) => (
+                <div key={m.id} className="anim-text" style={{ animationDelay: `${Math.min(index, 6) * 55}ms` }}>
+                  <MissionResultCard mission={m} onClick={() => onMissionClick?.(m)} />
+                </div>
+              ))}
+            </div>
+
+            {canExpand && (
+              <button
+                type="button"
+                onClick={() => setRevealedBands((n) => n + 1)}
+                className="w-full flex items-center justify-center gap-1.5 rounded-xl border border-blue-200/80 bg-blue-50/70 px-4 py-2.5 text-sm font-bold text-blue-600 backdrop-blur transition hover:bg-blue-100/80 active:scale-[0.99]"
+              >
+                <ChevronDown className="w-4 h-4" />
+                نمایش بارهای دورتر (تا {new Intl.NumberFormat('fa-IR').format(nextBandKm)} کیلومتر)
+              </button>
+            )}
+          </>
         ) : null}
       </div>
     </div>

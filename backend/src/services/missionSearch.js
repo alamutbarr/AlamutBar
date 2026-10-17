@@ -10,7 +10,20 @@
 
 const { haversineDistanceKm, getCityById } = require('./geoData');
 
-const MAX_RADIUS_KM = 100;
+// باندهای شعاع برای نمایش پلکانیِ «بارهای اطراف من»:
+// ابتدا نزدیک‌ترین بارها (تا ۵۰ کیلومتر)، سپس ۱۰۰، ۲۰۰ و ... تا پوشش کل استان.
+const RADIUS_BANDS = [50, 100, 200, 400, 800, 1600];
+
+/**
+ * کوچک‌ترین باند شعاعی که فاصله‌ی داده‌شده در آن می‌گنجد.
+ * مثال: ۳۰km -> 50 ، ۶۰km -> 100 ، ۲۵۰km -> 400.
+ */
+function radiusBandForKm(km) {
+  for (const band of RADIUS_BANDS) {
+    if (km <= band) return band;
+  }
+  return RADIUS_BANDS[RADIUS_BANDS.length - 1];
+}
 
 /**
  * استان مبدأ/مقصد یک محموله را از روی شناسه‌ی شهر (originCityId/destCityId)
@@ -28,26 +41,32 @@ function resolveShipmentProvinces(shipment) {
 }
 
 /**
- * فیلتر «بارهای اطراف من»: محموله‌هایی که مبدأ (originLat/originLng) آن‌ها
- * در شعاع حداکثر ۱۰۰ کیلومتری نقطه‌ی راننده قرار دارد. اگر destProvinceName
- * داده شود، فقط محموله‌هایی که استان مقصدشان با آن یکسان است نگه داشته می‌شوند.
- * خروجی هر مورد همراه با distanceKm (فاصله‌ی واقعی تا راننده) است.
+ * فیلتر «بارهای اطراف من»: تمام بارهای استانِ راننده را از نزدیک‌ترین تا
+ * دورترین مرتب می‌کند (نه محدود به یک شعاع ثابت). در صورت مشخص بودن
+ * driverProvince، فقط بارهایی که استان مبدأشان همان استان راننده است نگه
+ * داشته می‌شوند تا در نهایت «کل استان» پوشش داده شود. فیلتر اختیاری
+ * destProvinceName استان مقصد را نیز محدود می‌کند.
+ * خروجی هر مورد همراه با distanceKm (فاصله تا راننده) و bandKm (باند شعاعی) است.
  */
-function filterNearbyMissions(shipments, { driverLat, driverLng, destProvinceName, maxRadiusKm = MAX_RADIUS_KM }) {
+function filterNearbyMissions(shipments, { driverLat, driverLng, destProvinceName, driverProvince }) {
   const results = [];
 
   for (const shipment of shipments) {
     if (shipment.originLat == null || shipment.originLng == null) continue; // بدون مختصات معتبر، قابل‌فیلتر نیست
 
     const distanceKm = haversineDistanceKm(driverLat, driverLng, shipment.originLat, shipment.originLng);
-    if (distanceKm == null || distanceKm > maxRadiusKm) continue;
+    if (distanceKm == null) continue;
 
-    if (destProvinceName) {
-      const { destProvince } = resolveShipmentProvinces(shipment);
-      if (!destProvince || destProvince !== destProvinceName) continue;
-    }
+    const { originProvince, destProvince } = resolveShipmentProvinces(shipment);
 
-    results.push({ shipment, distanceKm: Math.round(distanceKm * 10) / 10 });
+    if (driverProvince && originProvince !== driverProvince) continue;
+    if (destProvinceName && (!destProvince || destProvince !== destProvinceName)) continue;
+
+    results.push({
+      shipment,
+      distanceKm: Math.round(distanceKm * 10) / 10,
+      bandKm: radiusBandForKm(distanceKm),
+    });
   }
 
   results.sort((a, b) => a.distanceKm - b.distanceKm);
@@ -88,7 +107,8 @@ function filterMissionsByRoute(shipments, { originCityId, originProvinceId, dest
 }
 
 module.exports = {
-  MAX_RADIUS_KM,
+  RADIUS_BANDS,
+  radiusBandForKm,
   resolveShipmentProvinces,
   filterNearbyMissions,
   filterMissionsByRoute,

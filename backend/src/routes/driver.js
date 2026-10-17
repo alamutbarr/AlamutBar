@@ -6,7 +6,8 @@ const { authMiddleware } = require('../middleware/auth');
 const Driver = require('../models/Driver');
 const { Shipment } = require('../models');
 const { toMissionDto } = require('../utils/missionMapper');
-const { filterNearbyMissions, filterMissionsByRoute, MAX_RADIUS_KM } = require('../services/missionSearch');
+const { filterNearbyMissions, filterMissionsByRoute } = require('../services/missionSearch');
+const { findNearestProvinceByCoords } = require('../services/geoData');
 
 const router = express.Router();
 
@@ -113,18 +114,28 @@ router.get('/missions/nearby', authMiddleware, async (req, res) => {
     }
 
     const offeredShipments = await Shipment.findAll({ where: { status: 'Offered' } });
+
+    // استان راننده از روی موقعیت مکانی تعیین می‌شود تا «بارهای اطراف» به‌تدریج
+    // گسترش یابد و در نهایت کل استان را در بر بگیرد.
+    const driverProvince = findNearestProvinceByCoords(lat, lng)?.province || null;
+
     const matches = filterNearbyMissions(offeredShipments, {
       driverLat: lat,
       driverLng: lng,
       destProvinceName: destProvince,
+      driverProvince,
     });
 
-    const missions = matches.map(({ shipment, distanceKm }) => ({
+    const missions = matches.map(({ shipment, distanceKm, bandKm }) => ({
       ...toMissionDto(shipment),
       distanceKm,
+      bandKm,
     }));
 
-    return res.json({ missions, radiusKm: MAX_RADIUS_KM });
+    // باندهای شعاعی‌ای که واقعاً بار دارند (به ترتیب صعودی) برای نمایش پلکانی در UI
+    const bands = [...new Set(matches.map((m) => m.bandKm))].sort((a, b) => a - b);
+
+    return res.json({ missions, driverProvince, bands });
   } catch (error) {
     console.error('Nearby Missions Error:', error);
     return res.status(500).json({ error: 'خطای سرور در جست‌وجوی بارهای اطراف' });

@@ -32,7 +32,7 @@ export async function fetchNearbyMissions({ lat, lng, destProvince }) {
       ...(destProvince ? { destProvince } : {}),
     },
   });
-  return res.data; // { missions, radiusKm }
+  return res.data; // { missions, driverProvince, bands }
 }
 
 export async function fetchMissionsByRoute({ originCityId, originProvinceId, destCityId, destProvinceId }) {
