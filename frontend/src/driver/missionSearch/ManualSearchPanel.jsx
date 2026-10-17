@@ -52,7 +52,7 @@ export function ManualSearchPanel({ onMissionClick }) {
 
   return (
     <div className="space-y-4">
-      <div className="glass-card anim-text d-1 rounded-2xl p-4 space-y-3">
+      <div className="glass-card anim-text d-1 relative z-10 rounded-2xl p-4 space-y-3">
         <LocationAutocomplete label="مبدأ" value={origin} onChange={setOrigin} placeholder="انتخاب مبدأ..." />
         <div className="flex items-center justify-center">
           <ArrowLeftRight className="w-4 h-4 text-slate-300" />
