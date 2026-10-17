@@ -28,22 +28,72 @@ const countyCenterById = new Map(
   countyCentersRaw.map((c) => [c.county_id, { lat: c.latitude, lng: c.longitude }]),
 );
 
-// شمارش تکرار نام شهر در کل کشور، برای تشخیص شهرهای هم‌نام
-const nameCounts = new Map();
+// ---- نرمال‌سازی نام شهرها ----
+// ۱) تبدیل ارقام فارسی/عربی به انگلیسی، ۲) حذف نیم‌فاصله، ۳) یکسان‌سازی فاصله‌ها،
+// ۴) حذف عدد انتهایی که نشان‌دهنده‌ی «منطقه‌ی شهرداری» است (مثلاً «تبریز 1» → «تبریز»).
+// هدف: حذف ورودی‌های تکراریِ مناطق شهری از فهرست شهرها.
+
+const FA_DIGITS = '۰۱۲۳۴۵۶۷۸۹';
+const AR_DIGITS = '٠١٢٣٤٥٦٧٨٩';
+
+function toEnglishDigits(str) {
+  return String(str)
+    .split('')
+    .map((ch) => {
+      const i = FA_DIGITS.indexOf(ch);
+      if (i >= 0) return String(i);
+      const j = AR_DIGITS.indexOf(ch);
+      if (j >= 0) return String(j);
+      return ch;
+    })
+    .join('');
+}
+
+function cleanCityName(raw) {
+  if (!raw) return '';
+  return toEnglishDigits(raw)
+    .replace(/\u200c/g, '') // نیم‌فاصله («اسلام‌شهر» → «اسلامشهر»)
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\s*\d+\s*$/, '') // حذف عدد انتهایی («تبریز 1» → «تبریز»)
+    .trim();
+}
+
+// حذف ورودی‌های تکراری: کلید یکتا = نام تمیز‌شده (بدون فاصله) + استان.
+// اگر ورودیِ پایه (بدون عدد) وجود داشته باشد، همان حفظ می‌شود و ورودی‌های
+// شماره‌دارِ همان شهر («تبریز 1» تا «تبریز 10») حذف می‌شوند. در نبودِ ورودیِ
+// پایه، اولین ورودی نگه داشته می‌شود تا هیچ شهری از فهرست حذف نشود.
+const dedupedCities = new Map();
 for (const c of citiesRaw) {
-  nameCounts.set(c.name, (nameCounts.get(c.name) || 0) + 1);
+  const name = cleanCityName(c.name);
+  if (!name) continue;
+  const key = `${name.replace(/\s+/g, '')}||${c.province_id}`;
+  const isBase = !/\d/.test(toEnglishDigits(c.name)); // نام بدون عدد انتهایی
+  const existing = dedupedCities.get(key);
+  if (!existing) {
+    dedupedCities.set(key, { record: c, name, isBase });
+  } else if (isBase && !existing.isBase) {
+    dedupedCities.set(key, { record: c, name, isBase });
+  }
+}
+
+// شمارش تکرار نام تمیز‌شده در کل کشور، برای تشخیص شهرهای هم‌نام (در استان‌های متفاوت)
+const nameCounts = new Map();
+for (const { name } of dedupedCities.values()) {
+  nameCounts.set(name, (nameCounts.get(name) || 0) + 1);
 }
 
 // فهرست نهایی و غنی‌شده‌ی شهرها: هر رکورد شامل مختصات تقریبی (از مرکز شهرستان)
 // و نام استان (از province_id) است. اطلاعات اصلی فایل منبع (id, name, slug,
-// province_id, county_id, district_id) حفظ می‌شود؛ چیزی حذف نمی‌شود.
-const CITIES = citiesRaw.map((c) => {
+// province_id, county_id, district_id) حفظ می‌شود؛ فقط ورودی‌های تکراریِ مناطق
+// شهری شماره‌دار حذف می‌شوند.
+const CITIES = [...dedupedCities.values()].map(({ record: c, name }) => {
   const center = countyCenterById.get(c.county_id) || null;
   const province = provinceNameById.get(c.province_id) || null;
   return {
     id: c.id,
-    name: c.name,
-    slug: c.slug,
+    name,
+    slug: name.replace(/\s+/g, '-'),
     provinceId: c.province_id,
     province,
     countyId: c.county_id,
@@ -51,7 +101,7 @@ const CITIES = citiesRaw.map((c) => {
     // مختصات تقریبی گرفته‌شده از مرکز شهرستان (county center) - نه مختصات دقیق شهر
     lat: center ? center.lat : null,
     lng: center ? center.lng : null,
-    isDuplicateName: (nameCounts.get(c.name) || 0) > 1,
+    isDuplicateName: (nameCounts.get(name) || 0) > 1,
   };
 });
 
@@ -72,10 +122,10 @@ function normalizePersian(str) {
   return str
     .toString()
     .trim()
-    .replace(/\u200c/g, ' ') // نیم‌فاصله -> فاصله‌ی معمولی (فقط برای جست‌وجو)
+    .replace(/\u200c/g, '') // نیم‌فاصله -> حذف (فقط برای جست‌وجو)
     .replace(/ي/g, 'ی')
     .replace(/ك/g, 'ک')
-    .replace(/\s+/g, ' ')
+    .replace(/\s+/g, '') // حذف فاصله‌ها: جست‌وجوی بی‌حساسیت به فاصله («بندرعباس» = «بندر عباس»)
     .toLowerCase();
 }
 
