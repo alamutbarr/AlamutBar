@@ -35,7 +35,7 @@ export function DriverDashboard({
       <div className="anim-text flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-slate-800">
-            سلام، {driver?.name?.split(" ")[0] || "راننده"}
+            سلام، {driver?.name?.trim() || "راننده"}
           </h2>
           <p className="text-sm text-slate-500 mt-0.5">
             {offeredMissions.length > 0

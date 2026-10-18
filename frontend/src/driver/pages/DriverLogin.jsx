@@ -194,9 +194,10 @@ export function DriverLogin() {
 
         <div className="rounded-3xl bg-white shadow-2xl p-6 sm:p-8">
           {step === "phone" && (
-            <div className="animate-in fade-in zoom-in-95 duration-300">
+            <form className="animate-in fade-in zoom-in-95 duration-300" onSubmit={(e) => { e.preventDefault(); handleSendOtp(); }}>
               <div className="flex bg-slate-100 p-1.5 rounded-xl mb-6">
                 <button
+                  type="button"
                   onClick={() => {
                     setMode("login");
                     setError("");
@@ -206,6 +207,7 @@ export function DriverLogin() {
                   ورود
                 </button>
                 <button
+                  type="button"
                   onClick={() => {
                     setMode("register");
                     setError("");
@@ -250,7 +252,7 @@ export function DriverLogin() {
                 </p>
               )}
               <button
-                onClick={handleSendOtp}
+                type="submit"
                 disabled={loading}
                 className="w-full flex items-center justify-center rounded-xl bg-blue-600 py-3.5 font-bold text-white hover:bg-blue-700 disabled:opacity-60 transition-all"
               >
@@ -260,12 +262,13 @@ export function DriverLogin() {
                   "دریافت کد تأیید"
                 )}
               </button>
-            </div>
+            </form>
           )}
 
           {step === "otp" && (
-            <div className="animate-in slide-in-from-right-4 duration-300">
+            <form className="animate-in slide-in-from-right-4 duration-300" onSubmit={(e) => { e.preventDefault(); handleVerifyOtp(); }}>
               <button
+                type="button"
                 onClick={() => setStep("phone")}
                 className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 mb-6"
               >
@@ -301,7 +304,7 @@ export function DriverLogin() {
                 </p>
               )}
               <button
-                onClick={handleVerifyOtp}
+                type="submit"
                 disabled={loading || code.length < 4}
                 className="w-full flex items-center justify-center rounded-xl bg-green-600 py-3.5 font-bold text-white hover:bg-green-700 disabled:opacity-60 transition-all"
               >
@@ -313,11 +316,11 @@ export function DriverLogin() {
                   "تأیید و ادامه"
                 )}
               </button>
-            </div>
+            </form>
           )}
 
           {step === "personal" && (
-            <div className="animate-in slide-in-from-right-4 duration-300">
+            <form className="animate-in slide-in-from-right-4 duration-300" onSubmit={(e) => { e.preventDefault(); handlePersonalSubmit(); }}>
               <div className="flex items-center gap-3 mb-6">
                 <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
                   <User size={24} />
@@ -391,7 +394,7 @@ export function DriverLogin() {
                 </p>
               )}
               <button
-                onClick={handlePersonalSubmit}
+                type="submit"
                 disabled={loading}
                 className="w-full flex items-center justify-center rounded-xl bg-blue-600 py-3.5 font-bold text-white hover:bg-blue-700 disabled:opacity-60 transition-all"
               >
@@ -401,11 +404,11 @@ export function DriverLogin() {
                   "تأیید اطلاعات و ادامه"
                 )}
               </button>
-            </div>
+            </form>
           )}
 
           {step === "vehicle" && (
-            <div className="animate-in slide-in-from-right-4 duration-300">
+            <form className="animate-in slide-in-from-right-4 duration-300" onSubmit={(e) => { e.preventDefault(); handleVehicleSubmit(); }}>
               <div className="flex items-center gap-3 mb-6">
                 <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600">
                   <Truck size={24} />
@@ -510,7 +513,7 @@ export function DriverLogin() {
                 </p>
               )}
               <button
-                onClick={handleVehicleSubmit}
+                type="submit"
                 disabled={loading}
                 className="w-full flex items-center justify-center rounded-xl bg-green-600 py-3.5 font-bold text-white hover:bg-green-700 disabled:opacity-60 transition-all"
               >
@@ -520,7 +523,7 @@ export function DriverLogin() {
                   "تأیید اطلاعات و ورود به سایت"
                 )}
               </button>
-            </div>
+            </form>
           )}
         </div>
       </div>
