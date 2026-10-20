@@ -22,7 +22,10 @@ const Driver = sequelize.define('Driver', {
     smart_card_number: { type: DataTypes.STRING(7) },
     tractor_type: { type: DataTypes.STRING(50) },
     trailer_type: { type: DataTypes.STRING(50) },
-    plate: { type: DataTypes.STRING(20) }
+    plate: { type: DataTypes.STRING(20) },
+    // مشخصات فنی پویای خودرو (وزن/طول/عرض/ارتفاع/کف/ویژگی و ...)
+    // به‌صورت JSON ذخیره می‌شود و فقط کلیدهای مرتبط با انتخاب کاربر را دارد.
+    vehicle_specs: { type: DataTypes.TEXT }
 });
 
 module.exports = Driver;

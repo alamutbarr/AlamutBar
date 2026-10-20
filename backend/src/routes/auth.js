@@ -1,10 +1,13 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
-const crypto = require('crypto'); // اضافه شدن برای تولید آیدی 36 کاراکتری
 const router = express.Router();
 
 const { Driver } = require('../models');
+const { validateVehicleSelection } = require('../services/vehicleConfig');
 const JWT_SECRET = process.env.JWT_SECRET || 'secret';
+
+// حروف مجاز پلاک (هماهنگ با frontend/src/driver/components/IranianPlateInput.jsx)
+const ALLOWED_PLATE_LETTERS = ['ع', 'ب', 'ج', 'د', 'س', 'ص', 'ط', 'ق', 'ک', 'ل', 'م', 'ن', 'و', 'ه', 'ی', '♿'];
 
 // ==========================================
 // ۱. درخواست پیامک
@@ -75,7 +78,18 @@ router.post('/verify-otp', async (req, res) => {
 // ==========================================
 router.post('/register-driver', async (req, res) => {
   try {
-    const { mobile, code, name, nationalCode, licenseNumber } = req.body;
+    const {
+      mobile,
+      code,
+      name,
+      nationalCode,
+      licenseNumber,
+      tractorType,
+      trailerType,
+      smartCardNumber,
+      plate,
+      vehicleSpecs,
+    } = req.body;
 
     if (!mobile || !code || !name || !nationalCode || !licenseNumber) {
       return res.status(400).json({ error: 'لطفاً تمامی فیلدها را پر کنید' });
@@ -97,14 +111,45 @@ router.post('/register-driver', async (req, res) => {
       return res.status(400).json({ error: 'کد نامعتبر است' });
     }
 
-    // ساخت راننده جدید (دقیقاً با ستون‌های دیتابیس شما)
+    // ----- اعتبارسنجی پلاک (بخش‌بندی‌شده + حروف مجاز) -----
+    const plateParts = typeof plate === 'string' ? plate.split('-') : [];
+    if (
+      plateParts.length !== 4 ||
+      !/^\d{2}$/.test(plateParts[0] || '') ||
+      !/^\d{3}$/.test(plateParts[2] || '') ||
+      !/^\d{2}$/.test(plateParts[3] || '')
+    ) {
+      return res.status(400).json({ error: 'پلاک خودرو را کامل و معتبر وارد کنید.' });
+    }
+    if (!ALLOWED_PLATE_LETTERS.includes(plateParts[1])) {
+      return res.status(400).json({ error: 'حرف پلاک معتبر نیست.' });
+    }
+
+    // ----- اعتبارسنجی شماره هوشمند (دقیقاً ۷ رقم) -----
+    if (!/^\d{7}$/.test(String(smartCardNumber || ''))) {
+      return res.status(400).json({ error: 'شماره هوشمند باید دقیقاً ۷ رقم باشد.' });
+    }
+
+    // ----- اعتبارسنجی نوع کشنده/گاری و فیلدهای پویا -----
+    const vehicle = validateVehicleSelection(tractorType, trailerType, vehicleSpecs);
+    if (!vehicle.valid) {
+      return res.status(400).json({ error: vehicle.error });
+    }
+
+    // ساخت راننده جدید با اطلاعات خودرو (فقط مقادیر معتبر و مرتبط ذخیره می‌شوند)
+    // شناسه (id) توسط Sequelize به‌صورت خودکار INTEGER AUTO_INCREMENT تولید می‌شود.
     const newDriver = await Driver.create({
-      id: crypto.randomUUID(),           // تولید آیدی 36 کاراکتری
-      phone_number: mobile,              // ستون phone_number
-      first_name: firstName,             // ستون first_name
-      last_name: lastName,               // ستون last_name
-      national_id: nationalCode,         // ستون national_id
-      license_number: licenseNumber,     // ستون license_number
+      phone_number: mobile,
+      first_name: firstName,
+      last_name: lastName,
+      national_id: nationalCode,
+      license_number: licenseNumber,
+      smart_card_number: String(smartCardNumber),
+      tractor_type: tractorType,
+      trailer_type: trailerType,
+      plate,
+      vehicle_specs: JSON.stringify(vehicle.sanitizedSpecs),
+      profile_step: 4,
     });
 
     const token = jwt.sign({ id: newDriver.id, role: 'driver' }, JWT_SECRET, {

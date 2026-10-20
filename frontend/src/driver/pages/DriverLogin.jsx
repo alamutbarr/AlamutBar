@@ -3,6 +3,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import { api } from "@/services/api";
 import { IranianPlateInput } from "@/driver/components/IranianPlateInput";
 import {
+  TRACTOR_TYPES,
+  TRAILER_TYPES,
+  getVehicleFields,
+} from "@/driver/vehicleConfig";
+import {
   Truck,
   Phone,
   Loader2,
@@ -13,6 +18,7 @@ import {
   Ruler,
   IdCard,
   Award,
+  ChevronDown,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -61,6 +67,21 @@ export function DriverLogin() {
     part2: "",
     iranCode: "",
   });
+  // مقادیر فیلدهای پویای خودرو (وزن/طول/عرض/ارتفاع/کف/ویژگی و ...)
+  const [specs, setSpecs] = useState({});
+
+  const handleTractorChange = (value) => {
+    setTractorType(value);
+    setTrailerType("");
+    setSpecs({});
+    setError("");
+  };
+
+  const handleTrailerChange = (value) => {
+    setTrailerType(value);
+    setSpecs({});
+    setError("");
+  };
 
   const handleError = (e, fallback) =>
     setError(e.response?.data?.message || e.response?.data?.error || fallback);
@@ -120,16 +141,28 @@ export function DriverLogin() {
       return setError("شماره گواهینامه باید دقیقاً ۱۰ رقم باشد.");
 
     setError("");
+    setStep("plate");
+  };
+
+  const handlePlateSubmit = () => {
+    if (!plate.part1 || !plate.letter || !plate.part2 || !plate.iranCode)
+      return setError("پلاک خودرو را کامل وارد کنید.");
+    if (!validateSmartCard(smartCardNumber))
+      return setError("شماره هوشمند باید دقیقاً ۷ رقم باشد.");
+
+    setError("");
     setStep("vehicle");
   };
 
   const handleVehicleSubmit = async () => {
     if (!tractorType) return setError("نوع کشنده را انتخاب کنید.");
     if (!trailerType) return setError("نوع گاری را انتخاب کنید.");
-    if (!plate.part1 || !plate.letter || !plate.part2 || !plate.iranCode)
-      return setError("پلاک خودرو را کامل وارد کنید.");
-    if (!validateSmartCard(smartCardNumber))
-      return setError("شماره هوشمند باید دقیقاً ۷ رقم باشد.");
+
+    // فقط فیلدهایی که برای انتخاب فعلی نمایش داده می‌شوند، الزامی هستند.
+    const fields = getVehicleFields(tractorType, trailerType);
+    for (const f of fields) {
+      if (!specs[f.key]) return setError(`«${f.title}» را انتخاب کنید.`);
+    }
 
     setLoading(true);
     setError("");
@@ -145,6 +178,11 @@ export function DriverLogin() {
         trailerType,
         smartCardNumber,
         plate: `${plate.part1}-${plate.letter}-${plate.part2}-${plate.iranCode}`,
+        // فقط کلیدهایی که واقعاً انتخاب شده‌اند ارسال می‌شوند (بدون مقدار مخفی)
+        vehicleSpecs: fields.reduce((acc, f) => {
+          if (specs[f.key]) acc[f.key] = specs[f.key];
+          return acc;
+        }, {}),
         phone_number: mobile,
         first_name: firstName,
         last_name: lastName,
@@ -407,66 +445,33 @@ export function DriverLogin() {
             </form>
           )}
 
-          {step === "vehicle" && (
-            <form className="animate-in slide-in-from-right-4 duration-300" onSubmit={(e) => { e.preventDefault(); handleVehicleSubmit(); }}>
+          {step === "plate" && (
+            <form className="animate-in slide-in-from-right-4 duration-300" onSubmit={(e) => { e.preventDefault(); handlePlateSubmit(); }}>
+              <button
+                type="button"
+                onClick={() => setStep("personal")}
+                className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 mb-6"
+              >
+                <ArrowRight className="w-4 h-4" /> بازگشت
+              </button>
+
               <div className="flex items-center gap-3 mb-6">
                 <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600">
-                  <Truck size={24} />
+                  <CreditCard size={24} />
                 </div>
                 <div>
                   <h2 className="text-lg font-bold text-slate-800">
-                    اطلاعات خودرو
+                    پلاک و شماره هوشمند
                   </h2>
                   <p className="text-xs text-slate-500">
-                    پروفایل خود را تکمیل کنید.
+                    اطلاعات شناسایی خودرو را وارد کنید.
                   </p>
                 </div>
               </div>
 
               <div className="space-y-4 mb-6">
-                {/* کشنده */}
-                <div className="relative">
-                  <Truck className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                  <select
-                    value={tractorType}
-                    onChange={(e) => setTractorType(e.target.value)}
-                    className="w-full rounded-xl border-2 border-slate-200 py-3 pr-12 pl-4 focus:border-blue-500 focus:outline-none bg-white appearance-none cursor-pointer"
-                  >
-                    <option value="">نوع کشنده را انتخاب کنید</option>
-                    <option value="trailer">تریلی (مفصلی)</option>
-                    <option value="truck">کامیون (جفت/تک)</option>
-                    <option value="pickup">وانت/نیسان</option>
-                  </select>
-                </div>
-
-                {/* گاری */}
-                <div className="relative">
-                  <Truck className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                  <select
-                    value={trailerType}
-                    onChange={(e) => setTrailerType(e.target.value)}
-                    className="w-full rounded-xl border-2 border-slate-200 py-3 pr-12 pl-4 focus:border-blue-500 focus:outline-none bg-white appearance-none cursor-pointer"
-                  >
-                    <option value="">نوع گاری را انتخاب کنید</option>
-                    <option value="flatbed">کفی</option>
-                    <option value="tent">چادری (ترانزیت)</option>
-                    <option value="refrigerator">یخچالی</option>
-                  </select>
-                </div>
-
-                {/* ابعاد بارگیر */}
-                <div className="relative">
-                  <Ruler className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                  <input
-                    type="text"
-                    placeholder="ابعاد بارگیر (نیازمند تصمیم کارفرما)"
-                    disabled
-                    className="w-full rounded-xl border-2 border-slate-200 py-3 pr-12 pl-4 bg-slate-50 text-slate-400 cursor-not-allowed"
-                  />
-                </div>
-
                 {/* پلاک */}
-                <div className="pt-2">
+                <div>
                   <label className="block text-xs font-bold text-slate-600 mb-2">
                     شماره پلاک خودرو
                   </label>
@@ -480,7 +485,7 @@ export function DriverLogin() {
                 </div>
 
                 {/* شماره هوشمند */}
-                <div className="pt-2">
+                <div>
                   <label className="block text-xs font-bold text-slate-600 mb-2">
                     شماره هوشمند خودرو
                   </label>
@@ -515,6 +520,85 @@ export function DriverLogin() {
               <button
                 type="submit"
                 disabled={loading}
+                className="w-full flex items-center justify-center rounded-xl bg-blue-600 py-3.5 font-bold text-white hover:bg-blue-700 disabled:opacity-60 transition-all"
+              >
+                {loading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  "ادامه"
+                )}
+              </button>
+            </form>
+          )}
+
+          {step === "vehicle" && (
+            <form className="animate-in slide-in-from-right-4 duration-300" onSubmit={(e) => { e.preventDefault(); handleVehicleSubmit(); }}>
+              <button
+                type="button"
+                onClick={() => setStep("plate")}
+                className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 mb-6"
+              >
+                <ArrowRight className="w-4 h-4" /> بازگشت
+              </button>
+
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600">
+                  <Truck size={24} />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-800">
+                    نوع خودرو و مشخصات
+                  </h2>
+                  <p className="text-xs text-slate-500">
+                    نوع کشنده و گاری را انتخاب کنید.
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-4 mb-6">
+                {/* نوع کشنده */}
+                <SelectField
+                  title="نوع کشنده"
+                  icon={Truck}
+                  value={tractorType}
+                  onChange={handleTractorChange}
+                  options={TRACTOR_TYPES}
+                />
+
+                {/* نوع گاری */}
+                <SelectField
+                  title="نوع گاری"
+                  icon={Truck}
+                  value={trailerType}
+                  onChange={handleTrailerChange}
+                  options={TRAILER_TYPES[tractorType] || []}
+                  disabled={!tractorType}
+                />
+
+                {/* فیلدهای پویا بر اساس انتخاب کشنده و گاری */}
+                {getVehicleFields(tractorType, trailerType).map((f) => (
+                  <SelectField
+                    key={f.key}
+                    title={f.title}
+                    icon={Ruler}
+                    value={specs[f.key] || ""}
+                    onChange={(value) => {
+                      setSpecs((prev) => ({ ...prev, [f.key]: value }));
+                      setError("");
+                    }}
+                    options={f.options}
+                  />
+                ))}
+              </div>
+
+              {error && (
+                <p className="text-sm text-red-500 mb-4 text-center font-medium">
+                  {error}
+                </p>
+              )}
+              <button
+                type="submit"
+                disabled={loading}
                 className="w-full flex items-center justify-center rounded-xl bg-green-600 py-3.5 font-bold text-white hover:bg-green-700 disabled:opacity-60 transition-all"
               >
                 {loading ? (
@@ -526,6 +610,33 @@ export function DriverLogin() {
             </form>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// فیلد انتخابی (select) با عنوان، آیکون و آیکون بازشدن منو.
+// برای فیلدهای نوع کشنده، نوع گاری و فیلدهای پویای مشخصات خودرو استفاده می‌شود.
+function SelectField({ title, icon: Icon, value, onChange, options, disabled }) {
+  return (
+    <div>
+      <label className="block text-xs font-bold text-slate-600 mb-2">{title}</label>
+      <div className="relative">
+        <Icon className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          disabled={disabled}
+          className="w-full rounded-xl border-2 border-slate-200 py-3 pr-12 pl-10 focus:border-blue-500 focus:outline-none bg-white appearance-none cursor-pointer disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed"
+        >
+          <option value="">{title} را انتخاب کنید</option>
+          {options.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+        <ChevronDown className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
       </div>
     </div>
   );
