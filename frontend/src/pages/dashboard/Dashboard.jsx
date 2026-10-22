@@ -46,7 +46,7 @@ export default function Dashboard() {
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-ink-900">
-            سلام{user?.first_name ? ` ${user.first_name}` : ''} 👋
+            سلام{user?.first_name ? ` ${user.first_name}` : ''}
           </h1>
           <p className="mt-1 text-sm text-ink-300">خلاصه‌ی وضعیت بارهای شما</p>
         </div>

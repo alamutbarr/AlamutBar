@@ -58,11 +58,11 @@ export default function Input({
           />
         )}
         <Field
-          className={`w-full rounded-lg border bg-white px-3.5 py-2.5 text-sm text-ink-900
+          className={`w-full rounded-md border bg-white px-3.5 py-2.5 text-sm text-ink-900
             placeholder:text-ink-300 transition-colors
-            focus:outline-none focus:ring-2 focus:ring-amber-500/40
+            focus:outline-none focus:ring-2 focus:ring-[#087f8c]/30
             ${Icon ? "pr-10" : ""}
-            ${error ? "border-red-300 focus:border-red-400" : "border-ink-100 focus:border-amber-400"}
+            ${error ? "border-red-300 focus:border-red-400" : "border-ink-100 focus:border-[#087f8c]"}
             ${className}`}
           onKeyDown={handleKeyDown}
           {...props}

@@ -316,7 +316,7 @@ function RouteProgress({ current, maxReached, onStepClick }) {
                   done
                     ? "border-ink-900 bg-ink-900 text-white"
                     : active
-                      ? "border-amber-500 bg-amber-500 text-ink-950 shadow-glow"
+                      ? "border-[#087f8c] bg-[#087f8c] text-[#f7f6f0] shadow-glow"
                       : reachable
                         ? "border-ink-300 bg-white text-ink-500 hover:border-amber-400 hover:text-amber-600"
                         : "border-ink-100 bg-white text-ink-300"

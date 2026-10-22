@@ -3,9 +3,9 @@ import { motion } from 'framer-motion';
 
 const variants = {
   primary:
-    'bg-ink-900 text-white hover:bg-ink-700 focus-visible:outline-ink-900 disabled:bg-ink-300',
+    'bg-ink-950 text-[#f7f6f0] hover:bg-[#087f8c] focus-visible:outline-[#087f8c] disabled:bg-ink-300',
   accent:
-    'bg-amber-gradient text-ink-950 shadow-glow hover:brightness-105 focus-visible:outline-amber-600 disabled:bg-amber-100 disabled:text-ink-300 disabled:shadow-none',
+    'bg-[#087f8c] text-[#f7f6f0] hover:bg-ink-950 focus-visible:outline-[#087f8c] disabled:bg-ink-100 disabled:text-ink-300',
   ghost:
     'bg-transparent text-ink-700 hover:bg-ink-50 focus-visible:outline-ink-300 disabled:text-ink-300',
   danger:
@@ -35,7 +35,7 @@ export default function Button({
   return (
     <MotionComponent
       whileTap={isDisabled ? undefined : { scale: 0.97 }}
-      className={`inline-flex items-center justify-center gap-2 rounded-lg font-medium
+      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-md font-semibold
         transition-colors duration-150 focus-visible:outline focus-visible:outline-2
         focus-visible:outline-offset-2 disabled:cursor-not-allowed
         ${variants[variant]} ${sizes[size]} ${className}`}

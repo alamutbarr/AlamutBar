@@ -34,13 +34,33 @@ export default function ShipmentHistory() {
           <p className="px-5 py-14 text-center text-sm text-ink-300">در حال بارگذاری...</p>
         ) : shipments.length === 0 ? (
           <div className="flex flex-col items-center gap-3 px-5 py-14 text-center">
-            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-amber-600">
+            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-[#087f8c]">
               <Package size={22} />
             </span>
-            <p className="text-sm font-medium text-ink-700">هنوز باری ثبت نکردی</p>
+            <p className="text-sm font-medium text-ink-700">هنوز باری ثبت نکرده‌اید</p>
           </div>
         ) : (
-          <table className="w-full text-right text-sm">
+          <>
+          <ul className="divide-y divide-ink-50 md:hidden">
+            {shipments.map((s) => (
+              <li key={s.id}>
+                <Link to={`/shipments/${s.id}`} className="block px-4 py-4">
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <span className="tabular font-bold text-ink-900">{s.tracking_code}</span>
+                    <StatusBadge status={s.status} />
+                  </div>
+                  <p className="text-sm text-ink-700">
+                    {s.originCity?.name || 'مبدأ'} ← {s.destCity?.name || 'مقصد'}
+                  </p>
+                  <p className="mt-1 text-xs leading-6 text-ink-400">
+                    {s.weight_kg} کیلوگرم · {formatToman(s.operator_price || s.proposed_price)} ·{' '}
+                    {new Intl.DateTimeFormat('fa-IR').format(new Date(s.loading_date))}
+                  </p>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <table className="hidden w-full text-right text-sm md:table">
             <thead>
               <tr className="border-b border-ink-50 text-xs text-ink-300">
                 <th className="px-5 py-3 font-medium">کد پیگیری</th>
@@ -76,6 +96,7 @@ export default function ShipmentHistory() {
               ))}
             </tbody>
           </table>
+          </>
         )}
       </div>
     </div>

@@ -91,7 +91,7 @@ export default function ShipmentDetail() {
           <StatusBadge status={shipment.status} />
         </div>
 
-        <dl className="grid grid-cols-2 gap-y-3 text-sm">
+        <dl className="grid grid-cols-1 gap-y-3 text-sm sm:grid-cols-2">
           <dt className="text-ink-300">وزن</dt>
           <dd className="tabular text-left text-ink-900">{shipment.weight_kg} kg</dd>
           <dt className="text-ink-300">قیمت پیشنهادی شما</dt>
@@ -113,7 +113,7 @@ export default function ShipmentDetail() {
             <p className="mb-3 text-sm text-amber-800">
               اپراتور مبلغ {formatToman(shipment.operator_price)} تومان را برای این بار پیشنهاد داده. آیا تأیید می‌کنید؟
             </p>
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
               <Button variant="accent" size="sm" loading={busy} onClick={() => handleRespond('accept')}>
                 تأیید می‌کنم
               </Button>

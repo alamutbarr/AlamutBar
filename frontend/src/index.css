@@ -1,49 +1,70 @@
-@import url('https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css');
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 html {
   font-family: 'Vazirmatn', Tahoma, sans-serif;
+  font-feature-settings: 'ss01';
+  scroll-behavior: smooth;
 }
 
 body {
-  background-color: #EEF1F4;
-  color: #1F2A47;
+  background-color: #f7f6f0;
+  color: #17383b;
+  line-height: 1.75;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* اعداد (کد پیگیری، وزن، قیمت) با فونت مونو و ارقام هم‌عرض نمایش داده شوند */
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+h1,
+h2,
+h3 {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.45;
+}
+
 .tabular {
-  font-family: 'IBM Plex Mono', monospace;
+  font-family: 'Vazirmatn', Tahoma, sans-serif;
   font-variant-numeric: tabular-nums;
+  font-feature-settings: 'ss01';
   direction: ltr;
   unicode-bidi: isolate;
 }
 
 ::selection {
-  background-color: #F2A93B;
-  color: #101833;
+  background-color: #087f8c;
+  color: #f7f6f0;
 }
 
-/* استایل نقشه‌ی Leaflet هماهنگ با پوسته‌ی تیره‌ی برنامه */
 .leaflet-container {
   font-family: 'Vazirmatn', Tahoma, sans-serif;
-  background: #EEF1F4;
+  background: #f7f6f0;
 }
+
 .leaflet-popup-content-wrapper,
 .leaflet-popup-tip {
-  background: #101833;
-  color: #fff;
+  background: #17383b;
+  color: #f7f6f0;
+  border-radius: 0.35rem;
 }
+
 .leaflet-control-attribution {
   font-size: 10px;
 }
 
-/* افکت شیشه‌ای (glassmorphism) برای کارت‌های روی زمینه‌ی تیره */
 .glass-card {
-  background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(247, 246, 240, 0.08);
+  border: 1px solid rgba(247, 246, 240, 0.16);
   backdrop-filter: blur(12px);
+}
+
+@media (max-width: 1023px) {
+  .leaflet-container {
+    min-height: 220px;
+  }
 }
