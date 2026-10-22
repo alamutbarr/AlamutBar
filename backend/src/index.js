@@ -51,6 +51,9 @@ async function start() {
 
     // Models start the single sync. Requiring them before the database exists
     // makes that sync fail and the process exit before listen.
+    // Legacy camelCase columns must be renamed first, otherwise sync tries to
+    // index driver_id on a table that only has driverId.
+    await require('./utils/legacyColumns')();
     const { syncPromise } = require('./models');
     app.use('/api/auth', require('./routes/auth'));
     app.use('/api/driver', require('./routes/driver'));
