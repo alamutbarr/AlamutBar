@@ -223,11 +223,15 @@ export function DriverLogin() {
       dir="rtl"
     >
       <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-blue-600 shadow-lg mb-4">
-            <Truck className="w-8 h-8 text-white" />
-          </div>
-          <h1 className="text-2xl font-bold text-white">الموت‌بار</h1>
+        <div className="mb-8 flex flex-col items-center text-center text-[#f7f6f0]">
+          <span className="mb-3 block h-12 w-12" aria-hidden="true">
+            <svg viewBox="0 0 40 40" fill="none" className="h-full w-full stroke-current" strokeWidth="1.5" strokeLinejoin="bevel">
+              <path d="M5 28.5 17.5 8l7.1 11.8L30 10l5 8.7v9.8H5Z" />
+              <path d="M5 28.5h30M12 21l4.6 7.5M24.4 20l5.6 8.5" />
+            </svg>
+          </span>
+          <h1 className="text-2xl font-extrabold tracking-[0.18em]">ALAMUT</h1>
+          <p className="mt-2 text-sm text-[#f7f6f0]/70">پنل راننده</p>
         </div>
 
         <div className="rounded-3xl bg-white shadow-2xl p-6 sm:p-8">

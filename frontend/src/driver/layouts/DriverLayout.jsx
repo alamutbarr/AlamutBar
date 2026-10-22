@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { LayoutDashboard, ListTodo, User, Truck, LogOut, AlertTriangle, } from 'lucide-react';
+import { LayoutDashboard, ListTodo, User, LogOut, AlertTriangle, } from 'lucide-react';
 const navItems = [
     { key: 'dashboard', label: 'داشبورد', icon: LayoutDashboard },
     { key: 'missions', label: 'مأموریت‌ها', icon: ListTodo },
@@ -18,75 +18,72 @@ export function DriverLayout({ current, onNavigate, onLogout, driverName, childr
         return () => window.removeEventListener('keydown', onKeyDown);
     }, [confirmLogout]);
 
-    return (<div className="isolate relative min-h-screen flex bg-gradient-to-br from-slate-50 via-white to-blue-50">
-      {/* پس‌زمینه‌ی تزئینی: باعث می‌شود افکت شیشه‌ای عمق و رنگ واقعی بگیرد */}
-      <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-        <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-blue-300/40 blur-3xl"/>
-        <div className="absolute top-1/3 -left-28 h-80 w-80 rounded-full bg-violet-300/35 blur-3xl"/>
-        <div className="absolute -bottom-24 right-1/4 h-72 w-72 rounded-full bg-emerald-200/40 blur-3xl"/>
-      </div>
-
-      {/* Desktop Sidebar */}
-      <aside className="glass-strong anim-fade hidden lg:flex w-64 flex-col fixed inset-y-0 right-0 border-l border-white/60">
-        <div className="flex items-center gap-3 p-5 border-b border-white/50 anim-text d-1">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 shadow-md shadow-blue-500/30">
-            <Truck className="w-5 h-5 text-white"/>
-          </div>
-          <div>
-            <h1 className="text-sm font-bold text-slate-800">الموت‌بار</h1>
-            <p className="text-xs text-slate-500">{driverName}</p>
+    return (<div className="isolate relative min-h-screen flex bg-[#f7f6f0]" dir="rtl">
+      <aside className="hidden lg:flex w-64 flex-col fixed inset-y-0 right-0 bg-[#17383b] text-[#f7f6f0]">
+        <div className="flex items-center gap-3 border-b border-white/10 p-5">
+          <span className="block h-9 w-9 shrink-0" aria-hidden="true">
+            <svg viewBox="0 0 40 40" fill="none" className="h-full w-full stroke-current" strokeWidth="1.5" strokeLinejoin="bevel">
+              <path d="M5 28.5 17.5 8l7.1 11.8L30 10l5 8.7v9.8H5Z" />
+              <path d="M5 28.5h30M12 21l4.6 7.5M24.4 20l5.6 8.5" />
+            </svg>
+          </span>
+          <div className="leading-tight">
+            <h1 className="text-[15px] font-extrabold tracking-[0.16em]">ALAMUT</h1>
+            <p className="mt-1 text-[11px] text-[#f7f6f0]/70">{driverName || 'پنل راننده'}</p>
           </div>
         </div>
 
         <nav className="flex-1 p-3 space-y-1">
-          {navItems.map((item, index) => {
+          {navItems.map((item) => {
             const Icon = item.icon;
             const active = current === item.key;
-            return (<button key={item.key} onClick={() => onNavigate(item.key)} style={{ animationDelay: `${90 + index * 70}ms` }} className={`anim-slide w-full flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-300 ${active
-                    ? 'glass border-white/70 text-blue-700 shadow-sm shadow-blue-500/10'
-                    : 'text-slate-600 hover:bg-white/50 hover:text-slate-800'}`}>
-                <Icon className={`w-5 h-5 transition-colors ${active ? 'text-blue-600' : 'text-slate-400'}`}/>
+            return (<button key={item.key} onClick={() => onNavigate(item.key)} className={`w-full flex items-center gap-3 rounded-md px-4 py-3 text-sm font-medium transition-colors ${active
+                    ? 'bg-white/10 text-white'
+                    : 'text-[#f7f6f0]/70 hover:bg-white/5 hover:text-white'}`}>
+                <Icon className={`w-5 h-5 ${active ? 'text-[#d7b56d]' : 'text-[#f7f6f0]/55'}`}/>
                 {item.label}
-                {active && (<span className="mr-auto h-1.5 w-1.5 rounded-full bg-blue-500 anim-pop d-2"/>)}
               </button>);
         })}
         </nav>
 
-        <div className="p-3 border-t border-white/50">
-          <button onClick={() => setConfirmLogout(true)} className="anim-slide w-full flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-red-600 transition-all duration-300 hover:bg-red-50/70" style={{ animationDelay: '330ms' }}>
+        <div className="border-t border-white/10 p-3">
+          <button onClick={() => setConfirmLogout(true)} className="w-full flex items-center gap-3 rounded-md px-4 py-3 text-sm font-medium text-[#f7c9c4] transition-colors hover:bg-red-500/15">
             <LogOut className="w-5 h-5"/>
             خروج از حساب کاربری
           </button>
         </div>
       </aside>
 
-      {/* Main content */}
       <div className="flex-1 lg:mr-64">
-        {/* Mobile top bar */}
-        <header className="glass-strong lg:hidden sticky top-0 z-30 flex items-center justify-between border-b border-white/60 px-4 py-3">
+        <header className="lg:hidden sticky top-0 z-30 flex items-center justify-between border-b border-[#d8e1dc] bg-[#f7f6f0]/95 px-4 py-3 backdrop-blur">
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-blue-600">
-              <Truck className="w-4 h-4 text-white"/>
+            <span className="block h-8 w-8 text-[#17383b]" aria-hidden="true">
+              <svg viewBox="0 0 40 40" fill="none" className="h-full w-full stroke-current" strokeWidth="1.6" strokeLinejoin="bevel">
+                <path d="M5 28.5 17.5 8l7.1 11.8L30 10l5 8.7v9.8H5Z" />
+                <path d="M5 28.5h30" />
+              </svg>
+            </span>
+            <div className="leading-tight">
+              <span className="block text-sm font-extrabold tracking-[0.14em] text-[#17383b]">ALAMUT</span>
+              <span className="text-[11px] text-[#526d70]">{driverName || 'پنل راننده'}</span>
             </div>
-            <span className="text-sm font-bold text-slate-800">الموت‌بار</span>
           </div>
-          <button onClick={() => setConfirmLogout(true)} title="خروج از حساب کاربری" className="rounded-lg p-1.5 text-slate-500 transition hover:bg-red-50 hover:text-red-600">
+          <button onClick={() => setConfirmLogout(true)} title="خروج از حساب کاربری" className="rounded-md p-2 text-[#526d70] transition hover:bg-white hover:text-red-700">
             <LogOut className="w-5 h-5"/>
           </button>
         </header>
 
-        <main className="pb-20 lg:pb-6">{children}</main>
+        <main className="pb-[calc(4.75rem+env(safe-area-inset-bottom))] lg:pb-6">{children}</main>
       </div>
 
-      {/* Mobile bottom nav */}
-      <nav className="glass-strong lg:hidden fixed bottom-0 inset-x-0 z-30 border-t border-white/60 grid grid-cols-3">
+      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-30 grid grid-cols-3 border-t border-[#d8e1dc] bg-[#f7f6f0]/95 pb-[env(safe-area-inset-bottom)] backdrop-blur">
         {navItems.map((item) => {
             const Icon = item.icon;
             const active = current === item.key;
-            return (<button key={item.key} onClick={() => onNavigate(item.key)} className={`relative flex flex-col items-center gap-1 py-2.5 transition-all duration-300 ${active ? 'text-blue-600' : 'text-slate-400'}`}>
+            return (<button key={item.key} onClick={() => onNavigate(item.key)} className={`relative flex flex-col items-center gap-1 py-2.5 transition-colors ${active ? 'text-[#087f8c]' : 'text-[#8aa0a0]'}`}>
               <Icon className="w-5 h-5"/>
-              <span className="text-[10px] font-medium">{item.label}</span>
-              {active && (<span className="absolute top-0 h-0.5 w-8 rounded-full bg-blue-500 anim-fade"/>)}
+              <span className="text-[11px] font-medium">{item.label}</span>
+              {active && (<span className="absolute top-0 h-0.5 w-8 rounded-full bg-[#087f8c]"/>)}
             </button>);
         })}
       </nav>
