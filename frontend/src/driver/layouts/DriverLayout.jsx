@@ -33,7 +33,7 @@ export function DriverLayout({ current, onNavigate, onLogout, driverName, childr
             <Truck className="w-5 h-5 text-white"/>
           </div>
           <div>
-            <h1 className="text-sm font-bold text-slate-800">Xbar راننده</h1>
+            <h1 className="text-sm font-bold text-slate-800">الموت‌بار</h1>
             <p className="text-xs text-slate-500">{driverName}</p>
           </div>
         </div>
@@ -68,7 +68,7 @@ export function DriverLayout({ current, onNavigate, onLogout, driverName, childr
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-blue-600">
               <Truck className="w-4 h-4 text-white"/>
             </div>
-            <span className="text-sm font-bold text-slate-800">Xbar راننده</span>
+            <span className="text-sm font-bold text-slate-800">الموت‌بار</span>
           </div>
           <button onClick={() => setConfirmLogout(true)} title="خروج از حساب کاربری" className="rounded-lg p-1.5 text-slate-500 transition hover:bg-red-50 hover:text-red-600">
             <LogOut className="w-5 h-5"/>

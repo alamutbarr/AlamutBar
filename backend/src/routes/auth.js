@@ -4,7 +4,7 @@ const router = express.Router();
 
 const { Driver } = require('../models');
 const { validateVehicleSelection } = require('../services/vehicleConfig');
-const JWT_SECRET = process.env.JWT_SECRET || 'secret';
+const JWT_SECRET = require('../config/jwt');
 
 // حروف مجاز پلاک (هماهنگ با frontend/src/driver/components/IranianPlateInput.jsx)
 const ALLOWED_PLATE_LETTERS = ['ع', 'ب', 'ج', 'د', 'س', 'ص', 'ط', 'ق', 'ک', 'ل', 'م', 'ن', 'و', 'ه', 'ی', '♿'];

@@ -227,7 +227,7 @@ export function DriverLogin() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-blue-600 shadow-lg mb-4">
             <Truck className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-white">Xbar راننده</h1>
+          <h1 className="text-2xl font-bold text-white">الموت‌بار</h1>
         </div>
 
         <div className="rounded-3xl bg-white shadow-2xl p-6 sm:p-8">

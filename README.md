@@ -1,3 +1,24 @@
-# Drivers-panel
+# الموت‌بار
 
-[![Open in Bolt](https://bolt.new/static/open-in-bolt.svg)](https://bolt.new/~/sb1-djp7flhi)
+پنل راننده حمل‌ونقل بین‌شهری. فرانت با React و Vite است و بک‌اند با Express و MySQL.
+
+برنچ فعال این پنل `Drivers-panel` است.
+
+## اجرا
+
+MySQL باید روی `127.0.0.1:3306` روشن باشد. اگر دیتابیس وجود نداشته باشد و اتصال برقرار باشد، بک‌اند آن را می‌سازد.
+
+```bash
+cp backend/.env.example backend/.env
+npm run install:all
+npm run dev
+```
+
+در `backend/.env` مقدار `DB_USER` و `DB_PASS` را با کاربر MySQL خودتان عوض کنید. اگر رمز root خالی است، `DB_PASS` را خالی بگذارید.
+
+- پنل: http://127.0.0.1:5173
+- API: http://127.0.0.1:5000/health
+
+کد تأیید آزمایشی `1234` است.
+
+اگر MySQL خاموش باشد بک‌اند قبل از باز کردن پورت خارج می‌شود و پنل به API وصل نمی‌شود.

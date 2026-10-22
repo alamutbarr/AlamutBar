@@ -14,12 +14,13 @@ Vehicle.belongsTo(Driver, { foreignKey: 'driverId', as: 'driver' });
 Driver.hasMany(Shipment, { foreignKey: 'driverId', as: 'missions' });
 Shipment.belongsTo(Driver, { foreignKey: 'driverId', as: 'driver' });
 
-// همگام‌سازی و اعمال در دیتابیس
-// (پرامیس sync به‌صورت exported در اختیار اسکریپت‌های بذر قرار می‌گیرد تا از
-//  اجرای هم‌زمان دو sync بر روی یک نمونه جلوگیری شود)
+// یک‌بار sync، بعد از ساخته شدن دیتابیس. اسکریپت بذر همین Promise را await می‌کند.
 const syncPromise = sequelize.sync({ alter: true })
-    .then(() => console.log("✅ Database tables successfully synced!"))
-    .catch((err) => console.error("❌ Database sync error:", err));
+    .then(() => console.log('جداول دیتابیس همگام‌سازی شدند.'))
+    .catch((err) => {
+        console.error('خطا در همگام‌سازی دیتابیس:', err.message || err);
+        throw err;
+    });
 
 module.exports = {
     sequelize,

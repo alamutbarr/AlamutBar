@@ -22,7 +22,7 @@ function getProfileError(error) {
     return "مسیر دریافت پروفایل در بک‌اند پیدا نشد. مطمئن شوید بک‌اند اصلاح‌شده اجرا شده و مسیر /api/driver/profile فعال است.";
   }
   if (!error?.response) {
-    return "به بک‌اند وصل نشدیم. مطمئن شوید سرور روی پورت 5000 اجراست و مقدار VITE_API_BASE_URL در frontend/.env برابر http://localhost:5000/api است.";
+    return "به بک‌اند وصل نشدیم. از ریشهٔ پروژه npm run dev را اجرا کنید تا API روی پورت 5000 بالا باشد.";
   }
   return serverMessage || `دریافت پروفایل ناموفق بود (HTTP ${status || "نامشخص"}).`;
 }
