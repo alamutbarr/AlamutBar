@@ -79,6 +79,14 @@ const Shipment = sequelize.define('Shipment', {
     notes: { type: DataTypes.TEXT },
     podExceptionReason: { type: DataTypes.TEXT },
     deliveredAt: { type: DataTypes.DATE }
+}, {
+    tableName: 'shipments',
+    indexes: [
+        { fields: ['status'] },
+        { fields: ['driver_id'] },
+        { fields: ['origin_city_id'] },
+        { fields: ['dest_city_id'] },
+    ],
 });
 
 module.exports = Shipment;

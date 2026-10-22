@@ -48,7 +48,7 @@ router.post('/verify-otp', async (req, res) => {
     }
 
     // جستجو بر اساس phone_number (طبق دیتابیس شما)
-    const driver = await Driver.findOne({ where: { phone_number: mobile } });
+    const driver = await Driver.findOne({ where: { phoneNumber: mobile } });
 
     if (!driver) {
       return res.status(404).json({ error: 'کاربری با این شماره یافت نشد. لطفاً ثبت‌نام کنید.' });
@@ -62,8 +62,8 @@ router.post('/verify-otp', async (req, res) => {
       token,
       user: {
         id: driver.id,
-        name: `${driver.first_name || ''} ${driver.last_name || ''}`.trim(),
-        mobile: driver.phone_number
+        name: `${driver.firstName || ''} ${driver.lastName || ''}`.trim(),
+        mobile: driver.phoneNumber
       }
     });
 
@@ -101,7 +101,7 @@ router.post('/register-driver', async (req, res) => {
     const lastName = nameParts.slice(1).join(' ') || '';
 
     // بررسی اینکه شماره قبلاً ثبت نشده باشد
-    const existingDriver = await Driver.findOne({ where: { phone_number: mobile } });
+    const existingDriver = await Driver.findOne({ where: { phoneNumber: mobile } });
     if (existingDriver) {
       return res.status(400).json({ error: 'این شماره قبلاً در سیستم ثبت شده است' });
     }
@@ -139,17 +139,17 @@ router.post('/register-driver', async (req, res) => {
     // ساخت راننده جدید با اطلاعات خودرو (فقط مقادیر معتبر و مرتبط ذخیره می‌شوند)
     // شناسه (id) توسط Sequelize به‌صورت خودکار INTEGER AUTO_INCREMENT تولید می‌شود.
     const newDriver = await Driver.create({
-      phone_number: mobile,
-      first_name: firstName,
-      last_name: lastName,
-      national_id: nationalCode,
-      license_number: licenseNumber,
-      smart_card_number: String(smartCardNumber),
-      tractor_type: tractorType,
-      trailer_type: trailerType,
+      phoneNumber: mobile,
+      firstName,
+      lastName,
+      nationalId: nationalCode,
+      licenseNumber,
+      smartCardNumber: String(smartCardNumber),
+      tractorType,
+      trailerType,
       plate,
-      vehicle_specs: JSON.stringify(vehicle.sanitizedSpecs),
-      profile_step: 4,
+      vehicleSpecs: vehicle.sanitizedSpecs,
+      profileStep: 4,
     });
 
     const token = jwt.sign({ id: newDriver.id, role: 'driver' }, JWT_SECRET, {
@@ -160,8 +160,8 @@ router.post('/register-driver', async (req, res) => {
       token,
       user: {
         id: newDriver.id,
-        name: `${newDriver.first_name} ${newDriver.last_name}`.trim(),
-        mobile: newDriver.phone_number
+        name: `${newDriver.firstName} ${newDriver.lastName}`.trim(),
+        mobile: newDriver.phoneNumber
       }
     });
 

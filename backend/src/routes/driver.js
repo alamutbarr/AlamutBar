@@ -15,17 +15,19 @@ const router = express.Router();
 // React panel reads (name, mobile, nationalCode, licenseNumber, rating, ...).
 function toPanelDriver(row) {
   const d = row.toJSON ? row.toJSON() : row;
-  const name = [d.first_name, d.last_name].filter(Boolean).join(' ').trim();
+  const name = [d.firstName, d.lastName].filter(Boolean).join(' ').trim();
   return {
     id: d.id,
-    name: name || 'راننده',                 // DriverDashboard does driver.name.split(' ') -> must be a string
-    mobile: d.phone_number,
-    phone_number: d.phone_number,
-    nationalCode: d.national_id || '',
-    licenseNumber: d.license_number || '',
-    companyName: d.company_name || null,
-    verifiedStatus: 'pending',               // new accounts wait for document verification
-    rating: 5.0,                             // avoid NaN in Intl.NumberFormat until real ratings exist
+    name: name || 'راننده',
+    mobile: d.phoneNumber,
+    phone_number: d.phoneNumber,
+    nationalCode: d.nationalId || '',
+    licenseNumber: d.licenseNumber || '',
+    plate: d.plate || '',
+    tractorType: d.tractorType || '',
+    trailerType: d.trailerType || '',
+    verifiedStatus: 'pending',
+    rating: 5.0,
     totalMissions: 0,
     joinedDate: d.createdAt
       ? new Date(d.createdAt).toLocaleDateString('fa-IR')

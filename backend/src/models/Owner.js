@@ -10,6 +10,6 @@ const Owner = sequelize.define('Owner', {
     phoneNumber: { type: DataTypes.STRING, unique: true, allowNull: false },
     password: { type: DataTypes.STRING, allowNull: false },
     avatarUrl: { type: DataTypes.STRING },
-});
+}, { tableName: 'owners' });
 
 module.exports = Owner;

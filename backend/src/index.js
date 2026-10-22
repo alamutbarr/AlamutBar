@@ -62,7 +62,7 @@ async function start() {
     await syncPromise;
     await sequelize.authenticate();
     app.listen(PORT, '0.0.0.0', () => {
-      console.log(`سرور الموت‌بار روی پورت ${PORT} در حال اجراست`);
+      console.log(`سرور الموت‌بار روی پورت ${PORT} در حال اجراست (دیتابیس ${dbConfig.name}، کاربر ${dbConfig.user})`);
     });
   } catch (error) {
     if (isConnectionRefused(error)) {
@@ -75,6 +75,15 @@ async function start() {
     } else if (error?.original?.code === 'ER_BAD_DB_ERROR' || error?.parent?.code === 'ER_BAD_DB_ERROR') {
       console.error(
         `دیتابیس ${dbConfig.name} وجود ندارد و این کاربر اجازهٔ ساخت آن را ندارد. دیتابیس را با یک کاربر مدیر بسازید یا DB_USER را در backend/.env عوض کنید.`,
+      );
+    } else if (error?.original?.errno === 1045 || error?.parent?.errno === 1045 || error?.original?.code === 'ER_ACCESS_DENIED_ERROR') {
+      console.error(
+        [
+          `MySQL ورود کاربر «${dbConfig.user || '(خالی)'}» روی ${dbConfig.host}:${dbConfig.port} را رد کرد.`,
+          'در backend/.env مقدار DB_USER و DB_PASS را بنویسید.',
+          'اگر رمز root خالی است: DB_USER=root و DB_PASS را خالی بگذارید.',
+          'از localhost استفاده نکنید؛ DB_HOST=127.0.0.1 باشد.',
+        ].join('\n'),
       );
     } else {
       console.error('خطا در راه‌اندازی دیتابیس:', error.message || error);

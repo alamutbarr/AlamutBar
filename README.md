@@ -14,7 +14,14 @@ npm run install:all
 npm run dev
 ```
 
-در `backend/.env` مقدار `DB_USER` و `DB_PASS` را با کاربر MySQL خودتان عوض کنید. اگر رمز root خالی است، `DB_PASS` را خالی بگذارید.
+اگر `git pull` به‌خاطر `package-lock.json` متوقف شد:
+
+```bash
+git checkout -- package-lock.json
+git pull
+```
+
+در `backend/.env` مقدار `DB_USER` و `DB_PASS` را با کاربر MySQL خودتان عوض کنید. اگر رمز root خالی است، `DB_USER=root` و `DB_PASS` را خالی بگذارید. `DB_HOST` باید `127.0.0.1` باشد.
 
 - پنل: http://127.0.0.1:5173
 - API: http://127.0.0.1:5000/health

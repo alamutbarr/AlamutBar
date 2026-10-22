@@ -1,32 +1,29 @@
 const sequelize = require('../config/database');
 const Owner = require('./Owner');
 const Driver = require('./Driver');
-const Vehicle = require('./Vehicle');
 const Shipment = require('./Shipment');
 
-// تعریف روابط بین جداول (Foreign Keys)
+// owners 1---* shipments
+// drivers 1---* shipments (a shipment may still be unassigned)
 Owner.hasMany(Shipment, { foreignKey: 'ownerId', as: 'shipments' });
 Shipment.belongsTo(Owner, { foreignKey: 'ownerId', as: 'owner' });
-
-Driver.hasMany(Vehicle, { foreignKey: 'driverId', as: 'vehicles' });
-Vehicle.belongsTo(Driver, { foreignKey: 'driverId', as: 'driver' });
 
 Driver.hasMany(Shipment, { foreignKey: 'driverId', as: 'missions' });
 Shipment.belongsTo(Driver, { foreignKey: 'driverId', as: 'driver' });
 
-// یک‌بار sync، بعد از ساخته شدن دیتابیس. اسکریپت بذر همین Promise را await می‌کند.
-const syncPromise = sequelize.sync({ alter: true })
-    .then(() => console.log('جداول دیتابیس همگام‌سازی شدند.'))
-    .catch((err) => {
-        console.error('خطا در همگام‌سازی دیتابیس:', err.message || err);
-        throw err;
-    });
+// Create missing tables only. alter:true rewrites indexes on every boot and
+// was the source of the duplicate-index failures.
+const syncPromise = sequelize.sync()
+  .then(() => console.log('جداول دیتابیس همگام‌سازی شدند.'))
+  .catch((err) => {
+    console.error('خطا در همگام‌سازی دیتابیس:', err.message || err);
+    throw err;
+  });
 
 module.exports = {
-    sequelize,
-    Owner,
-    Driver,
-    Vehicle,
-    Shipment,
-    syncPromise
+  sequelize,
+  Owner,
+  Driver,
+  Shipment,
+  syncPromise,
 };
