@@ -37,9 +37,9 @@ export function DriverMissionDetail({ mission, onBack, onAccept, onDecline, onAc
             onDecline?.(mission);
         }, 600);
     };
-    return (<div className="max-w-2xl mx-auto pb-6">
+    return (<div className="w-full pb-6">
       {/* Header */}
-      <div className="glass-strong sticky top-0 lg:top-0 z-20 border-b border-white/60 px-4 lg:px-6 py-3 flex items-center gap-3">
+      <div className="glass-strong sticky top-0 lg:top-0 z-20 border-b border-white/60 px-4 sm:px-6 lg:px-8 py-3 flex items-center gap-3">
         <button onClick={onBack} className="flex items-center justify-center rounded-lg p-2 text-slate-600 hover:bg-slate-100 transition">
           <ArrowRight className="w-5 h-5"/>
         </button>
@@ -52,7 +52,7 @@ export function DriverMissionDetail({ mission, onBack, onAccept, onDecline, onAc
         <FlagBadges flag={mission.flag}/>
       </div>
 
-      <div className="p-4 lg:p-6 space-y-4">
+      <div className="space-y-4 px-4 py-5 sm:px-6 lg:px-8">
         <ShipmentChat
           shipmentId={mission.id}
           token={localStorage.getItem('driver_token')}

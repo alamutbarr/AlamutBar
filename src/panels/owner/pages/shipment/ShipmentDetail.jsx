@@ -75,7 +75,7 @@ export default function ShipmentDetail() {
   if (!shipment) return <p className="text-sm text-ink-300">بار مورد نظر یافت نشد.</p>;
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <div className="mx-auto w-full max-w-4xl">
       <ShipmentChat
         shipmentId={shipment.id}
         token={localStorage.getItem('token')}

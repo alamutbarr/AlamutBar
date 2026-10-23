@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Camera, Loader2, Save } from "lucide-react";
-import { isValidNationalId } from "../../utils/nationalId";
+import { nationalIdIssue } from "../../utils/nationalId";
 import { getProfile, updateProfile } from "../../api/auth.api";
 import { uploadShipmentPhotos } from "../../api/upload.api";
 import { useAuth } from "../../hooks/useAuth";
@@ -54,8 +54,9 @@ export default function Profile() {
   const handleSave = async (e) => {
     e.preventDefault();
 
-    if (!isValidNationalId(form.national_id)) {
-      setError("کد ملی معتبر (۱۰ رقم) وارد کنید.");
+    const nationalIssue = nationalIdIssue(form.national_id);
+    if (nationalIssue) {
+      setError(nationalIssue);
       return;
     }
 

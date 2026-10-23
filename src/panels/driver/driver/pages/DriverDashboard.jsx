@@ -30,7 +30,7 @@ export function DriverDashboard({
     : 0;
 
   return (
-    <div className="p-4 lg:p-6 max-w-4xl mx-auto space-y-5">
+    <div className="w-full space-y-5 px-4 py-5 sm:px-6 lg:px-8">
       {/* Greeting */}
       <div className="anim-text flex items-center justify-between">
         <div>

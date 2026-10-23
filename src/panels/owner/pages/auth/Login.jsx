@@ -8,7 +8,7 @@ import Button from "../../components/common/Button";
 import AuthShell from "./AuthShell";
 import { getErrorMessage } from "../../utils/errorMessage";
 import { toEnglishDigits } from "../../utils/digits";
-import { isValidNationalId } from "../../utils/nationalId";
+import { isValidNationalId, nationalIdIssue } from "../../utils/nationalId";
 
 const RESEND_COOLDOWN = 60;
 
@@ -60,6 +60,14 @@ export default function Login() {
   const handleVerify = async (e, profileOverride) => {
     e?.preventDefault();
     setError("");
+    const nextProfile = profileOverride || profile;
+    if (profileOverride || step === "profile") {
+      const issue = nationalIdIssue(nextProfile.national_id);
+      if (issue) {
+        setError(issue);
+        return;
+      }
+    }
     setLoading(true);
     try {
       const data = await confirmOtp(phone, otp, profileOverride || profile);

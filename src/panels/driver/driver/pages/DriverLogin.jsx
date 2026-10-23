@@ -84,15 +84,21 @@ function OtpCells({ value, onChange }) {
 // ================= توابع اعتبارسنجی =================
 const validateMobile = (mobile) =>
   /^09[0-9]\d{8}$/.test(mobile.replace(/[\s\-\(\)]/g, ""));
-const validateNationalId = (code) => {
-  if (!/^\d{10}$/.test(code)) return false;
+const faDigit = "۰۱۲۳۴۵۶۷۸۹";
+const nationalIdIssue = (code) => {
+  if (!/^\d{10}$/.test(code)) return "کد ملی باید دقیقاً ۱۰ رقم باشد.";
+  if (/^(\d)\1{9}$/.test(code)) return "کد ملی نمی‌تواند ده رقم یکسان باشد.";
   const check = +code[9];
   const sum =
     code
       .split("")
       .slice(0, 9)
       .reduce((acc, x, i) => acc + +x * (10 - i), 0) % 11;
-  return sum < 2 ? check === sum : check === 11 - sum;
+  const control = sum < 2 ? sum : 11 - sum;
+  if (check !== control) {
+    return `رقم کنترل کد ملی نادرست است. رقم آخر باید ${faDigit[control]} باشد.`;
+  }
+  return "";
 };
 const validateDrivingLicense = (license) => /^\d{10}$/.test(license);
 const validateSmartCard = (code) => /^\d{7}$/.test(code);
@@ -192,8 +198,8 @@ export function DriverLogin() {
   const handlePersonalSubmit = () => {
     if (!firstName.trim()) return setError("نام الزامی است.");
     if (!lastName.trim()) return setError("نام خانوادگی الزامی است.");
-    if (!validateNationalId(nationalCode))
-      return setError("کد ملی وارد شده معتبر نیست.");
+    const nationalIssue = nationalIdIssue(nationalCode);
+    if (nationalIssue) return setError(nationalIssue);
     if (!validateDrivingLicense(licenseNumber))
       return setError("شماره گواهینامه باید دقیقاً ۱۰ رقم باشد.");
 

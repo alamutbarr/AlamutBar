@@ -30,9 +30,9 @@ export function DriverMissions({ missions, loading, onMissionClick, }) {
         active: missions.filter(isMissionActive).length,
         history: missions.filter(isHistory).length,
     };
-    return (<div className="max-w-2xl mx-auto">
+    return (<div className="w-full">
       {/* Page header */}
-      <div className="px-4 lg:px-6 pt-4 lg:pt-6 pb-3">
+      <div className="px-4 sm:px-6 lg:px-8 pt-5 pb-3">
         <h2 className="anim-text text-xl font-bold text-slate-800 mb-3">مأموریت‌ها</h2>
 
         {/* Tabs (شیشه‌ای) */}
@@ -54,7 +54,7 @@ export function DriverMissions({ missions, loading, onMissionClick, }) {
       </div>
 
       {/* Content — با هر تغییر تب، محتوا دوباره با انیمیشن و دیلی نسبی وارد می‌شود */}
-      <div className="px-4 lg:px-6 pb-6">
+      <div className="px-4 sm:px-6 lg:px-8 pb-6">
         <div key={tab} className="anim-text">
           {/* جست‌وجوی مکانی فقط در تب «پیشنهادها» معنا دارد: این دو روش فقط روی
               بارهای هنوز پیشنهاد نشده (status=Offered) اعمال می‌شوند و مأموریت‌های

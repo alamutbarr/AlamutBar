@@ -207,7 +207,7 @@ export default function CreateShipment() {
   const isFinal = currentStep === STEPS.length;
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <div className="mx-auto w-full max-w-4xl">
       {!isFinal && (
         <div className="mb-4 flex items-center justify-between">
           <h1 className="text-2xl font-bold text-ink-900">ثبت بار جدید</h1>

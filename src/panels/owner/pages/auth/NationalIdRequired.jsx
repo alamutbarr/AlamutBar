@@ -8,7 +8,7 @@ import Button from "../../components/common/Button";
 import AuthShell from "./AuthShell";
 import { getErrorMessage } from "../../utils/errorMessage";
 import { toEnglishDigits } from "../../utils/digits";
-import { isValidNationalId } from "../../utils/nationalId";
+import { isValidNationalId, nationalIdIssue } from "../../utils/nationalId";
 
 export default function NationalIdRequired() {
   const { user, updateUser } = useAuth();
@@ -27,8 +27,9 @@ export default function NationalIdRequired() {
     e.preventDefault();
     setError("");
 
-    if (!isValidNationalId(nationalId)) {
-      setError("کد ملی معتبر (۱۰ رقم) وارد کنید.");
+    const issue = nationalIdIssue(nationalId);
+    if (issue) {
+      setError(issue);
       return;
     }
 

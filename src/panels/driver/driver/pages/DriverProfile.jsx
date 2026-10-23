@@ -66,7 +66,7 @@ export function DriverProfile({ driver, onLogout, }) {
         setAvatar(null);
         setAvatarError('');
     };
-    return (<div className="max-w-2xl mx-auto p-4 lg:p-6 space-y-4">
+    return (<div className="w-full space-y-4 px-4 py-5 sm:px-6 lg:px-8">
       {/* اعلان اجباری‌بودن احراز هویت (وقتی از مسیر قبول مأموریت آمده باشیم) */}
       {showVerifyNotice && (<div className="anim-text rounded-2xl border border-rose-200/70 bg-rose-50/70 p-4 backdrop-blur">
         <div className="flex items-start gap-2.5">
