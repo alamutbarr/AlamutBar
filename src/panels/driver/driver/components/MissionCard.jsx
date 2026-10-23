@@ -2,7 +2,7 @@ import { DriverStatusBadge } from './DriverStatusBadge';
 import { FlagBadges } from './FlagBadges';
 import { OfferTimer } from './OfferTimer';
 import { MapPin, Navigation, Truck, Package, Weight, Clock, ChevronLeft, } from 'lucide-react';
-import { formatPrice, formatWeight, vehicleTypeLabels, } from '@/driver/driverFormat';
+import { formatPrice, formatWeight, formatDay, formatTimeWindow, vehicleTypeLabels, } from '@/driver/driverFormat';
 export function MissionCard({ mission, onClick, }) {
     const destLabel = mission.visibleDestinationExact
         ? mission.destExact.address
@@ -38,7 +38,7 @@ export function MissionCard({ mission, onClick, }) {
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-500 mb-3">
         <span className="flex items-center gap-1">
           <Truck className="w-3.5 h-3.5"/>
-          {vehicleTypeLabels[mission.vehicleTypeRequired]}
+          {mission.vehicleLabel || vehicleTypeLabels[mission.vehicleTypeRequired] || '—'}
         </span>
         <span className="flex items-center gap-1">
           <Package className="w-3.5 h-3.5"/>
@@ -50,7 +50,7 @@ export function MissionCard({ mission, onClick, }) {
         </span>
         <span className="flex items-center gap-1">
           <Clock className="w-3.5 h-3.5"/>
-          {mission.timeWindow.pickupFrom}
+          {[formatDay(mission.loadingDate), formatTimeWindow(mission.timeWindow)].filter(Boolean).join(' · ') || '—'}
         </span>
       </div>
 

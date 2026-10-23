@@ -21,6 +21,11 @@ const getOne = asyncHandler(async (req, res) => {
   success(res, { data: shipment });
 });
 
+const update = asyncHandler(async (req, res) => {
+  const shipment = await shipmentService.updateShipment(req.user.id, req.params.id, req.body);
+  success(res, { message: 'مشخصات بار به‌روزرسانی شد.', data: shipment });
+});
+
 const respondToPrice = asyncHandler(async (req, res) => {
   const shipment = await shipmentService.respondToPrice(req.user.id, req.params.id, req.body.action);
   success(res, { message: 'پاسخ شما ثبت شد.', data: shipment });
@@ -36,4 +41,4 @@ const confirmDelivery = asyncHandler(async (req, res) => {
   success(res, { message: 'تحویل بار تأیید شد.', data: shipment });
 });
 
-module.exports = { create, getMine, getOne, respondToPrice, cancel, confirmDelivery };
+module.exports = { create, getMine, getOne, update, respondToPrice, cancel, confirmDelivery };

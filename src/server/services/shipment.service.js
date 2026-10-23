@@ -119,6 +119,62 @@ async function getShipmentForOwner(ownerId, shipmentId) {
   return shipment;
 }
 
+const EDITABLE_STATUSES = ['pending_review', 'price_proposed', 'searching_driver'];
+
+const EDITABLE_FIELDS = [
+  'origin_city_id',
+  'origin_zone_id',
+  'origin_address',
+  'origin_lat',
+  'origin_lng',
+  'dest_city_id',
+  'dest_zone_id',
+  'dest_address',
+  'dest_lat',
+  'dest_lng',
+  'cargo_type',
+  'cargo_type_other',
+  'packaging_type',
+  'weight_kg',
+  'length_cm',
+  'width_cm',
+  'height_cm',
+  'cargo_value',
+  'photo_urls',
+  'notes',
+  'loading_date',
+  'loading_time_from',
+  'loading_time_to',
+  'loading_time_ranges',
+  'urgency',
+  'vehicle_type_id',
+  'vehicle_variants',
+  'loading_method',
+  'receiver_name',
+  'receiver_phone',
+  'receiver_national_id',
+  'receiver_postal_code',
+  'proposed_price',
+];
+
+async function updateShipment(ownerId, shipmentId, payload) {
+  const shipment = await getShipmentForOwner(ownerId, shipmentId);
+  if (shipment.driver_id || !EDITABLE_STATUSES.includes(shipment.status)) {
+    throw new AppError('بعد از سپردن بار به راننده، ویرایش مشخصات ممکن نیست.', 400);
+  }
+
+  await validateReferences(payload);
+
+  for (const key of EDITABLE_FIELDS) {
+    if (payload[key] !== undefined) shipment[key] = payload[key];
+  }
+  shipment.changed('vehicle_variants', true);
+  shipment.changed('loading_time_ranges', true);
+  shipment.changed('photo_urls', true);
+  await shipment.save();
+  return getShipmentForOwner(ownerId, shipmentId);
+}
+
 async function respondToPrice(ownerId, shipmentId, action) {
   const shipment = await getShipmentForOwner(ownerId, shipmentId);
 
@@ -248,6 +304,7 @@ module.exports = {
   createShipment,
   getMyShipments,
   getShipmentForOwner,
+  updateShipment,
   respondToPrice,
   cancelShipment,
   confirmDelivery,

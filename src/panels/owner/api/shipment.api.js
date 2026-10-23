@@ -24,6 +24,11 @@ export const getShipmentById = async (id) => {
   return res.data.data;
 };
 
+export const updateShipment = async (id, payload) => {
+  const res = await api.patch(`/shipments/${id}`, payload);
+  return res.data.data;
+};
+
 // پاسخ صاحب کالا به قیمت پیشنهادی اپراتور
 export const respondToPrice = async (id, action) => {
   const res = await api.patch(`/shipments/${id}/respond-price`, { action });

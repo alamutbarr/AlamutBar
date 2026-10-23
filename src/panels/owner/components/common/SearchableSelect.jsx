@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { ChevronDown, X } from "lucide-react";
 
-const MATCH_LIMIT = 24;
+const LIST_PAGE = 48;
 
 const normalizeFa = (str) => {
   if (!str) return "";
@@ -90,6 +90,7 @@ export default function SearchableSelect({
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const [visibleCount, setVisibleCount] = useState(LIST_PAGE);
 
   const wrapperRef = useRef(null);
   const inputRef = useRef(null);
@@ -178,7 +179,7 @@ export default function SearchableSelect({
       !cleanQuery || (selectedItem && searchTerm === selectedItem.label);
 
     if (showingSelection) {
-      return options.length > 40 ? [] : options;
+      return options;
     }
 
     return options
@@ -215,8 +216,20 @@ export default function SearchableSelect({
       )
     : filteredOptions;
 
-  const visibleOptions = dropdownOptions.slice(0, MATCH_LIMIT);
+  useEffect(() => {
+    setVisibleCount(LIST_PAGE);
+  }, [searchTerm, isOpen]);
+
+  const visibleOptions = dropdownOptions.slice(0, visibleCount);
   const hiddenCount = Math.max(0, dropdownOptions.length - visibleOptions.length);
+
+  const growList = (event) => {
+    const el = event.currentTarget;
+    if (el.scrollHeight - el.scrollTop - el.clientHeight > 72) return;
+    setVisibleCount((count) =>
+      Math.min(count + LIST_PAGE, dropdownOptions.length || count),
+    );
+  };
 
   const selectableOptions = stickyOption
     ? [...visibleOptions, stickyOption]
@@ -384,6 +397,7 @@ export default function SearchableSelect({
           >
             <div
               ref={listRef}
+              onScroll={growList}
               style={
                 stickyOption
                   ? {
@@ -397,13 +411,9 @@ export default function SearchableSelect({
                     }
               }
             >
-              {!normalizeFa(searchTerm) && options.length > 40 && (
-                <div className="px-3 py-3 text-center text-xs text-ink-300">
-                  نام را بنویسید؛ فهرست با هر حرف تازه می‌شود.
-                </div>
-              )}
-
-              {normalizeFa(searchTerm) && filteredOptions.length === 0 && (
+              {normalizeFa(searchTerm) &&
+                filteredOptions.length === 0 &&
+                !(selectedItem && searchTerm === selectedItem.label) && (
                 <div className="px-3 py-3 text-center text-xs text-ink-300">
                   {noResultsText}
                 </div>
@@ -442,7 +452,7 @@ export default function SearchableSelect({
 
               {hiddenCount > 0 && (
                 <div className="px-3 py-2 text-center text-[11px] text-ink-300">
-                  {hiddenCount.toLocaleString("fa-IR")} مورد دیگر — حرف بعدی را بنویسید
+                  {hiddenCount.toLocaleString("fa-IR")} مورد دیگر — فهرست را پایین بکشید
                 </div>
               )}
             </div>

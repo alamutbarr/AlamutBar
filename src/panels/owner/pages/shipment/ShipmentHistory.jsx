@@ -4,11 +4,13 @@ import { PackagePlus, Package } from 'lucide-react';
 import { getMyShipments } from '../../api/shipment.api';
 import Button from '../../components/common/Button';
 import StatusBadge from '../../components/common/StatusBadge';
+import ShipmentDetailsModal from '../../components/shipment/ShipmentDetailsModal';
 import { formatToman } from '../../utils/currency.util';
 
 export default function ShipmentHistory() {
   const [shipments, setShipments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [openId, setOpenId] = useState(null);
 
   useEffect(() => {
     getMyShipments()
@@ -43,20 +45,25 @@ export default function ShipmentHistory() {
           <>
           <ul className="divide-y divide-ink-50 md:hidden">
             {shipments.map((s) => (
-              <li key={s.id}>
-                <Link to={`/shipments/${s.id}`} className="block px-4 py-4">
-                  <div className="mb-2 flex items-center justify-between gap-3">
-                    <span className="tabular font-bold text-ink-900">{s.tracking_code}</span>
-                    <StatusBadge status={s.status} />
-                  </div>
-                  <p className="text-sm text-ink-700">
-                    {s.originCity?.name || 'مبدأ'} ← {s.destCity?.name || 'مقصد'}
-                  </p>
-                  <p className="mt-1 text-xs leading-6 text-ink-400">
-                    {s.weight_kg} کیلوگرم · {formatToman(s.operator_price || s.proposed_price)} ·{' '}
-                    {new Intl.DateTimeFormat('fa-IR').format(new Date(s.loading_date))}
-                  </p>
-                </Link>
+              <li key={s.id} className="px-4 py-4">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <span className="tabular font-bold text-ink-900">{s.tracking_code}</span>
+                  <StatusBadge status={s.status} />
+                </div>
+                <p className="text-sm text-ink-700">
+                  {s.originCity?.name || 'مبدأ'} ← {s.destCity?.name || 'مقصد'}
+                </p>
+                <p className="mt-1 text-xs leading-6 text-ink-400">
+                  {s.weight_kg} کیلوگرم · {formatToman(s.operator_price || s.proposed_price)} ·{' '}
+                  {new Intl.DateTimeFormat('fa-IR').format(new Date(s.loading_date))}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setOpenId(s.id)}
+                  className="mt-3 rounded-full bg-[#087f8c] px-3 py-1.5 text-xs font-semibold text-[#f7f6f0]"
+                >
+                  جزئیات
+                </button>
               </li>
             ))}
           </ul>
@@ -69,15 +76,16 @@ export default function ShipmentHistory() {
                 <th className="px-5 py-3 font-medium">کرایه</th>
                 <th className="px-5 py-3 font-medium">تاریخ بارگیری</th>
                 <th className="px-5 py-3 font-medium">وضعیت</th>
+                <th className="px-5 py-3 font-medium"> </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-ink-50">
               {shipments.map((s) => (
                 <tr key={s.id} className="transition-colors hover:bg-ink-50/40">
                   <td className="px-5 py-4">
-                    <Link to={`/shipments/${s.id}`} className="tabular font-bold text-ink-900 hover:text-amber-600">
+                    <button type="button" onClick={() => setOpenId(s.id)} className="tabular font-bold text-ink-900 hover:text-[#087f8c]">
                       {s.tracking_code}
-                    </Link>
+                    </button>
                   </td>
                   <td className="max-w-[220px] truncate px-5 py-4 text-ink-500">
                     {s.originCity?.name} ← {s.destCity?.name}
@@ -92,6 +100,15 @@ export default function ShipmentHistory() {
                   <td className="px-5 py-4">
                     <StatusBadge status={s.status} />
                   </td>
+                  <td className="px-5 py-4">
+                    <button
+                      type="button"
+                      onClick={() => setOpenId(s.id)}
+                      className="rounded-full bg-[#087f8c] px-3 py-1.5 text-xs font-semibold text-[#f7f6f0]"
+                    >
+                      جزئیات
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -99,6 +116,15 @@ export default function ShipmentHistory() {
           </>
         )}
       </div>
+
+      <ShipmentDetailsModal
+        open={openId != null}
+        shipmentId={openId}
+        onClose={() => setOpenId(null)}
+        onSaved={(updated) => {
+          setShipments((rows) => rows.map((row) => (row.id === updated.id ? { ...row, ...updated } : row)));
+        }}
+      />
     </div>
   );
 }

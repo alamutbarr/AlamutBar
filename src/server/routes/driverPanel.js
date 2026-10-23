@@ -1,7 +1,7 @@
 const express = require('express');
 const { Op } = require('sequelize');
 const { authMiddleware } = require('../middleware/auth');
-const { Shipment, Driver, City, VehicleType } = require('../models');
+const { Shipment, Driver, City, VehicleType, Zone } = require('../models');
 const { filterNearbyMissions, filterMissionsByRoute } = require('../services/missionSearch');
 const { resolveDriverProvince } = require('../services/geocoding');
 
@@ -9,7 +9,9 @@ const router = express.Router();
 
 const includes = [
   { model: City, as: 'originCity' },
+  { model: Zone, as: 'originZone' },
   { model: City, as: 'destCity' },
+  { model: Zone, as: 'destZone' },
   { model: VehicleType, as: 'vehicleType' },
 ];
 
@@ -52,30 +54,39 @@ function toMissionDto(row) {
     id: d.id,
     code: d.tracking_code,
     originCity: d.originCity?.name,
-    originArea: d.originCity?.province,
+    originArea: [d.originZone?.name, d.originCity?.province].filter(Boolean).join(' · '),
     originLocation: d.origin_lat != null && d.origin_lng != null
       ? { lat: Number(d.origin_lat), lng: Number(d.origin_lng) }
       : undefined,
     destCity: d.destCity?.name,
-    destArea: d.destCity?.province,
+    destArea: [d.destZone?.name, d.destCity?.province].filter(Boolean).join(' · '),
     destExact: status !== 'Offered' && d.dest_address
       ? { lat: d.dest_lat != null ? Number(d.dest_lat) : undefined, lng: d.dest_lng != null ? Number(d.dest_lng) : undefined, address: d.dest_address }
       : undefined,
     visibleDestinationExact: status !== 'Offered',
     cargo: {
-      type: d.cargo_type,
+      type: d.cargo_type === 'other' ? (d.cargo_type_other || 'سایر') : d.cargo_type,
       weightTons: weight != null ? weight / 1000 : undefined,
       value: d.cargo_value != null ? Number(d.cargo_value) : undefined,
       packing: d.packaging_type || undefined,
+      lengthCm: d.length_cm != null && d.length_cm !== '' ? Number(d.length_cm) : undefined,
+      widthCm: d.width_cm != null && d.width_cm !== '' ? Number(d.width_cm) : undefined,
+      heightCm: d.height_cm != null && d.height_cm !== '' ? Number(d.height_cm) : undefined,
       sensitive: false,
     },
+    loadingDate: d.loading_date ? String(d.loading_date).slice(0, 10) : undefined,
     timeWindow: {
       pickupFrom: d.loading_time_from || undefined,
       pickupTo: d.loading_time_to || undefined,
+      ranges: Array.isArray(d.loading_time_ranges) ? d.loading_time_ranges : [],
     },
     flag: d.urgency === 'urgent' ? 'urgent' : 'normal',
     status,
     vehicleTypeRequired: d.vehicleType?.title,
+    vehicleLabel: [
+      d.vehicleType?.title,
+      ...(Array.isArray(d.vehicle_variants) ? d.vehicle_variants : []),
+    ].filter(Boolean).join(' · '),
     price: d.operator_price != null ? Number(d.operator_price) : (d.proposed_price != null ? Number(d.proposed_price) : undefined),
     photosUploaded: Array.isArray(d.photo_urls) ? d.photo_urls.length : 0,
     ownerId: d.owner_id,

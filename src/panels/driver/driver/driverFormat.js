@@ -41,6 +41,44 @@ export function formatWeight(tons) {
   return new Intl.NumberFormat('fa-IR').format(tons) + ' تن';
 }
 
+const RANGE_LABELS = {
+  '08:00-12:00': '۸ تا ۱۲',
+  '12:00-16:00': '۱۲ تا ۱۶',
+  '16:00-20:00': '۱۶ تا ۲۰',
+  '20:00-24:00': '۲۰ تا ۲۴',
+};
+
+export function formatDay(iso) {
+  if (!iso) return '';
+  const [y, m, d] = String(iso).slice(0, 10).split('-').map(Number);
+  if (!y || !m || !d) return '';
+  return new Intl.DateTimeFormat('fa-IR', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  }).format(new Date(y, m - 1, d));
+}
+
+export function formatDimensions(cargo) {
+  if (!cargo) return '';
+  const parts = [
+    ['طول', cargo.lengthCm],
+    ['عرض', cargo.widthCm],
+    ['ارتفاع', cargo.heightCm],
+  ].filter(([, value]) => value != null && Number(value) > 0);
+  if (!parts.length) return cargo.dimensions || '';
+  return `${parts
+    .map(([name, value]) => `${name} ${new Intl.NumberFormat('fa-IR', { maximumFractionDigits: 2 }).format(Number(value) / 100)}`)
+    .join(' × ')} متر`;
+}
+
+export function formatTimeWindow(timeWindow) {
+  if (!timeWindow) return '';
+  const ranges = Array.isArray(timeWindow.ranges) ? timeWindow.ranges : [];
+  if (ranges.length) return ranges.map((range) => RANGE_LABELS[range] || range).join('، ');
+  return [timeWindow.pickupFrom, timeWindow.pickupTo].filter(Boolean).join(' تا ');
+}
+
 export function formatDate(iso) {
   if (!iso) return '—';
   try {

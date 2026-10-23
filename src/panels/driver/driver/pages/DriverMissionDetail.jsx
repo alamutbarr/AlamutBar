@@ -6,7 +6,7 @@ import { GpsPanel } from '@/driver/components/GpsPanel';
 import { PodFlow } from '@/driver/components/PodFlow';
 import { SosButton } from '@/driver/components/SosButton';
 import { useDriverGps } from '@/driver/hooks/useDriverGps';
-import { formatPrice, formatWeight, formatDate, vehicleTypeLabels, } from '@/driver/driverFormat';
+import { formatPrice, formatWeight, formatDate, formatDay, formatDimensions, formatTimeWindow, vehicleTypeLabels, } from '@/driver/driverFormat';
 import { ArrowRight, MapPin, Navigation, Truck, Package, Weight, Ruler, Clock, DollarSign, Lock, CheckCircle2, XCircle, Loader2, Route, Calendar, } from 'lucide-react';
 import ShipmentChat from '../../../../shared/components/ShipmentChat';
 export function DriverMissionDetail({ mission, onBack, onAccept, onDecline, onAction, onPodComplete, }) {
@@ -103,11 +103,12 @@ export function DriverMissionDetail({ mission, onBack, onAccept, onDecline, onAc
             اطلاعات بار
           </h3>
           <div className="grid grid-cols-2 gap-3">
-            <InfoItem icon={<Package className="w-3.5 h-3.5"/>} label="نوع کالا" value={mission.cargo.type}/>
-            <InfoItem icon={<Weight className="w-3.5 h-3.5"/>} label="وزن" value={formatWeight(mission.cargo.weightTons)}/>
-            <InfoItem icon={<Ruler className="w-3.5 h-3.5"/>} label="ابعاد" value={mission.cargo.dimensions}/>
-            <InfoItem icon={<Truck className="w-3.5 h-3.5"/>} label="خودرو مورد نیاز" value={vehicleTypeLabels[mission.vehicleTypeRequired]}/>
-            <InfoItem icon={<Calendar className="w-3.5 h-3.5"/>} label="بازه بارگیری" value={mission.timeWindow.pickupFrom}/>
+            <InfoItem icon={<Package className="w-3.5 h-3.5"/>} label="نوع کالا" value={mission.cargo.type || '—'}/>
+            <InfoItem icon={<Weight className="w-3.5 h-3.5"/>} label="وزن" value={mission.cargo.weightTons != null ? formatWeight(mission.cargo.weightTons) : '—'}/>
+            <InfoItem icon={<Ruler className="w-3.5 h-3.5"/>} label="ابعاد" value={formatDimensions(mission.cargo) || 'ثبت نشده'}/>
+            <InfoItem icon={<Truck className="w-3.5 h-3.5"/>} label="خودرو مورد نیاز" value={mission.vehicleLabel || vehicleTypeLabels[mission.vehicleTypeRequired] || mission.vehicleTypeRequired || '—'}/>
+            <InfoItem icon={<Calendar className="w-3.5 h-3.5"/>} label="تاریخ بارگیری" value={formatDay(mission.loadingDate) || '—'}/>
+            <InfoItem icon={<Clock className="w-3.5 h-3.5"/>} label="بازه بارگیری" value={formatTimeWindow(mission.timeWindow) || '—'}/>
             <InfoItem icon={<DollarSign className="w-3.5 h-3.5"/>} label="کرایه" value={formatPrice(mission.price)}/>
           </div>
           {mission.cargo.sensitive && (<div className="mt-3 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700">

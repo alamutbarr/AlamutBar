@@ -284,8 +284,13 @@ const advanceStatusSchema = Joi.object({
     .label("وضعیت"),
 }).messages(commonMessages);
 
+const updateShipmentSchema = createShipmentSchema.fork(["loading_date"], () =>
+  Joi.date().required().label("تاریخ بارگیری"),
+);
+
 module.exports = {
   createShipmentSchema,
+  updateShipmentSchema,
   respondPriceSchema,
   cancelShipmentSchema,
   proposePriceSchema,
