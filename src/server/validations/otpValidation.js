@@ -1,6 +1,5 @@
 const Joi = require("joi");
 const commonMessages = require("../utils/joiMessages");
-const { nationalIdIssue } = require("../utils/nationalId");
 
 const phoneSchema = Joi.string()
   .pattern(/^09\d{9}$/)
@@ -10,13 +9,9 @@ const phoneSchema = Joi.string()
     "string.pattern.base": "{{#label}} باید به‌فرم ۰۹xxxxxxxxx باشد.",
   });
 
-// کد ملی: دقیقاً ۱۰ رقم + الگوریتم رقم کنترل (مشترک بین پروفایل و OTP)
+// کد ملی: دقیقاً ۱۰ رقم، بدون رقم کنترل
 const nationalIdSchema = Joi.string()
   .pattern(/^\d{10}$/)
-  .custom((value, helpers) => {
-    const issue = nationalIdIssue(value);
-    return issue ? helpers.message(issue) : value;
-  })
   .label("کد ملی")
   .messages({
     "string.pattern.base": "{{#label}} باید دقیقاً ۱۰ رقم باشد.",

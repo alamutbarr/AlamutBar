@@ -209,14 +209,13 @@ const createShipmentSchema = Joi.object({
       "string.pattern.base": "{{#label}} باید به‌فرم ۰۹xxxxxxxxx باشد.",
     }),
   receiver_national_id: Joi.string()
+    .pattern(/^\d{10}$/)
     .allow("")
     .optional()
-    .custom((value, helpers) => {
-      if (value === "" || isValidIranNationalId(value)) return value;
-      return helpers.error("any.invalid");
-    })
     .label("کد ملی گیرنده")
-    .messages({ "any.invalid": "کد ملی گیرنده معتبر نیست." }),
+    .messages({
+      "string.pattern.base": "کد ملی گیرنده باید دقیقاً ۱۰ رقم باشد.",
+    }),
 
   receiver_postal_code: Joi.string()
     .allow("")
@@ -227,12 +226,6 @@ const createShipmentSchema = Joi.object({
     })
     .label("کد پستی گیرنده")
     .messages({ "any.invalid": "کد پستی گیرنده معتبر نیست." }),
-
-  receiver_national_id: Joi.string()
-    .pattern(/^\d{1,10}$/)
-    .allow("")
-    .optional()
-    .label("کد ملی گیرنده"),
 
   receiver_postal_code: Joi.string()
     .pattern(/^\d{1,10}$/)

@@ -84,22 +84,8 @@ function OtpCells({ value, onChange }) {
 // ================= توابع اعتبارسنجی =================
 const validateMobile = (mobile) =>
   /^09[0-9]\d{8}$/.test(mobile.replace(/[\s\-\(\)]/g, ""));
-const faDigit = "۰۱۲۳۴۵۶۷۸۹";
-const nationalIdIssue = (code) => {
-  if (!/^\d{10}$/.test(code)) return "کد ملی باید دقیقاً ۱۰ رقم باشد.";
-  if (/^(\d)\1{9}$/.test(code)) return "کد ملی نمی‌تواند ده رقم یکسان باشد.";
-  const check = +code[9];
-  const sum =
-    code
-      .split("")
-      .slice(0, 9)
-      .reduce((acc, x, i) => acc + +x * (10 - i), 0) % 11;
-  const control = sum < 2 ? sum : 11 - sum;
-  if (check !== control) {
-    return `رقم کنترل کد ملی نادرست است. رقم آخر باید ${faDigit[control]} باشد.`;
-  }
-  return "";
-};
+const nationalIdIssue = (code) =>
+  /^\d{10}$/.test(code) ? "" : "کد ملی باید دقیقاً ۱۰ رقم باشد.";
 const validateDrivingLicense = (license) => /^\d{10}$/.test(license);
 const validateSmartCard = (code) => /^\d{7}$/.test(code);
 // ======================================================

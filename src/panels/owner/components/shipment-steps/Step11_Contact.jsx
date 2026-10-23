@@ -62,7 +62,7 @@ export default function Step11_Contact({ data, onChange }) {
           )
         }
         placeholder="کد ملی گیرنده"
-        error={nationalIdInvalid ? "کد ملی معتبر نیست." : undefined}
+        error={nationalIdInvalid ? "کد ملی گیرنده باید دقیقاً ۱۰ رقم باشد." : undefined}
       />
       <Input
         label="کد پستی گیرنده (اختیاری)"
