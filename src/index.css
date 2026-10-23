@@ -1,0 +1,256 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+html {
+  font-family: 'Vazirmatn', Tahoma, sans-serif;
+  font-feature-settings: 'ss01';
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #f7f6f0;
+  color: #17383b;
+  line-height: 1.75;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+h1,
+h2,
+h3 {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.45;
+}
+
+.tabular {
+  font-family: 'Vazirmatn', Tahoma, sans-serif;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'ss01';
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+::selection {
+  background-color: #087f8c;
+  color: #f7f6f0;
+}
+
+.leaflet-container {
+  font-family: 'Vazirmatn', Tahoma, sans-serif;
+  background: #f7f6f0;
+}
+
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: #17383b;
+  color: #f7f6f0;
+  border-radius: 0.35rem;
+}
+
+.leaflet-control-attribution {
+  font-size: 10px;
+}
+
+.glass-card {
+  background: rgba(247, 246, 240, 0.08);
+  border: 1px solid rgba(247, 246, 240, 0.16);
+  backdrop-filter: blur(12px);
+}
+
+@media (max-width: 1023px) {
+  .leaflet-container {
+    min-height: 220px;
+  }
+}
+
+
+* {
+  font-family: 'Vazirmatn', Tahoma, system-ui, sans-serif;
+}
+
+html {
+  font-feature-settings: 'ss01';
+}
+
+body {
+  background-color: #f7f6f0;
+  color: #17383b;
+  line-height: 1.75;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+h1,
+h2,
+h3 {
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+::selection {
+  background: #087f8c;
+  color: #f7f6f0;
+}
+
+/* RTL adjustments */
+[dir="ltr"] {
+  text-align: left;
+}
+
+/* Smooth scroll */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* ============================================================
+   شیشه‌ای (Glassmorphism)
+   سطوح نیمه‌شفاف با blur برای منوها، تب‌ها و کارت لیست‌ها.
+   ============================================================ */
+.glass {
+  background-color: rgba(247, 246, 240, 0.72);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  border: 1px solid rgba(216, 225, 220, 0.9);
+}
+.glass-soft {
+  background-color: rgba(247, 246, 240, 0.55);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border: 1px solid rgba(216, 225, 220, 0.8);
+}
+.glass-strong {
+  background-color: rgba(247, 246, 240, 0.92);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  border: 1px solid #d8e1dc;
+}
+.glass-card {
+  background-color: #fffcf7;
+  border: 1px solid #d8e1dc;
+  box-shadow: 0 10px 28px -18px rgba(23, 56, 59, 0.28);
+  transition: background-color 220ms ease, box-shadow 220ms ease, border-color 220ms ease, transform 220ms ease;
+}
+.glass-card:hover {
+  background-color: #ffffff;
+  border-color: #159a9c;
+  box-shadow: 0 16px 36px -20px rgba(23, 56, 59, 0.32);
+}
+.glass-overlay {
+  background-color: rgba(16, 40, 43, 0.46);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+/* ============================================================
+   انیمیشن‌ها با دیلی نسبی
+   هر عنصر با یک تأخیر کوچک نسبت به همسایه‌ی قبلی وارد می‌شود تا
+   جابه‌جایی بین تب‌ها و متن‌ها نرم و پله‌ای دیده شود.
+   ============================================================ */
+@keyframes xbar-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes xbar-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes xbar-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes xbar-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* انیمیشن ورود برای متن‌ها و محتوای تب‌ها */
+.anim-text {
+  animation: xbar-fade-up 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.anim-fade {
+  animation: xbar-fade-in 320ms ease-out both;
+}
+.anim-pop {
+  animation: xbar-pop 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.anim-slide {
+  animation: xbar-slide-in 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* تأخیرهای نسبی (پله‌ای) */
+.d-1 {
+  animation-delay: 60ms;
+}
+.d-2 {
+  animation-delay: 120ms;
+}
+.d-3 {
+  animation-delay: 180ms;
+}
+.d-4 {
+  animation-delay: 240ms;
+}
+.d-5 {
+  animation-delay: 300ms;
+}
+.d-6 {
+  animation-delay: 360ms;
+}
+
+/* احترام به تنظیم کاهش انیمیشن سیستم */
+@media (prefers-reduced-motion: reduce) {
+  .anim-text,
+  .anim-fade,
+  .anim-pop,
+  .anim-slide {
+    animation: none !important;
+  }
+}

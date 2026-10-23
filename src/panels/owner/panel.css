@@ -1,0 +1,67 @@
+
+html {
+  font-family: 'Vazirmatn', Tahoma, sans-serif;
+  font-feature-settings: 'ss01';
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #f7f6f0;
+  color: #17383b;
+  line-height: 1.75;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+h1,
+h2,
+h3 {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.45;
+}
+
+.tabular {
+  font-family: 'Vazirmatn', Tahoma, sans-serif;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'ss01';
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+::selection {
+  background-color: #087f8c;
+  color: #f7f6f0;
+}
+
+.leaflet-container {
+  font-family: 'Vazirmatn', Tahoma, sans-serif;
+  background: #f7f6f0;
+}
+
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: #17383b;
+  color: #f7f6f0;
+  border-radius: 0.35rem;
+}
+
+.leaflet-control-attribution {
+  font-size: 10px;
+}
+
+.glass-card {
+  background: rgba(247, 246, 240, 0.08);
+  border: 1px solid rgba(247, 246, 240, 0.16);
+  backdrop-filter: blur(12px);
+}
+
+@media (max-width: 1023px) {
+  .leaflet-container {
+    min-height: 220px;
+  }
+}
