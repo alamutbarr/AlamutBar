@@ -14,7 +14,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { MapPin, Building2, X, Loader2 } from 'lucide-react';
 import { fetchProvinces, searchLocationsApi } from './api';
 
-const DEBOUNCE_MS = 300;
+const DEBOUNCE_MS = 40;
 
 /**
  * value shape: null | { type: 'province', id, name } | { type: 'city', id, name, province, provinceId }
@@ -185,7 +185,7 @@ export function LocationAutocomplete({ label, value, onChange, placeholder = 'ا
               </p>
               <ul>
                 {listCities.map((c) => (
-                  <li key={`city-${c.id}`}>
+                  <li key={`city-${c.id}-${c.province}`}>
                     <button
                       type="button"
                       onClick={() => handleSelectCity(c)}

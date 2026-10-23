@@ -5,6 +5,7 @@ import LocationPicker from "../common/LocationPicker";
 import SearchableSelect from "../common/SearchableSelect";
 import StepHeader from "./StepHeader";
 import { getCities, getZonesByCity } from "../../api/location.api";
+import { cityOptionKey, mergeCityCatalog } from "../../data/mergeCities";
 import { IRAN_CITIES } from "../../data/iranCities";
 
 const TEHRAN_ZONES = [
@@ -22,23 +23,11 @@ export default function Step1_Origin({ data, onChange }) {
   // بارگذاری شهرها: اولویت با دیتابیس است؛ در صورت خالی بودن یا آفلاین بودن، از دیتای کامل استفاده می‌شود
   useEffect(() => {
     getCities()
-      .then((apiCities) => {
-        if (apiCities && apiCities.length > 0) {
-          // نگاشت ۵ شهر اولیه دیتابیس به نسخه کامل آن‌ها در IRAN_CITIES
-          const apiCityMap = new Map(apiCities.map((c) => [c.name?.trim(), c]));
-          const merged = IRAN_CITIES.map((c) => {
-            const dbMatch = apiCityMap.get(c.name?.trim());
-            return dbMatch ? { ...c, id: dbMatch.id } : c;
-          });
-          setCities(merged);
-        } else {
-          setCities(IRAN_CITIES);
-        }
-      })
+      .then((apiCities) => setCities(mergeCityCatalog(apiCities)))
       .catch(() => setCities(IRAN_CITIES));
   }, []);
   const selectedCity = useMemo(() => {
-    return cities.find((c) => c.id === Number(data.origin_city_id));
+    return cities.find((c) => String(c.id) === String(data.origin_city_id));
   }, [cities, data.origin_city_id]);
 
   const isTehran = selectedCity?.name?.trim() === "تهران";
@@ -86,27 +75,31 @@ export default function Step1_Origin({ data, onChange }) {
         description="روی نقشه محل دقیق رو مشخص کن؛ آدرس دقیق فقط برای راننده‌ی تأییدشده نمایش داده می‌شود."
       />
 
-      <div className="grid grid-cols-2 gap-4 relative z-20">
+      <div className="relative z-20 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <SearchableSelect
           label="شهر مبدأ"
           required
           value={data.origin_city_id || ""}
           placeholder="جستجوی نام شهر مبدأ..."
-          // کد جایگزین پیشنهادی:
           options={cities.map((c) => ({
             value: c.id,
+            key: cityOptionKey(c),
             label: c.name,
             subLabel: c.province ? `استان ${c.province}` : undefined,
+            searchKey: `${c.name || ""} ${c.province || ""}`,
           }))}
           onChange={(cityId) => {
+            const city = cities.find((c) => String(c.id) === String(cityId));
             onChange("origin_city_id", cityId ? Number(cityId) : "");
-            onChange("origin_zone_id", ""); // ریست آنی محدوده
+            onChange("origin_city_name", city?.name?.trim() || "");
+            onChange("origin_zone_id", "");
           }}
           noResultsText="شهری با این مشخصات یافت نشد"
         />
 
         <SearchableSelect
-          label="محدوده مبدأ (اختیاری)"
+          label={isTehran ? "محدوده مبدأ" : "محدوده مبدأ (اختیاری)"}
+          required={isTehran}
           disabled={!data.origin_city_id}
           value={data.origin_zone_id || ""}
           placeholder={
@@ -124,6 +117,11 @@ export default function Step1_Origin({ data, onChange }) {
           noResultsText="محدوده‌ای برای این شهر یافت نشد"
         />
       </div>
+      {isTehran && !data.origin_zone_id && (
+        <p className="-mt-2 text-xs text-[#087f8c]">
+          برای تهران، انتخاب محدوده مبدأ الزامی است.
+        </p>
+      )}
 
       <LocationPicker
         lat={data.origin_lat}

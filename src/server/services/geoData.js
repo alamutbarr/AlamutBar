@@ -154,12 +154,14 @@ function searchLocations(query, { limit = 30 } = {}) {
 
   const matchedCities = CITIES.filter((c) => normalizePersian(c.name).includes(q))
     .sort((a, b) => {
-      // تطبیق‌هایی که با ابتدای رشته شروع می‌شوند، اولویت بالاتر دارند
+      // اول نام‌هایی که با عبارت شروع می‌شوند، و بین آن‌ها نام کوتاه‌تر
+      // (با تایپ «مش» شهر «مشهد» بالای «مشراگه» می‌آید)
       const an = normalizePersian(a.name);
       const bn = normalizePersian(b.name);
       const aStarts = an.startsWith(q) ? 0 : 1;
       const bStarts = bn.startsWith(q) ? 0 : 1;
       if (aStarts !== bStarts) return aStarts - bStarts;
+      if (an.length !== bn.length) return an.length - bn.length;
       return an.localeCompare(bn, 'fa');
     })
     .slice(0, limit)

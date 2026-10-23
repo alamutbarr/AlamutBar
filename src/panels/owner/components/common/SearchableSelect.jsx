@@ -2,6 +2,8 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { ChevronDown, X } from "lucide-react";
 
+const MATCH_LIMIT = 24;
+
 const normalizeFa = (str) => {
   if (!str) return "";
 
@@ -11,10 +13,42 @@ const normalizeFa = (str) => {
     .replace(/[\u064A\u0649]/g, "ی")
     .replace(/[\u0643]/g, "ک")
     .replace(/[\u0640]/g, "")
-    .replace(/[\u200c\u200d\s]+/g, " ")
+    .replace(/[\u200c\u200d\s]+/g, "")
     .trim()
     .toLowerCase();
 };
+
+function highlightMatch(text, query) {
+  const source = String(text ?? "");
+  const clean = normalizeFa(query);
+  if (!clean) return source;
+  const norm = normalizeFa(source);
+  const at = norm.indexOf(clean);
+  if (at < 0 || norm.length !== source.replace(/[\u200c\u200d]/g, "").length) {
+    return source;
+  }
+  let rawStart = 0;
+  let seen = 0;
+  while (rawStart < source.length && seen < at) {
+    if (!/[\u200c\u200d]/.test(source[rawStart])) seen += 1;
+    rawStart += 1;
+  }
+  let rawEnd = rawStart;
+  let taken = 0;
+  while (rawEnd < source.length && taken < clean.length) {
+    if (!/[\u200c\u200d]/.test(source[rawEnd])) taken += 1;
+    rawEnd += 1;
+  }
+  return (
+    <>
+      {source.slice(0, rawStart)}
+      <mark className="bg-transparent font-bold text-[#087f8c]">
+        {source.slice(rawStart, rawEnd)}
+      </mark>
+      {source.slice(rawEnd)}
+    </>
+  );
+}
 
 // انتقال فوکوس به المان تعاملی بعدی در فرم
 const focusNextField = (currentElement) => {
@@ -61,6 +95,7 @@ export default function SearchableSelect({
   const inputRef = useRef(null);
   const listRef = useRef(null);
   const dropdownRef = useRef(null);
+  const typingRef = useRef(false);
 
   const [dropdownStyle, setDropdownStyle] = useState(null);
 
@@ -69,12 +104,9 @@ export default function SearchableSelect({
   }, [options, value]);
 
   useEffect(() => {
-    if (selectedItem) {
-      setSearchTerm(selectedItem.label);
-    } else if (!value) {
-      setSearchTerm("");
-    }
-  }, [selectedItem, value]);
+    if (typingRef.current) return;
+    setSearchTerm(selectedItem ? selectedItem.label : "");
+  }, [selectedItem]);
 
   useEffect(() => {
     const handleOutsideClick = (e) => {
@@ -84,6 +116,7 @@ export default function SearchableSelect({
         dropdownRef.current?.contains(e.target) ?? false;
 
       if (!clickedInsideWrapper && !clickedInsideDropdown) {
+        typingRef.current = false;
         setIsOpen(false);
         setSearchTerm(selectedItem ? selectedItem.label : "");
       }
@@ -140,30 +173,34 @@ export default function SearchableSelect({
   }, [isOpen, dropdownMaxHeight]);
 
   const filteredOptions = useMemo(() => {
-    if (
-      !searchTerm.trim() ||
-      (selectedItem && searchTerm === selectedItem.label)
-    ) {
-      return options;
-    }
-
     const cleanQuery = normalizeFa(searchTerm);
+    const showingSelection =
+      !cleanQuery || (selectedItem && searchTerm === selectedItem.label);
+
+    if (showingSelection) {
+      return options.length > 40 ? [] : options;
+    }
 
     return options
       .map((opt, originalIndex) => {
-        const searchTarget = normalizeFa(opt.searchKey || opt.label);
+        const name = normalizeFa(opt.label);
+        const extra = normalizeFa(
+          opt.searchKey || `${opt.label || ""} ${opt.subLabel || ""}`,
+        );
+        let priority = 3;
+        if (name.startsWith(cleanQuery)) priority = 0;
+        else if (name.includes(cleanQuery)) priority = 1;
+        else if (extra.includes(cleanQuery)) priority = 2;
+        else return null;
 
-        if (!searchTarget.includes(cleanQuery)) return null;
-
-        return {
-          opt,
-          originalIndex,
-          priority: searchTarget.startsWith(cleanQuery) ? 0 : 1,
-        };
+        return { opt, originalIndex, priority, nameLength: name.length };
       })
       .filter(Boolean)
       .sort(
-        (a, b) => a.priority - b.priority || a.originalIndex - b.originalIndex,
+        (a, b) =>
+          a.priority - b.priority ||
+          a.nameLength - b.nameLength ||
+          a.originalIndex - b.originalIndex,
       )
       .map(({ opt }) => opt);
   }, [options, searchTerm, selectedItem]);
@@ -178,9 +215,12 @@ export default function SearchableSelect({
       )
     : filteredOptions;
 
+  const visibleOptions = dropdownOptions.slice(0, MATCH_LIMIT);
+  const hiddenCount = Math.max(0, dropdownOptions.length - visibleOptions.length);
+
   const selectableOptions = stickyOption
-    ? [...dropdownOptions, stickyOption]
-    : filteredOptions;
+    ? [...visibleOptions, stickyOption]
+    : visibleOptions;
 
   useEffect(() => {
     setHighlightedIndex(0);
@@ -201,6 +241,7 @@ export default function SearchableSelect({
   const handleSelect = (opt) => {
     if (!opt) return;
 
+    typingRef.current = false;
     onChange(opt.value);
     setSearchTerm(opt.label);
     setIsOpen(false);
@@ -247,9 +288,10 @@ export default function SearchableSelect({
 
   const handleClear = (e) => {
     e.stopPropagation();
+    typingRef.current = false;
     onChange("");
     setSearchTerm("");
-    setIsOpen(false);
+    setIsOpen(true);
     inputRef.current?.focus();
   };
 
@@ -285,14 +327,13 @@ export default function SearchableSelect({
           value={searchTerm}
           placeholder={placeholder}
           className="w-full bg-transparent px-3.5 py-2.5 text-sm text-ink-900 outline-none placeholder:text-ink-300"
+          onFocus={() => !disabled && setIsOpen(true)}
           onClick={() => !disabled && setIsOpen(true)}
           onKeyDown={handleKeyDown}
           onChange={(e) => {
+            typingRef.current = true;
             setSearchTerm(e.target.value);
-
-            if (!isOpen) {
-              setIsOpen(true);
-            }
+            setIsOpen(true);
 
             if (value && e.target.value !== selectedItem?.label) {
               onChange("");
@@ -356,19 +397,25 @@ export default function SearchableSelect({
                     }
               }
             >
-              {filteredOptions.length === 0 && (
+              {!normalizeFa(searchTerm) && options.length > 40 && (
+                <div className="px-3 py-3 text-center text-xs text-ink-300">
+                  نام را بنویسید؛ فهرست با هر حرف تازه می‌شود.
+                </div>
+              )}
+
+              {normalizeFa(searchTerm) && filteredOptions.length === 0 && (
                 <div className="px-3 py-3 text-center text-xs text-ink-300">
                   {noResultsText}
                 </div>
               )}
 
-              {dropdownOptions.map((opt, idx) => {
+              {visibleOptions.map((opt, idx) => {
                 const isSelected = String(opt.value) === String(value);
                 const isHighlighted = idx === highlightedIndex;
 
                 return (
                   <div
-                    key={opt.value}
+                    key={opt.key || `${opt.value}|${opt.label}|${opt.subLabel || ""}|${idx}`}
                     data-option-index={idx}
                     className={`flex cursor-pointer items-center justify-between border-b border-gray-50 px-3 py-2 text-sm last:border-0 ${
                       isHighlighted
@@ -382,7 +429,7 @@ export default function SearchableSelect({
                     onMouseEnter={() => setHighlightedIndex(idx)}
                     onClick={() => handleSelect(opt)}
                   >
-                    <span>{opt.label}</span>
+                    <span>{highlightMatch(opt.label, searchTerm)}</span>
 
                     {opt.subLabel && (
                       <span className="pointer-events-none rounded bg-gray-100 px-2 py-0.5 text-xs font-normal text-ink-400">
@@ -392,13 +439,19 @@ export default function SearchableSelect({
                   </div>
                 );
               })}
+
+              {hiddenCount > 0 && (
+                <div className="px-3 py-2 text-center text-[11px] text-ink-300">
+                  {hiddenCount.toLocaleString("fa-IR")} مورد دیگر — حرف بعدی را بنویسید
+                </div>
+              )}
             </div>
 
             {stickyOption && (
               <div
-                data-option-index={dropdownOptions.length}
+                data-option-index={visibleOptions.length}
                 className={`flex shrink-0 cursor-pointer items-center justify-between border-t border-ink-100 px-3 py-2 text-sm ${
-                  highlightedIndex === dropdownOptions.length
+                  highlightedIndex === visibleOptions.length
                     ? "bg-amber-50 font-medium text-amber-900"
                     : "text-ink-800"
                 } ${
@@ -406,7 +459,7 @@ export default function SearchableSelect({
                     ? "bg-amber-100/70 font-semibold text-amber-950"
                     : ""
                 }`}
-                onMouseEnter={() => setHighlightedIndex(dropdownOptions.length)}
+                onMouseEnter={() => setHighlightedIndex(visibleOptions.length)}
                 onClick={() => handleSelect(stickyOption)}
               >
                 <span>{stickyOption.label}</span>

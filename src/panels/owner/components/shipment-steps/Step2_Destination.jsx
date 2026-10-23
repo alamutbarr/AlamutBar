@@ -5,6 +5,7 @@ import LocationPicker from "../common/LocationPicker";
 import SearchableSelect from "../common/SearchableSelect";
 import StepHeader from "./StepHeader";
 import { getCities, getZonesByCity } from "../../api/location.api";
+import { cityOptionKey, mergeCityCatalog } from "../../data/mergeCities";
 import { IRAN_CITIES } from "../../data/iranCities";
 
 const TEHRAN_ZONES = [
@@ -20,22 +21,11 @@ export default function Step2_Destination({ data, onChange }) {
   const [zones, setZones] = useState([]);
   useEffect(() => {
     getCities()
-      .then((apiCities) => {
-        if (apiCities && apiCities.length > 0) {
-          const apiCityMap = new Map(apiCities.map((c) => [c.name?.trim(), c]));
-          const merged = IRAN_CITIES.map((c) => {
-            const dbMatch = apiCityMap.get(c.name?.trim());
-            return dbMatch ? { ...c, id: dbMatch.id } : c;
-          });
-          setCities(merged);
-        } else {
-          setCities(IRAN_CITIES);
-        }
-      })
+      .then((apiCities) => setCities(mergeCityCatalog(apiCities)))
       .catch(() => setCities(IRAN_CITIES));
   }, []);
   const selectedCity = useMemo(() => {
-    return cities.find((c) => c.id === Number(data.dest_city_id));
+    return cities.find((c) => String(c.id) === String(data.dest_city_id));
   }, [cities, data.dest_city_id]);
 
   const isTehran = selectedCity?.name?.trim() === "تهران";
@@ -80,17 +70,18 @@ export default function Step2_Destination({ data, onChange }) {
         description="روی نقشه محل دقیق رو مشخص کن؛ آدرس دقیق مقصد فقط بعد از صدور بارنامه به راننده نشان داده می‌شود."
       />
 
-      <div className="grid grid-cols-2 gap-4 relative z-20">
+      <div className="relative z-20 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <SearchableSelect
           label="شهر مقصد"
           required
           value={data.dest_city_id || ""}
           placeholder="جستجوی نام شهر مقصد..."
-          // کد جایگزین پیشنهادی:
           options={cities.map((c) => ({
             value: c.id,
+            key: cityOptionKey(c),
             label: c.name,
             subLabel: c.province ? `استان ${c.province}` : undefined,
+            searchKey: `${c.name || ""} ${c.province || ""}`,
           }))}
           onChange={(cityId) => {
             onChange("dest_city_id", cityId ? Number(cityId) : "");

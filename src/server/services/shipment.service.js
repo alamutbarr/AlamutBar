@@ -62,16 +62,21 @@ async function validateReferences(payload) {
   const destCity = await City.findByPk(payload.dest_city_id);
   if (!destCity) throw new AppError('شهر مقصد انتخابی معتبر نیست.', 400);
 
+  const tehranOrigin = String(originCity.name || '').trim() === 'تهران';
+  if (tehranOrigin && !payload.origin_zone_id) {
+    throw new AppError('برای شهر تهران، انتخاب محدوده مبدأ الزامی است.', 400);
+  }
+
   if (payload.origin_zone_id) {
     const originZone = await Zone.findByPk(payload.origin_zone_id);
-    if (!originZone || originZone.city_id !== payload.origin_city_id) {
+    if (!originZone || String(originZone.city_id) !== String(payload.origin_city_id)) {
       throw new AppError('محدوده‌ی انتخابی برای مبدأ متعلق به شهر انتخاب‌شده نیست.', 400);
     }
   }
 
   if (payload.dest_zone_id) {
     const destZone = await Zone.findByPk(payload.dest_zone_id);
-    if (!destZone || destZone.city_id !== payload.dest_city_id) {
+    if (!destZone || String(destZone.city_id) !== String(payload.dest_city_id)) {
       throw new AppError('محدوده‌ی انتخابی برای مقصد متعلق به شهر انتخاب‌شده نیست.', 400);
     }
   }

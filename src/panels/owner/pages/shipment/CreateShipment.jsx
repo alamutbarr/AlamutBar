@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, ChevronRight, ChevronLeft } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { createShipment } from "../../api/shipment.api";
@@ -53,6 +53,7 @@ const emptyFormData = {
   receiver_national_id: "",
   receiver_postal_code: "",
   origin_city_id: "",
+  origin_city_name: "",
   origin_zone_id: "",
   origin_address: "",
   origin_lat: "",
@@ -110,6 +111,13 @@ export default function CreateShipment() {
     });
     if (!allFilled) return false;
     if (
+      stepNum === 1 &&
+      String(formData.origin_city_name || "").trim() === "تهران" &&
+      !formData.origin_zone_id
+    ) {
+      return false;
+    }
+    if (
       stepNum === 4 &&
       !(Number(formData.cargo_value) >= MIN_CARGO_VALUE_RIAL)
     )
@@ -147,7 +155,15 @@ export default function CreateShipment() {
 
   const nextStep = () => {
     if (!isStepValid(currentStep)) {
-      setStepError("لطفاً فیلدهای الزامی این مرحله را تکمیل کنید.");
+      if (
+        currentStep === 1 &&
+        String(formData.origin_city_name || "").trim() === "تهران" &&
+        !formData.origin_zone_id
+      ) {
+        setStepError("برای شهر تهران، محدوده مبدأ الزامی است.");
+      } else {
+        setStepError("لطفاً فیلدهای الزامی این مرحله را تکمیل کنید.");
+      }
       return;
     }
     setStepError("");
@@ -178,6 +194,7 @@ export default function CreateShipment() {
     const payload = { ...formData };
     delete payload.trackingCode;
     if (payload.cargo_type !== "other") delete payload.cargo_type_other;
+    delete payload.origin_city_name;
     ["origin_zone_id", "dest_zone_id"].forEach((k) => {
       if (payload[k] === "") payload[k] = null;
     });
@@ -211,8 +228,10 @@ export default function CreateShipment() {
       {!isFinal && (
         <div className="mb-4 flex items-center justify-between">
           <h1 className="text-2xl font-bold text-ink-900">ثبت بار جدید</h1>
-          <p className="tabular text-sm text-ink-300">
-            مرحله {currentStep} از {TOTAL_VISIBLE_STEPS}
+          <p className="text-sm text-ink-300">
+            مرحلهٔ <bdi dir="ltr" className="tabular">{currentStep.toLocaleString("fa-IR")}</bdi>
+            {" "}از{" "}
+            <bdi dir="ltr" className="tabular">{TOTAL_VISIBLE_STEPS.toLocaleString("fa-IR")}</bdi>
           </p>
         </div>
       )}
@@ -277,18 +296,47 @@ export default function CreateShipment() {
 }
 
 function RouteProgress({ current, maxReached, onStepClick }) {
-  const fillPercent = ((current - 1) / (TOTAL_VISIBLE_STEPS - 1)) * 100;
+  const fillPercent = (current / TOTAL_VISIBLE_STEPS) * 100;
+  const scrollerRef = useRef(null);
+
+  useEffect(() => {
+    const root = scrollerRef.current;
+    const active = root?.querySelector('[data-active="true"]');
+    if (!root || !active) return;
+    const nextLeft =
+      active.offsetLeft - root.clientWidth / 2 + active.clientWidth / 2;
+    root.scrollTo({ left: Math.max(0, nextLeft), behavior: "smooth" });
+  }, [current]);
 
   return (
-    <div className="overflow-x-auto pb-2">
-      <div className="relative flex items-center justify-between px-1">
-        <div className="absolute inset-x-1 top-1/2 h-px -translate-y-1/2 bg-dash-line bg-[length:18px_1px] bg-repeat-x" />
+    <div className="overflow-visible rounded-2xl border border-[#d8e1dc] bg-white px-3 py-3 shadow-panel sm:px-4">
+      <div className="mb-3 flex items-end justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[11px] font-medium text-[#526d70]">مسیر ثبت بار</p>
+          <p className="truncate text-base font-bold text-[#17383b]">
+            {STEPS[current - 1].title}
+          </p>
+        </div>
+        <span className="shrink-0 rounded-full bg-[#17383b] px-2.5 py-1 text-[11px] text-[#f7f6f0]">
+          <bdi dir="ltr" className="tabular">{current.toLocaleString("fa-IR")}</bdi>
+          {" "}از{" "}
+          <bdi dir="ltr" className="tabular">{TOTAL_VISIBLE_STEPS.toLocaleString("fa-IR")}</bdi>
+        </span>
+      </div>
+
+      <div className="relative mb-3 h-1.5 overflow-hidden rounded-full bg-[#e6eeea]">
         <motion.div
-          className="absolute right-1 top-1/2 h-[3px] -translate-y-1/2 rounded-full bg-amber-gradient"
+          className="absolute inset-y-0 right-0 rounded-full bg-amber-gradient"
           initial={false}
           animate={{ width: `${fillPercent}%` }}
-          transition={{ type: "spring", stiffness: 300, damping: 32 }}
+          transition={{ type: "spring", stiffness: 260, damping: 30 }}
         />
+      </div>
+
+      <div
+        ref={scrollerRef}
+        className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
         {STEPS.slice(0, TOTAL_VISIBLE_STEPS).map((step, idx) => {
           const num = idx + 1;
           const done = num < current;
@@ -298,6 +346,7 @@ function RouteProgress({ current, maxReached, onStepClick }) {
             <button
               type="button"
               key={step.title}
+              data-active={active ? "true" : "false"}
               onClick={() => onStepClick(num)}
               disabled={!reachable}
               title={
@@ -305,43 +354,28 @@ function RouteProgress({ current, maxReached, onStepClick }) {
                   ? `برو به «${step.title}»`
                   : "هنوز به این مرحله نرسیده‌اید"
               }
-              className={`relative flex flex-col items-center gap-1.5 bg-transparent ${
-                reachable ? "cursor-pointer" : "cursor-not-allowed"
+              className={`flex shrink-0 items-center gap-2 rounded-full border px-2.5 py-1.5 text-xs transition ${
+                active
+                  ? "border-[#087f8c] bg-[#087f8c] text-[#f7f6f0]"
+                  : done
+                    ? "border-[#17383b] bg-[#17383b] text-[#f7f6f0]"
+                    : reachable
+                      ? "border-[#d8e1dc] bg-[#f7f6f0] text-[#17383b] hover:border-[#087f8c]"
+                      : "cursor-not-allowed border-[#e6eeea] bg-[#f7f6f0] text-[#9aada8]"
               }`}
             >
-              <motion.span
-                animate={active ? { scale: 1.12 } : { scale: 1 }}
-                transition={{ type: "spring", stiffness: 400, damping: 20 }}
-                className={`tabular flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full border-2 text-xs font-bold ${
-                  done
-                    ? "border-ink-900 bg-ink-900 text-white"
-                    : active
-                      ? "border-[#087f8c] bg-[#087f8c] text-[#f7f6f0] shadow-glow"
-                      : reachable
-                        ? "border-ink-300 bg-white text-ink-500 hover:border-amber-400 hover:text-amber-600"
-                        : "border-ink-100 bg-white text-ink-300"
-                }`}
-              >
-                {done ? <Check size={14} /> : num}
-              </motion.span>
               <span
-                className={`hidden whitespace-nowrap text-[11px] lg:block ${
-                  active
-                    ? "font-medium text-ink-900"
-                    : reachable
-                      ? "text-ink-400"
-                      : "text-ink-200"
+                className={`tabular flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-[11px] font-bold ${
+                  active || done ? "bg-white/15" : "bg-white text-[#526d70]"
                 }`}
               >
-                {step.title}
+                {done ? <Check size={13} /> : num.toLocaleString("fa-IR")}
               </span>
+              <span className="whitespace-nowrap font-medium">{step.title}</span>
             </button>
           );
         })}
       </div>
-      <p className="mt-2 text-center text-xs font-medium text-ink-900 lg:hidden">
-        {STEPS[current - 1].title}
-      </p>
     </div>
   );
 }
