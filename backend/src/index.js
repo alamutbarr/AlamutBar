@@ -49,12 +49,11 @@ async function start() {
   try {
     await ensureDatabase();
 
-    // Models start the single sync. Requiring them before the database exists
-    // makes that sync fail and the process exit before listen.
-    // Legacy camelCase columns must be renamed first, otherwise sync tries to
-    // index driver_id on a table that only has driverId.
-    await require('./utils/legacyColumns')();
-    const { syncPromise } = require('./models');
+    // Require models only after the database exists, then fix legacy columns
+    // before sync. sync() still creates indexes for driver_id even without
+    // alter, and that crashes when the column is still driverId or missing.
+    const models = require('./models');
+    await require('./utils/legacyColumns')(models);
     app.use('/api/auth', require('./routes/auth'));
     app.use('/api/driver', require('./routes/driver'));
     app.use('/api/location', require('./routes/location'));
@@ -62,7 +61,7 @@ async function start() {
       res.status(404).json({ error: `مسیر پیدا نشد: ${req.method} ${req.path}` });
     });
 
-    await syncPromise;
+    await models.syncModels();
     await sequelize.authenticate();
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`سرور الموت‌بار روی پورت ${PORT} در حال اجراست (دیتابیس ${dbConfig.name}، کاربر ${dbConfig.user})`);

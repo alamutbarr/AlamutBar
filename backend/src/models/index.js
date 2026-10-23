@@ -13,17 +13,24 @@ Shipment.belongsTo(Driver, { foreignKey: 'driverId', as: 'driver' });
 
 // Create missing tables only. alter:true rewrites indexes on every boot and
 // was the source of the duplicate-index failures.
-const syncPromise = sequelize.sync()
-  .then(() => console.log('جداول دیتابیس همگام‌سازی شدند.'))
-  .catch((err) => {
-    console.error('خطا در همگام‌سازی دیتابیس:', err.message || err);
-    throw err;
-  });
+// Sync must not start at import time: legacy columns have to be renamed or
+// added first, otherwise addIndex looks for driver_id and MySQL rejects the boot.
+function syncModels() {
+  return sequelize.sync()
+    .then((result) => {
+      console.log('جداول دیتابیس همگام‌سازی شدند.');
+      return result;
+    })
+    .catch((err) => {
+      console.error('خطا در همگام‌سازی دیتابیس:', err.message || err);
+      throw err;
+    });
+}
 
 module.exports = {
   sequelize,
   Owner,
   Driver,
   Shipment,
-  syncPromise,
+  syncModels,
 };

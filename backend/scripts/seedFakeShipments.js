@@ -13,7 +13,9 @@
 const sequelize = require('../src/config/database');
 // مدل‌ها باید از models/index بارگذاری شوند تا روابط (ownerId/driverId) نیز تعریف شوند؛
 // در غیر این صورت جدول Shipments بدون ستون‌های کلید خارجی ساخته می‌شود.
-const { Shipment, syncPromise } = require('../src/models');
+const models = require('../src/models');
+const prepareLegacySchema = require('../src/utils/legacyColumns');
+const { Shipment } = models;
 const geo = require('../src/services/geoData');
 
 const PREFIX = 'FAKE-';
@@ -149,8 +151,8 @@ function buildShipment(route, i) {
 
 async function main() {
   await sequelize.authenticate();
-  // منتظر تکمیل همگام‌سازی مدل‌ها بمان (نه یک sync دوم که باعث race و خطای FK می‌شود)
-  await syncPromise;
+  await prepareLegacySchema(models);
+  await models.syncModels();
 
   // حذف بارهای آزمایشی قبلی برای درج تمیز (و جلوگیری از تکرار کد رهگیری)
   const deleted = await Shipment.destroy({ where: { trackingCode: { [require('sequelize').Op.startsWith]: PREFIX } } });
