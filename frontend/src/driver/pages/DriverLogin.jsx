@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useRef, useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { api } from "@/services/api";
 import { IranianPlateInput } from "@/driver/components/IranianPlateInput";
@@ -23,6 +23,63 @@ import {
 import { useNavigate } from "react-router-dom";
 
 const FIXED_OTP_CODE = "1234";
+
+function OtpCells({ value, onChange }) {
+  const cells = useRef([]);
+  const digits = Array.from({ length: 4 }, (_, index) => value[index] || "");
+
+  const write = (next) => onChange(next.replace(/\D/g, "").slice(0, 4));
+
+  const focusAt = (index) => {
+    const field = cells.current[Math.max(0, Math.min(3, index))];
+    field?.focus();
+    field?.select();
+  };
+
+  return (
+    <div className="grid grid-cols-4 gap-3" dir="ltr">
+      {digits.map((digit, index) => (
+        <input
+          key={index}
+          ref={(node) => {
+            cells.current[index] = node;
+          }}
+          value={digit}
+          inputMode="numeric"
+          autoComplete={index === 0 ? "one-time-code" : "off"}
+          aria-label={`رقم ${index + 1} از کد تأیید`}
+          maxLength={1}
+          className="h-16 w-full rounded-2xl border border-[#d8e1dc] bg-[#f7f6f0] text-center text-[1.7rem] font-bold tabular-nums text-[#17383b] outline-none transition focus:border-[#087f8c] focus:bg-white focus:ring-4 focus:ring-[#087f8c]/15"
+          onChange={(event) => {
+            const incoming = event.target.value.replace(/\D/g, "");
+            if (!incoming) {
+              write(value.slice(0, index) + value.slice(index + 1));
+              return;
+            }
+            const next = (value.slice(0, index) + incoming + value.slice(index + 1)).replace(/\D/g, "").slice(0, 4);
+            write(next);
+            focusAt(index + incoming.length);
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Backspace" && !digits[index]) {
+              event.preventDefault();
+              write(value.slice(0, index - 1) + value.slice(index));
+              focusAt(index - 1);
+            }
+            if (event.key === "ArrowLeft") focusAt(index - 1);
+            if (event.key === "ArrowRight") focusAt(index + 1);
+          }}
+          onFocus={(event) => event.target.select()}
+          onPaste={(event) => {
+            event.preventDefault();
+            write(event.clipboardData.getData("text"));
+            focusAt(3);
+          }}
+        />
+      ))}
+    </div>
+  );
+}
 
 // ================= توابع اعتبارسنجی =================
 const validateMobile = (mobile) =>
@@ -327,18 +384,15 @@ export function DriverLogin() {
                 پیامک شد.
               </p>
 
-              <input
-                type="tel"
-                maxLength={4}
-                value={code}
-                onChange={(e) => {
-                  setCode(e.target.value.replace(/\D/g, ""));
-                  setError("");
-                }}
-                placeholder="----"
-                dir="ltr"
-                className="w-full text-center text-3xl font-bold tracking-[0.5em] rounded-xl border-2 border-slate-200 py-4 mb-6 focus:border-green-500 focus:outline-none"
-              />
+              <div className="mb-6">
+                <OtpCells
+                  value={code}
+                  onChange={(next) => {
+                    setCode(next);
+                    setError("");
+                  }}
+                />
+              </div>
 
               {error && (
                 <p className="text-sm text-red-500 mb-4 text-center font-medium">
