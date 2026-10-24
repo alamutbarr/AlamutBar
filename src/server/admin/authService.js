@@ -1,9 +1,10 @@
 const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { Admin } = require('../models');
 const AppError = require('../utils/AppError');
 const otpService = require('../services/otp.service');
-const { ROLES, ROLE_LABELS, listPermissions } = require('./permissions');
+const { ROLES, ROLE_LABELS, listPermissions, parseRoles } = require('./permissions');
 const { normalizePhone } = require('./phone');
 
 const DEV_ADMIN_OTP = process.env.ADMIN_DEV_OTP || '12345';
@@ -12,15 +13,29 @@ function hashToken(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
 
-function presentAdmin(admin) {
-  let roles = admin.roles;
-  if (typeof roles === 'string') {
-    try { roles = JSON.parse(roles); } catch { roles = []; }
+function normalizeUsername(input) {
+  const username = String(input || '').trim().toLowerCase();
+  if (!/^[a-z][a-z0-9_]{2,31}$/.test(username)) {
+    throw new AppError('نام کاربری باید با حرف انگلیسی شروع شود و ۳ تا ۳۲ نویسه باشد.', 400);
   }
-  if (!Array.isArray(roles)) roles = [];
+  return username;
+}
+
+function hashPassword(password) {
+  return bcrypt.hash(String(password), 10);
+}
+
+function checkPassword(password, passwordHash) {
+  if (!passwordHash || password == null || String(password) === '') return Promise.resolve(false);
+  return bcrypt.compare(String(password), passwordHash);
+}
+
+function presentAdmin(admin) {
+  const roles = parseRoles(admin.roles);
   return {
     id: admin.id,
     phone: admin.phone,
+    username: admin.username,
     fullName: admin.fullName,
     roles,
     roleLabels: roles.map((role) => ROLE_LABELS[role] || role),
@@ -48,6 +63,31 @@ async function signRefresh(admin) {
   admin.refreshTokenHash = hashToken(refreshToken);
   await admin.save();
   return refreshToken;
+}
+
+async function issueSession(admin) {
+  admin.lastLoginAt = new Date();
+  await admin.save();
+  return {
+    token: signAccess(admin),
+    refreshToken: await signRefresh(admin),
+    admin: presentAdmin(admin),
+  };
+}
+
+async function loginWithPassword(usernameInput, password) {
+  let username;
+  try {
+    username = normalizeUsername(usernameInput);
+  } catch {
+    throw new AppError('نام کاربری یا رمز عبور نادرست است.', 401);
+  }
+  const admin = await Admin.findOne({ where: { username } });
+  const matches = admin ? await checkPassword(password, admin.passwordHash) : false;
+  if (!admin || !admin.isActive || !matches) {
+    throw new AppError('نام کاربری یا رمز عبور نادرست است.', 401);
+  }
+  return issueSession(admin);
 }
 
 async function requestOtp(phoneInput) {
@@ -91,13 +131,7 @@ async function verifyOtp(phoneInput, code) {
   admin.otpCode = null;
   admin.otpExpiresAt = null;
   admin.otpAttempts = 0;
-  admin.lastLoginAt = new Date();
-  await admin.save();
-  return {
-    token: signAccess(admin),
-    refreshToken: await signRefresh(admin),
-    admin: presentAdmin(admin),
-  };
+  return issueSession(admin);
 }
 
 async function refresh(refreshToken) {
@@ -137,6 +171,10 @@ function assertRoles(roles) {
 module.exports = {
   DEV_ADMIN_OTP,
   presentAdmin,
+  normalizeUsername,
+  hashPassword,
+  checkPassword,
+  loginWithPassword,
   requestOtp,
   verifyOtp,
   refresh,

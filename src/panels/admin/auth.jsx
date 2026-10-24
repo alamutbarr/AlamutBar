@@ -28,8 +28,8 @@ export function AdminAuthProvider({ children }) {
       const permissions = user?.permissions || [];
       return permissions.includes('*') || permissions.includes(permission);
     },
-    async login(phone, code) {
-      const data = await api('/auth/verify-otp', { method: 'POST', body: { phone, code } });
+    async login(username, password) {
+      const data = await api('/auth/login', { method: 'POST', body: { username, password } });
       saveSession(data.token, data.refreshToken);
       setUser(data.admin);
       return data.admin;

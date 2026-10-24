@@ -9,7 +9,11 @@ import { useAdmin } from '../auth';
 export default function Dashboard() {
   const { can } = useAdmin();
   const [data, setData] = useState(null);
-  useEffect(() => { api('/dashboard').then(setData).catch(() => setData(null)); }, []);
+  const [error, setError] = useState('');
+  useEffect(() => {
+    api('/dashboard').then(setData).catch((err) => setError(err.message || 'داشبورد بارگذاری نشد.'));
+  }, []);
+  if (error) return <Page title="مرکز کنترل"><p style={{ color: 'var(--alamut-crit)' }}>{error}</p></Page>;
   if (!data) return <SkeletonRows />;
   const cards = [
     ['سفارش‌ها', data.cards.orders],

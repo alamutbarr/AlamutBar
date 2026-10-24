@@ -29,6 +29,14 @@ test('a person with two roles gets the union', () => {
   assert.equal(permissionSet(roles).has('settings.manage'), false);
 });
 
+test('roles stored as a JSON string still grant permissions', () => {
+  assert.equal(can('["SUPER_ADMIN"]', 'dashboard'), true);
+  assert.equal(can('["SUPER_ADMIN"]', 'admins.manage'), true);
+  assert.equal(can('["DISPATCH_OPERATOR","SECURITY_OPERATOR"]', 'map'), true);
+  assert.equal(can('["DISPATCH_OPERATOR"]', 'settings.manage'), false);
+  assert.equal(can('not-json', 'dashboard'), false);
+});
+
 test('support verifies documents and tickets only', () => {
   assert.equal(can(['SUPPORT_AGENT'], 'drivers.documents'), true);
   assert.equal(can(['SUPPORT_AGENT'], 'owners.documents'), true);

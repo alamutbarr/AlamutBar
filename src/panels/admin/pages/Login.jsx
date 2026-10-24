@@ -3,44 +3,24 @@ import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { api } from '../api';
 import { useAdmin } from '../auth';
 import BrandMark from '../../owner/components/common/BrandMark';
 
-const phoneSchema = z.object({
-  phone: z.string().min(10, 'شماره موبایل را کامل وارد کنید'),
-});
-const codeSchema = z.object({
-  code: z.string().min(4, 'کد تأیید را وارد کنید'),
+const schema = z.object({
+  username: z.string().min(3, 'نام کاربری را وارد کنید'),
+  password: z.string().min(8, 'رمز عبور را وارد کنید'),
 });
 
 export default function Login() {
   const navigate = useNavigate();
   const { login } = useAdmin();
-  const [step, setStep] = useState('phone');
-  const [phone, setPhone] = useState('');
-  const [devCode, setDevCode] = useState('');
   const [error, setError] = useState('');
-  const phoneForm = useForm({ resolver: zodResolver(phoneSchema) });
-  const codeForm = useForm({ resolver: zodResolver(codeSchema) });
+  const form = useForm({ resolver: zodResolver(schema) });
 
-  const send = phoneForm.handleSubmit(async (values) => {
+  const submit = form.handleSubmit(async (values) => {
     setError('');
     try {
-      const data = await api('/auth/request-otp', { method: 'POST', body: values });
-      setPhone(values.phone);
-      setDevCode(data.devOtpCode || '');
-      if (data.devOtpCode) codeForm.setValue('code', data.devOtpCode);
-      setStep('code');
-    } catch (err) {
-      setError(err.message);
-    }
-  });
-
-  const verify = codeForm.handleSubmit(async (values) => {
-    setError('');
-    try {
-      await login(phone, values.code);
+      await login(values.username, values.password);
       navigate('/admin');
     } catch (err) {
       setError(err.message);
@@ -49,18 +29,14 @@ export default function Login() {
 
   return (
     <div className="admin-app" style={{ display: 'grid', placeItems: 'center', padding: 20 }}>
-      <form className="card" style={{ width: 'min(420px, 100%)', padding: 24 }} onSubmit={step === 'phone' ? send : verify}>
+      <form className="card" style={{ width: 'min(420px, 100%)', padding: 24, display: 'grid', gap: 10 }} onSubmit={submit}>
         <BrandMark subtitle="ورود اپراتور" />
-        <h1 style={{ fontSize: 28, margin: '18px 0 6px' }}>{step === 'phone' ? 'شماره موبایل' : 'کد تأیید'}</h1>
-        <p className="muted">ورود همه اپراتورها با پیامک یک‌بارمصرف است.</p>
-        {step === 'phone' ? (
-          <input className="field" placeholder="۰۹۱۲..." {...phoneForm.register('phone')} />
-        ) : (
-          <input className="field" inputMode="numeric" placeholder="کد پنج‌رقمی" {...codeForm.register('code')} />
-        )}
-        {devCode && <p>کد آزمایشی: <strong className="tabular">{devCode}</strong></p>}
+        <h1 style={{ fontSize: 28, margin: '18px 0 6px' }}>نام کاربری و رمز</h1>
+        <p className="muted">ورود اپراتورها با نام کاربری و رمز عبور است.</p>
+        <input className="field" autoComplete="username" placeholder="نام کاربری" {...form.register('username')} />
+        <input className="field" type="password" autoComplete="current-password" placeholder="رمز عبور" {...form.register('password')} />
         {error && <p style={{ color: 'var(--alamut-crit)' }}>{error}</p>}
-        <button className="btn" type="submit" style={{ width: '100%', marginTop: 8 }}>ادامه</button>
+        <button className="btn" type="submit" style={{ width: '100%', marginTop: 8 }}>ورود</button>
       </form>
     </div>
   );

@@ -1,17 +1,21 @@
 const { Op } = require('sequelize');
 const {
   Admin, User, CargoOwner, Driver, Shipment, City, VehicleType,
-  Inspector, InspectionReport, OrderEvent, SystemSetting,
+  Inspector, InspectionReport, OrderEvent, SystemSetting, Complaint, AdminAuditLog,
 } = require('../models');
 const { legacyPatch } = require('./workflow');
+const { hashPassword, checkPassword } = require('./authService');
+const { parseRoles } = require('./permissions');
+
+const SEED_PASSWORD = 'Alamut@1234';
 
 const ADMINS = [
-  { phone: '09120000000', fullName: 'مدیر سامانه', roles: ['SUPER_ADMIN'] },
-  { phone: '09120000001', fullName: 'اپراتور دیسپچ', roles: ['DISPATCH_OPERATOR'] },
-  { phone: '09120000002', fullName: 'اپراتور امنیت', roles: ['SECURITY_OPERATOR'] },
-  { phone: '09120000003', fullName: 'سرپرست بازرسی', roles: ['INSPECTION_SUPERVISOR'] },
-  { phone: '09120000004', fullName: 'پشتیبان مدارک', roles: ['SUPPORT_AGENT'] },
-  { phone: '09120000005', fullName: 'اپراتور شیفت', roles: ['DISPATCH_OPERATOR', 'SECURITY_OPERATOR'] },
+  { phone: '09120000000', username: 'admin', fullName: 'مدیر سامانه', roles: ['SUPER_ADMIN'] },
+  { phone: '09120000001', username: 'dispatch', fullName: 'اپراتور دیسپچ', roles: ['DISPATCH_OPERATOR'] },
+  { phone: '09120000002', username: 'security', fullName: 'اپراتور امنیت', roles: ['SECURITY_OPERATOR'] },
+  { phone: '09120000003', username: 'inspection', fullName: 'سرپرست بازرسی', roles: ['INSPECTION_SUPERVISOR'] },
+  { phone: '09120000004', username: 'support', fullName: 'پشتیبان مدارک', roles: ['SUPPORT_AGENT'] },
+  { phone: '09120000005', username: 'shift', fullName: 'اپراتور شیفت', roles: ['DISPATCH_OPERATOR', 'SECURITY_OPERATOR'] },
 ];
 
 const COORDS = {
@@ -40,13 +44,18 @@ function docs(status = 'PENDING') {
 }
 
 async function ensureAdmins() {
+  const passwordHash = await hashPassword(SEED_PASSWORD);
   for (const item of ADMINS) {
     const [admin] = await Admin.findOrCreate({
       where: { phone: item.phone },
-      defaults: { ...item, isActive: true },
+      defaults: { ...item, passwordHash, isActive: true },
     });
-    if (admin.fullName !== item.fullName || JSON.stringify(admin.roles) !== JSON.stringify(item.roles)) {
+    const sameRoles = JSON.stringify(parseRoles(admin.roles)) === JSON.stringify(item.roles);
+    const samePassword = await checkPassword(SEED_PASSWORD, admin.passwordHash);
+    if (admin.fullName !== item.fullName || !sameRoles || admin.username !== item.username || !samePassword || !admin.isActive) {
       admin.fullName = item.fullName;
+      admin.username = item.username;
+      admin.passwordHash = samePassword ? admin.passwordHash : passwordHash;
       admin.roles = item.roles;
       admin.isActive = true;
       admin.changed('roles', true);
@@ -55,21 +64,42 @@ async function ensureAdmins() {
   }
 }
 
+const PROVINCES = {
+  تهران: 'تهران',
+  اصفهان: 'اصفهان',
+  شیراز: 'فارس',
+  نیشابور: 'خراسان رضوی',
+  مشهد: 'خراسان رضوی',
+  تبریز: 'آذربایجان شرقی',
+};
+
+async function markDemoSeeded() {
+  const [flag] = await SystemSetting.findOrCreate({
+    where: { key: 'demo_seeded' },
+    defaults: { value: 'true', description: 'داده نمونه پنل ادمین' },
+  });
+  if (flag.value !== 'true') {
+    flag.value = 'true';
+    await flag.save();
+  }
+}
+
 async function ensureDemo() {
-  const flag = await SystemSetting.findOne({ where: { key: 'demo_seeded' } });
-  const existing = await Shipment.findOne({ where: { tracking_code: 'ADM-DEMO-01' } });
-  if (existing || (flag && flag.value === 'true')) {
-    if (!flag) await SystemSetting.create({ key: 'demo_seeded', value: 'true', description: 'داده نمونه پنل ادمین' });
+  const shipmentCount = await Shipment.count();
+  if (shipmentCount > 0) {
+    await markDemoSeeded();
     return;
   }
   const cities = {};
   for (const name of Object.keys(COORDS)) {
     cities[name] = await City.findOne({ where: { name } });
-    if (!cities[name]) throw new Error(`شهر ${name} در بانک شهرها نیست.`);
+    if (!cities[name]) {
+      cities[name] = await City.create({ name, province: PROVINCES[name] || '' });
+    }
   }
   const trailer = await VehicleType.findOne({ where: { title: { [Op.like]: '%تریلی%' }, is_active: true } });
   const khavar = await VehicleType.findOne({ where: { title: { [Op.like]: '%خاور%' }, is_active: true } });
-  const vehicle = trailer || khavar;
+  const vehicle = trailer || khavar || await VehicleType.findOne({ where: { is_active: true } });
   if (!vehicle) throw new Error('نوع خودرو برای داده نمونه پیدا نشد.');
   const variants = String(vehicle.title).includes('تریلی') ? ['کفی'] : ['روباز'];
 
@@ -227,8 +257,14 @@ async function ensureDemo() {
     origin: 'مشهد', dest: 'نیشابور', originAddress: 'کلات', destAddress: 'خیام', estimated: 8000000, final: 8000000, waybill: 'WB-1405-0901', otp: '1200', ownerId: ownerUser2.id,
   });
 
-  const inspector = await Inspector.create({ fullName: 'متصدی بارگیری خیام', phone: '09124000001', notes: 'شیفت صبح شهرک صنعتی' });
-  await Inspector.create({ fullName: 'متصدی بارگیری عطار', phone: '09124000002' });
+  const [inspector] = await Inspector.findOrCreate({
+    where: { phone: '09124000001' },
+    defaults: { fullName: 'متصدی بارگیری خیام', notes: 'شیفت صبح شهرک صنعتی' },
+  });
+  await Inspector.findOrCreate({
+    where: { phone: '09124000002' },
+    defaults: { fullName: 'متصدی بارگیری عطار' },
+  });
   deviated.assigned_inspector_id = inspector.id;
   await deviated.save();
   await InspectionReport.create({
@@ -247,8 +283,30 @@ async function ensureDemo() {
     decision: 'PENDING',
   });
 
-  await SystemSetting.create({ key: 'demo_seeded', value: 'true', description: 'داده نمونه پنل ادمین' });
-  console.log('داده نمونه پنل ادمین ساخته شد. ورود آزمایشی: 09120000000 و کد 12345');
+  const sample = await Shipment.findOne({ where: { tracking_code: 'ADM-DEMO-04' } });
+  if (sample) {
+    await Complaint.findOrCreate({
+      where: { description: 'راننده با تأخیر به بارگیری رسید و هماهنگی نداشت.' },
+      defaults: {
+        owner_id: ownerUser.id,
+        shipment_id: sample.id,
+        type: 'delay',
+        status: 'pending',
+      },
+    });
+  }
+  const seededAdmin = await Admin.findOne({ where: { username: 'admin' } });
+  await AdminAuditLog.findOrCreate({
+    where: { action: 'demo.seed', entity: 'shipment' },
+    defaults: {
+      entityId: 'ADM-DEMO-01',
+      performedBy: seededAdmin?.id || null,
+      details: { note: 'داده نمونه در بانک خالی ساخته شد' },
+    },
+  });
+
+  await markDemoSeeded();
+  console.log('داده نمونه پنل ادمین ساخته شد. ورود: admin / Alamut@1234');
 }
 
 async function backfillWorkflow() {
@@ -260,4 +318,4 @@ async function backfillWorkflow() {
   }
 }
 
-module.exports = { ensureAdmins, ensureDemo, backfillWorkflow, ADMINS };
+module.exports = { ensureAdmins, ensureDemo, backfillWorkflow, ADMINS, SEED_PASSWORD };

@@ -15,15 +15,18 @@ export default function Drivers() {
   const navigate = useNavigate();
   const [query, setQuery] = useState({ page: 1, q: '', verification: '', availability: '' });
   const [data, setData] = useState(null);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     const params = new URLSearchParams({ page: String(query.page), limit: '20' });
     if (query.q) params.set('q', query.q);
     if (query.verification) params.set('verification', query.verification);
     if (query.availability) params.set('availability', query.availability);
-    api(`/drivers?${params}`).then(setData).catch(() => setData({ items: [], total: 0, limit: 20 }));
+    setError('');
+    api(`/drivers?${params}`).then(setData).catch((err) => setError(err.message || 'فهرست رانندگان بارگذاری نشد.'));
   }, [query]);
 
+  if (error) return <Page title="رانندگان و ناوگان"><p style={{ color: 'var(--alamut-crit)' }}>{error}</p></Page>;
   if (!data) return <SkeletonRows />;
 
   return (

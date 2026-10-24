@@ -55,9 +55,23 @@ const PERMISSIONS = {
   ],
 };
 
+function parseRoles(roles) {
+  if (Array.isArray(roles)) return roles;
+  if (roles instanceof Set) return [...roles];
+  if (typeof roles === 'string') {
+    try {
+      const parsed = JSON.parse(roles);
+      if (Array.isArray(parsed)) return parsed;
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
 function permissionSet(roles = []) {
   const set = new Set();
-  for (const role of roles || []) {
+  for (const role of parseRoles(roles)) {
     for (const permission of PERMISSIONS[role] || []) set.add(permission);
   }
   return set;
@@ -76,6 +90,7 @@ module.exports = {
   ROLES,
   ROLE_LABELS,
   PERMISSIONS,
+  parseRoles,
   permissionSet,
   can,
   listPermissions,

@@ -289,7 +289,7 @@ function Settings() {
 function Admins() {
   const { user } = useAdmin();
   const { data, error, reload } = useLoad(() => api('/admins'), []);
-  const [form, setForm] = useState({ fullName: '', phone: '', roles: ['DISPATCH_OPERATOR'] });
+  const [form, setForm] = useState({ fullName: '', username: '', password: '', phone: '', roles: ['DISPATCH_OPERATOR'] });
   if (error) return <p className="muted">{error}</p>;
   if (!data) return <SkeletonRows />;
 
@@ -305,11 +305,12 @@ function Admins() {
       <div className="split">
         <div className="card table-wrap">
           <table className="data">
-            <thead><tr><th>نام</th><th>موبایل</th><th>نقش</th><th>وضعیت</th><th /></tr></thead>
+            <thead><tr><th>نام</th><th>نام کاربری</th><th>موبایل</th><th>نقش</th><th>وضعیت</th><th /></tr></thead>
             <tbody>
               {data.map((admin) => (
                 <tr key={admin.id}>
                   <td>{admin.fullName}</td>
+                  <td>{admin.username || '—'}</td>
                   <td>{admin.phone}</td>
                   <td>{(admin.roleLabels || []).join('، ')}</td>
                   <td>{admin.isActive ? 'فعال' : 'غیرفعال'}</td>
@@ -333,12 +334,14 @@ function Admins() {
           try {
             await api('/admins', { method: 'POST', body: form });
             toast.success('اپراتور ساخته شد');
-            setForm({ fullName: '', phone: '', roles: ['DISPATCH_OPERATOR'] });
+            setForm({ fullName: '', username: '', password: '', phone: '', roles: ['DISPATCH_OPERATOR'] });
             reload();
           } catch (err) { toast.error(err.message); }
         }}>
           <h3 style={{ margin: 0 }}>اپراتور جدید</h3>
           <input className="field" placeholder="نام" value={form.fullName} onChange={(event) => setForm({ ...form, fullName: event.target.value })} />
+          <input className="field" placeholder="نام کاربری" autoComplete="off" value={form.username} onChange={(event) => setForm({ ...form, username: event.target.value })} />
+          <input className="field" type="password" placeholder="رمز عبور" autoComplete="new-password" value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} />
           <input className="field" placeholder="موبایل" value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} />
           {ROLES.map(([key, label]) => (
             <label key={key} style={{ display: 'flex', gap: 8 }}>

@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const { Admin } = require('../models');
-const { can } = require('./permissions');
+const { can, parseRoles } = require('./permissions');
 
 async function requireAdmin(req, res, next) {
   try {
@@ -16,7 +16,7 @@ async function requireAdmin(req, res, next) {
       return res.status(403).json({ success: false, message: 'حساب اپراتور غیرفعال است.' });
     }
     req.admin = admin;
-    req.adminRoles = admin.roles || [];
+    req.adminRoles = parseRoles(admin.roles);
     return next();
   } catch {
     return res.status(401).json({ success: false, message: 'نشست منقضی شده است. دوباره وارد شوید.' });

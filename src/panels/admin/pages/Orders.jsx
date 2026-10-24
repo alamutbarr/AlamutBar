@@ -11,6 +11,7 @@ export default function Orders() {
   const navigate = useNavigate();
   const [query, setQuery] = useState({ page: 1, status: '', q: '', city: '', hasAlert: false });
   const [data, setData] = useState(null);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     const params = new URLSearchParams({ page: String(query.page), limit: '12' });
@@ -18,7 +19,8 @@ export default function Orders() {
     if (query.q) params.set('q', query.q);
     if (query.city) params.set('city', query.city);
     if (query.hasAlert) params.set('hasAlert', 'true');
-    api(`/orders?${params}`).then(setData);
+    setError('');
+    api(`/orders?${params}`).then(setData).catch((err) => setError(err.message || 'فهرست سفارش‌ها بارگذاری نشد.'));
   }, [query]);
 
   const columns = useMemo(() => [
@@ -42,6 +44,7 @@ export default function Orders() {
   ], []);
 
   const table = useReactTable({ data: data?.items || [], columns, getCoreRowModel: getCoreRowModel() });
+  if (error) return <Page title="سفارش‌ها"><p style={{ color: 'var(--alamut-crit)' }}>{error}</p></Page>;
   if (!data) return <SkeletonRows />;
 
   return (

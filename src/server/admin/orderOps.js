@@ -10,6 +10,7 @@ const { calculatePenalty } = require('./penalty');
 const { getSettings } = require('./settingsStore');
 const { needsInspector } = require('../inspector/policy');
 const { publish } = require('./realtime');
+const { parseRoles } = require('./permissions');
 
 const includes = [
   { model: City, as: 'originCity' },
@@ -378,7 +379,7 @@ async function updatePrice(admin, id, body) {
   if (body.estimatedPrice != null) {
     const price = money(body.estimatedPrice, 'قیمت تخمینی');
     const ceiling = shipment.owner?.CargoOwner?.price_ceiling;
-    const roles = admin.roles || [];
+    const roles = parseRoles(admin.roles);
     if (ceiling && price > Number(ceiling) && !roles.includes('SUPER_ADMIN')) {
       throw new AppError('قیمت از سقف توافق‌شده با این مشتری بیشتر است.', 400);
     }

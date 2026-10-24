@@ -4,6 +4,8 @@ const { sequelize } = require('../config/database');
 const Admin = sequelize.define('Admin', {
   id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
   phone: { type: DataTypes.STRING(15), allowNull: false, unique: true },
+  username: { type: DataTypes.STRING(40), allowNull: true, unique: true },
+  passwordHash: { type: DataTypes.STRING(100), allowNull: true },
   fullName: { type: DataTypes.STRING(80), allowNull: false },
   roles: { type: DataTypes.JSON, allowNull: false, defaultValue: [] },
   isActive: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },

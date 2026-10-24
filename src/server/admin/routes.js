@@ -11,7 +11,7 @@ const { requireAdmin, requirePermission } = require('./guard');
 const authService = require('./authService');
 const { assertRoles } = require('./authService');
 const { audit, pageOf } = require('./audit');
-const { can } = require('./permissions');
+const { can, parseRoles } = require('./permissions');
 const orderOps = require('./orderOps');
 const { getSettings, listSettings, clearSettingsCache, SETTING_DEFAULTS } = require('./settingsStore');
 const { mapSnapshot } = require('./monitor');
@@ -23,13 +23,8 @@ const { logEvent } = require('./audit');
 
 const router = express.Router();
 
-router.post('/auth/request-otp', asyncHandler(async (req, res) => {
-  const data = await authService.requestOtp(req.body.phone);
-  success(res, { message: 'اگر شماره مجاز باشد، کد تأیید ارسال شد.', data });
-}));
-
-router.post('/auth/verify-otp', asyncHandler(async (req, res) => {
-  const data = await authService.verifyOtp(req.body.phone, req.body.code);
+router.post('/auth/login', asyncHandler(async (req, res) => {
+  const data = await authService.loginWithPassword(req.body.username, req.body.password);
   success(res, { message: 'ورود انجام شد.', data });
 }));
 
@@ -561,13 +556,25 @@ router.get('/admins', requirePermission('admins.manage'), asyncHandler(async (re
 
 router.post('/admins', requirePermission('admins.manage'), asyncHandler(async (req, res) => {
   const phone = normalizePhone(req.body.phone);
+  const username = authService.normalizeUsername(req.body.username);
+  const password = String(req.body.password || '');
+  if (password.length < 8) throw new AppError('رمز عبور باید حداقل ۸ نویسه باشد.', 400);
   const fullName = String(req.body.fullName || '').trim();
   if (fullName.length < 3) throw new AppError('نام اپراتور را وارد کنید.', 400);
   const roles = assertRoles(req.body.roles);
   const existing = await Admin.findOne({ where: { phone } });
   if (existing) throw new AppError('این شماره قبلاً ثبت شده است.', 409);
-  const admin = await Admin.create({ phone, fullName, roles, isActive: true });
-  await audit(req.admin, 'admin.create', 'admin', admin.id, { phone, roles });
+  const taken = await Admin.findOne({ where: { username } });
+  if (taken) throw new AppError('این نام کاربری قبلاً ثبت شده است.', 409);
+  const admin = await Admin.create({
+    phone,
+    username,
+    passwordHash: await authService.hashPassword(password),
+    fullName,
+    roles,
+    isActive: true,
+  });
+  await audit(req.admin, 'admin.create', 'admin', admin.id, { phone, username, roles });
   success(res, { message: 'اپراتور ساخته شد.', data: authService.presentAdmin(admin) });
 }));
 
@@ -584,7 +591,11 @@ router.patch('/admins/:id', requirePermission('admins.manage'), asyncHandler(asy
     if (!admin.isActive) admin.refreshTokenHash = null;
   }
   const supers = await Admin.findAll({ where: { isActive: true } });
-  const still = supers.filter((item) => (item.id === admin.id ? admin.isActive && (admin.roles || []).includes('SUPER_ADMIN') : (item.roles || []).includes('SUPER_ADMIN')));
+  const still = supers.filter((item) => {
+    const roles = item.id === admin.id ? parseRoles(admin.roles) : parseRoles(item.roles);
+    const active = item.id === admin.id ? admin.isActive : item.isActive;
+    return active && roles.includes('SUPER_ADMIN');
+  });
   if (!still.length) throw new AppError('حداقل یک مدیر سامانه فعال باید بماند.', 400);
   admin.changed('roles', true);
   await admin.save();
