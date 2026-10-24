@@ -13,12 +13,19 @@ Notifications.setNotificationHandler({
   }),
 });
 
+function inExpoGo(): boolean {
+  return Constants.expoGoConfig != null;
+}
+
 export async function registerPush(): Promise<string> {
-  if (Platform.OS === 'web') {
+  if (Platform.OS === 'web' || inExpoGo()) {
     await api('/api/v1/driver/push-token', {
       method: 'POST',
-      body: JSON.stringify({ stub: true, platform: 'web' }),
+      body: JSON.stringify({ stub: true, platform: Platform.OS === 'web' ? 'web' : 'expo-go' }),
     });
+    if (inExpoGo()) {
+      return 'در Expo Go فقط ثبت محلی انجام شد. پوش از سرور بیلد توسعه می‌خواهد.';
+    }
     return 'روی وب اعلان دستگاه نیست. ثبت محلی انجام شد.';
   }
   const existing = await Notifications.getPermissionsAsync();

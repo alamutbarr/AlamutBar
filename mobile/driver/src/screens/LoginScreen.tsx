@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { api, bundledApiUrl, getApiUrl, saveSession, setApiUrl } from '../api';
 import { BrandMark } from '../ui';
@@ -12,9 +12,13 @@ export function LoginScreen({ onLoggedIn }: Props) {
   const [hint, setHint] = useState('');
   const [step, setStep] = useState<'phone' | 'code'>('phone');
   const [apiUrl, setUrl] = useState(bundledApiUrl());
-  const [showUrl, setShowUrl] = useState(false);
+  const [showUrl, setShowUrl] = useState(Platform.OS === 'android');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    getApiUrl().then(setUrl);
+  }, []);
 
   const requestCode = async () => {
     setBusy(true);
@@ -31,7 +35,8 @@ export function LoginScreen({ onLoggedIn }: Props) {
       }
       setStep('code');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'خطا');
+      const message = err instanceof Error ? err.message : 'خطا';
+      setError(message.includes('برقرار نشد') ? `${message} آدرس سرور را IP رایانه در همین وای‌فای بگذارید.` : message);
     } finally {
       setBusy(false);
     }
@@ -93,7 +98,18 @@ export function LoginScreen({ onLoggedIn }: Props) {
           <Text style={styles.link}>آدرس سرور</Text>
         </Pressable>
         {showUrl ? (
-          <TextInput style={styles.input} value={apiUrl} onChangeText={setUrl} autoCapitalize="none" textAlign="left" />
+          <>
+            <TextInput
+              style={styles.input}
+              value={apiUrl}
+              onChangeText={setUrl}
+              autoCapitalize="none"
+              autoCorrect={false}
+              textAlign="left"
+              placeholder="http://192.168.1.20:5088"
+            />
+            <Text style={styles.urlHint}>روی گوشی، ۱۲۷٫۰٫۰٫۱ خود گوشی است. IP رایانه را در همین وای‌فای بگذارید.</Text>
+          </>
         ) : null}
       </ScrollView>
     </KeyboardAvoidingView>
@@ -124,4 +140,5 @@ const styles = StyleSheet.create({
   hint: { color: colors.primary, fontFamily: 'Vazirmatn_700Bold', textAlign: 'center' },
   error: { color: colors.crit, fontFamily: 'Vazirmatn_400Regular', textAlign: 'right' },
   link: { color: colors.primary, fontFamily: 'Vazirmatn_700Bold', textAlign: 'center' },
+  urlHint: { color: colors.muted, fontFamily: 'Vazirmatn_400Regular', fontSize: 12, textAlign: 'right', lineHeight: 22 },
 });

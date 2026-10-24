@@ -17,6 +17,7 @@
     },
     "android": {
       "package": "bar.alamut.driver",
+      "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "backgroundColor": "#087F8C",
         "foregroundImage": "./assets/android-icon-foreground.png",
