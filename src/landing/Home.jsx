@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { ArrowDownLeft, ArrowLeft, ArrowUpLeft, Check, ChevronDown, Clock3, Globe2, MapPin, Menu, MoveLeft, Route as RouteIcon, Shield, ShieldCheck, Smartphone, Truck, X } from 'lucide-react';
 import './landing.css';
 
@@ -88,7 +89,10 @@ function Home() {
   const year = new Date().toLocaleDateString('fa-IR', { year: 'numeric' });
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 24);
+    const onScroll = () => {
+      if (document.documentElement.classList.contains('nav-scroll-lock')) return;
+      setScrolled(window.scrollY > 24);
+    };
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
     const revealObserver = new IntersectionObserver((entries) => {
@@ -106,7 +110,44 @@ function Home() {
     };
   }, []);
 
-  const closeMenu = () => setMenuOpen(false);
+  const scrollLock = useRef(null);
+
+  const releaseScroll = () => {
+    const y = scrollLock.current;
+    if (y == null) return;
+    scrollLock.current = null;
+    const html = document.documentElement;
+    html.classList.remove('nav-scroll-lock');
+    html.style.removeProperty('--nav-scrollbar');
+    document.body.style.top = '';
+    window.scrollTo({ top: y, left: 0, behavior: 'instant' });
+  };
+
+  const closeMenu = () => {
+    releaseScroll();
+    setMenuOpen(false);
+  };
+
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+    const html = document.documentElement;
+    const y = window.scrollY;
+    const gap = Math.max(0, window.innerWidth - html.clientWidth);
+    scrollLock.current = y;
+    html.style.setProperty('--nav-scrollbar', `${gap}px`);
+    html.classList.add('nav-scroll-lock');
+    document.body.style.top = `-${y}px`;
+    const onKey = (event) => {
+      if (event.key !== 'Escape') return;
+      releaseScroll();
+      setMenuOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      releaseScroll();
+    };
+  }, [menuOpen]);
   const submitInquiry = (event) => {
     event.preventDefault();
     setSent(true);
@@ -121,21 +162,26 @@ function Home() {
             {navItems.map((item) => <a key={item.href} href={item.href}>{item.label}</a>)}
           </nav>
           <button type="button" className={`nav-cta ${scrolled ? '' : 'nav-cta-dark'}`} onClick={() => setEntryOpen(true)}>ورود <ArrowUpLeft size={15} /></button>
-          <button className={`menu-toggle ${scrolled ? '' : 'menu-toggle-light'}`} onClick={() => setMenuOpen(!menuOpen)} aria-expanded={menuOpen} aria-label={menuOpen ? 'بستن منو' : 'باز کردن منو'}>
+        </div>
+      </header>
+      {createPortal(
+        <>
+          <button type="button" className={`mobile-scrim ${menuOpen ? 'is-open' : ''}`} aria-label="بستن منو" tabIndex={menuOpen ? 0 : -1} onClick={closeMenu} />
+          <button type="button" className={`menu-toggle ${scrolled ? '' : 'menu-toggle-light'}`} onClick={() => (menuOpen ? closeMenu() : setMenuOpen(true))} aria-expanded={menuOpen} aria-controls="mobile-nav" aria-label={menuOpen ? 'بستن منو' : 'باز کردن منو'}>
             {menuOpen ? <X size={23} /> : <Menu size={23} />}
           </button>
-        </div>
-        <div className={`mobile-nav ${menuOpen ? 'mobile-nav-open' : ''}`} aria-hidden={!menuOpen}>
-          <span className="mobile-nav-label">منو</span>
-          {navItems.map((item, index) => <a key={item.href} href={item.href} onClick={closeMenu}><span>{faPad(index + 1)}</span>{item.label}<ArrowUpLeft size={18} /></a>)}
-          <a href="/driver" onClick={closeMenu}><span>{faPad(navItems.length + 1)}</span>ورود رانندگان<ArrowUpLeft size={18} /></a>
-          <a href="/owner/login" onClick={closeMenu}><span>{faPad(navItems.length + 2)}</span>ورود صاحب کالا<ArrowUpLeft size={18} /></a>
-          <a href="/admin" onClick={closeMenu}><span>{faPad(navItems.length + 3)}</span>ورود اپراتور<ArrowUpLeft size={18} /></a>
-          <a href="/inspector" onClick={closeMenu}><span>{faPad(navItems.length + 4)}</span>ورود متصدی<ArrowUpLeft size={18} /></a>
-          <p>بار جابه‌جا می‌شود؛ اعتماد، ماندگار می‌ماند.</p>
-        </div>
-        {menuOpen && <button className="mobile-scrim" aria-label="بستن منو" onClick={closeMenu} />}
-      </header>
+          <div id="mobile-nav" className={`mobile-nav ${menuOpen ? 'mobile-nav-open' : ''}`} role="dialog" aria-modal={menuOpen} aria-hidden={!menuOpen} aria-label="منو" {...(!menuOpen ? { inert: '' } : {})}>
+            <span className="mobile-nav-label">منو</span>
+            {navItems.map((item, index) => <a key={item.href} href={item.href} onClick={closeMenu}><span>{faPad(index + 1)}</span>{item.label}<ArrowUpLeft size={18} /></a>)}
+            <a href="/driver" onClick={closeMenu}><span>{faPad(navItems.length + 1)}</span>ورود رانندگان<ArrowUpLeft size={18} /></a>
+            <a href="/owner/login" onClick={closeMenu}><span>{faPad(navItems.length + 2)}</span>ورود صاحب کالا<ArrowUpLeft size={18} /></a>
+            <a href="/admin" onClick={closeMenu}><span>{faPad(navItems.length + 3)}</span>ورود اپراتور<ArrowUpLeft size={18} /></a>
+            <a href="/inspector" onClick={closeMenu}><span>{faPad(navItems.length + 4)}</span>ورود متصدی<ArrowUpLeft size={18} /></a>
+            <p>بار جابه‌جا می‌شود؛ اعتماد، ماندگار می‌ماند.</p>
+          </div>
+        </>,
+        document.body,
+      )}
 
       <section className="hero" aria-labelledby="hero-title">
         <img className="hero-image" src={`${import.meta.env.BASE_URL}alamut-road.jpg`} alt="کامیونی در جاده‌ای پیچ‌درپیچ میان کوهستان، در سپیده‌دم" />
