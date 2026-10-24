@@ -18,9 +18,9 @@ export function DriverLayout({ current, onNavigate, onLogout, driverName, childr
         return () => window.removeEventListener('keydown', onKeyDown);
     }, [confirmLogout]);
 
-    return (<div className="isolate relative min-h-screen flex bg-[#f7f6f0]" dir="rtl">
-      <aside className="hidden lg:flex w-64 flex-col fixed inset-y-0 right-0 bg-[#17383b] text-[#f7f6f0]">
-        <div className="flex items-center gap-3 border-b border-white/10 p-5">
+    return (<div className="panel-canvas isolate relative min-h-screen flex" dir="rtl">
+      <aside className="panel-side hidden lg:flex w-64 flex-col fixed inset-y-0 right-0 border-l text-[#17383b]">
+        <div className="flex items-center gap-3 border-b border-[#d8e1dc] bg-[#087f8c] p-5 text-[#f7f6f0]">
           <span className="block h-9 w-9 shrink-0" aria-hidden="true">
             <svg viewBox="0 0 40 40" fill="none" className="h-full w-full stroke-current" strokeWidth="1.5" strokeLinejoin="bevel">
               <path d="M5 28.5 17.5 8l7.1 11.8L30 10l5 8.7v9.8H5Z" />
@@ -29,7 +29,7 @@ export function DriverLayout({ current, onNavigate, onLogout, driverName, childr
           </span>
           <div className="leading-tight">
             <h1 className="text-[15px] font-extrabold tracking-[0.16em]">ALAMUT</h1>
-            <p className="mt-1 text-[11px] text-[#f7f6f0]/70">{driverName || 'پنل راننده'}</p>
+            <p className="mt-1 text-[11px] text-[#f7f6f0]/80">{driverName || 'پنل راننده'}</p>
           </div>
         </div>
 
@@ -37,17 +37,17 @@ export function DriverLayout({ current, onNavigate, onLogout, driverName, childr
           {navItems.map((item) => {
             const Icon = item.icon;
             const active = current === item.key;
-            return (<button key={item.key} onClick={() => onNavigate(item.key)} className={`w-full flex items-center gap-3 rounded-md px-4 py-3 text-sm font-medium transition-colors ${active
-                    ? 'bg-white/10 text-white'
-                    : 'text-[#f7f6f0]/70 hover:bg-white/5 hover:text-white'}`}>
-                <Icon className={`w-5 h-5 ${active ? 'text-[#d7b56d]' : 'text-[#f7f6f0]/55'}`}/>
+            return (<button key={item.key} onClick={() => onNavigate(item.key)} className={`w-full flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-colors ${active
+                    ? 'bg-[#e1f3f0] font-bold text-[#087f8c]'
+                    : 'text-[#17383b] hover:bg-[#f7f6f0]'}`}>
+                <Icon className={`w-5 h-5 ${active ? 'text-[#087f8c]' : 'text-[#526d70]'}`}/>
                 {item.label}
               </button>);
         })}
         </nav>
 
-        <div className="border-t border-white/10 p-3">
-          <button onClick={() => setConfirmLogout(true)} className="w-full flex items-center gap-3 rounded-md px-4 py-3 text-sm font-medium text-[#f7c9c4] transition-colors hover:bg-red-500/15">
+        <div className="border-t border-[#d8e1dc] p-3">
+          <button onClick={() => setConfirmLogout(true)} className="w-full flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-[#b42318] transition-colors hover:bg-[#fdeceb]">
             <LogOut className="w-5 h-5"/>
             خروج از حساب کاربری
           </button>
@@ -55,20 +55,20 @@ export function DriverLayout({ current, onNavigate, onLogout, driverName, childr
       </aside>
 
       <div className="flex-1 lg:mr-64">
-        <header className="lg:hidden sticky top-0 z-30 flex items-center justify-between border-b border-[#d8e1dc] bg-[#f7f6f0]/95 px-4 py-3 backdrop-blur">
+        <header className="lg:hidden sticky top-0 z-30 flex items-center justify-between bg-[#087f8c] px-4 py-3 text-[#f7f6f0]">
           <div className="flex items-center gap-2">
-            <span className="block h-8 w-8 text-[#17383b]" aria-hidden="true">
+            <span className="block h-8 w-8 text-[#f7f6f0]" aria-hidden="true">
               <svg viewBox="0 0 40 40" fill="none" className="h-full w-full stroke-current" strokeWidth="1.6" strokeLinejoin="bevel">
                 <path d="M5 28.5 17.5 8l7.1 11.8L30 10l5 8.7v9.8H5Z" />
                 <path d="M5 28.5h30" />
               </svg>
             </span>
             <div className="leading-tight">
-              <span className="block text-sm font-extrabold tracking-[0.14em] text-[#17383b]">ALAMUT</span>
-              <span className="text-[11px] text-[#526d70]">{driverName || 'پنل راننده'}</span>
+              <span className="block text-sm font-extrabold tracking-[0.14em]">ALAMUT</span>
+              <span className="text-[11px] text-[#f7f6f0]/80">{driverName || 'پنل راننده'}</span>
             </div>
           </div>
-          <button onClick={() => setConfirmLogout(true)} title="خروج از حساب کاربری" className="rounded-md p-2 text-[#526d70] transition hover:bg-white hover:text-red-700">
+          <button onClick={() => setConfirmLogout(true)} title="خروج از حساب کاربری" className="rounded-2xl border border-white/30 p-2 text-[#f7f6f0]">
             <LogOut className="w-5 h-5"/>
           </button>
         </header>
@@ -76,14 +76,13 @@ export function DriverLayout({ current, onNavigate, onLogout, driverName, childr
         <main className="pb-[calc(4.75rem+env(safe-area-inset-bottom))] lg:pb-6">{children}</main>
       </div>
 
-      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-30 grid grid-cols-3 border-t border-[#d8e1dc] bg-[#f7f6f0]/95 pb-[env(safe-area-inset-bottom)] backdrop-blur">
+      <nav className="panel-dock lg:hidden fixed inset-x-3 bottom-3 z-30 grid grid-cols-3 rounded-[22px] border p-1.5 pb-[max(0.4rem,env(safe-area-inset-bottom))]">
         {navItems.map((item) => {
             const Icon = item.icon;
             const active = current === item.key;
-            return (<button key={item.key} onClick={() => onNavigate(item.key)} className={`relative flex flex-col items-center gap-1 py-2.5 transition-colors ${active ? 'text-[#087f8c]' : 'text-[#8aa0a0]'}`}>
+            return (<button key={item.key} onClick={() => onNavigate(item.key)} className={`flex flex-col items-center gap-1 rounded-2xl py-2.5 transition-colors ${active ? 'bg-[#e1f3f0] font-bold text-[#087f8c]' : 'text-[#526d70]'}`}>
               <Icon className="w-5 h-5"/>
               <span className="text-[11px] font-medium">{item.label}</span>
-              {active && (<span className="absolute top-0 h-0.5 w-8 rounded-full bg-[#087f8c]"/>)}
             </button>);
         })}
       </nav>

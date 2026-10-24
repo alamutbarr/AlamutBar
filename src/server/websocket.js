@@ -18,8 +18,8 @@ function broadcast(shipmentId, payload) {
   }
 }
 
-function attachChat(server) {
-  const wss = new WebSocketServer({ server, path: '/ws' });
+function attachChat() {
+  const wss = new WebSocketServer({ noServer: true });
 
   wss.on('connection', (socket, request) => {
     let user = null;
@@ -80,6 +80,7 @@ function attachChat(server) {
       if (socket.shipmentId) room(socket.shipmentId).delete(socket);
     });
   });
+  return wss;
 }
 
 module.exports = { attachChat };

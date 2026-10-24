@@ -12,7 +12,13 @@ function authMiddleware(req, res, next) {
 
     try {
         const payload = jwt.verify(token, JWT_SECRET);
-        req.user = { id: payload.id || payload.driverId, role: payload.role, mobile: payload.mobile };
+        req.user = {
+            id: payload.id || payload.driverId,
+            role: payload.role,
+            kind: payload.kind,
+            typ: payload.typ,
+            mobile: payload.mobile,
+        };
         return next();
     } catch (error) {
         return res.status(401).json({ message: 'نشست شما منقضی شده است. دوباره وارد شوید.' });

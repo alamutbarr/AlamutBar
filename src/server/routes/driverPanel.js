@@ -2,6 +2,8 @@ const express = require('express');
 const { Op } = require('sequelize');
 const { authMiddleware } = require('../middleware/auth');
 const { Shipment, Driver, City, VehicleType, Zone } = require('../models');
+const { canRevealExactDestination } = require('../mobile/missionPolicy');
+const { applyLegacyDriverStatus } = require('../mobile/driverActions');
 const { filterNearbyMissions, filterMissionsByRoute } = require('../services/missionSearch');
 const { resolveDriverProvince } = require('../services/geocoding');
 
@@ -60,10 +62,18 @@ function toMissionDto(row) {
       : undefined,
     destCity: d.destCity?.name,
     destArea: [d.destZone?.name, d.destCity?.province].filter(Boolean).join(' · '),
-    destExact: status !== 'Offered' && d.dest_address
+    destExact: canRevealExactDestination({
+      driverStatus: status,
+      legacyStatus: d.status,
+      workflowStatus: d.workflow_status,
+    }) && d.dest_address
       ? { lat: d.dest_lat != null ? Number(d.dest_lat) : undefined, lng: d.dest_lng != null ? Number(d.dest_lng) : undefined, address: d.dest_address }
       : undefined,
-    visibleDestinationExact: status !== 'Offered',
+    visibleDestinationExact: canRevealExactDestination({
+      driverStatus: status,
+      legacyStatus: d.status,
+      workflowStatus: d.workflow_status,
+    }),
     cargo: {
       type: d.cargo_type === 'other' ? (d.cargo_type_other || 'سایر') : d.cargo_type,
       weightTons: weight != null ? weight / 1000 : undefined,
@@ -134,42 +144,18 @@ router.get('/missions', authMiddleware, async (req, res) => {
 });
 
 router.post('/missions/:id/change-status', authMiddleware, async (req, res) => {
-  const mission = await Shipment.findByPk(req.params.id);
-  if (!mission) return res.status(404).json({ error: 'مأموریت پیدا نشد' });
-
-  const { status } = req.body;
-  const mine = mission.driver_id != null && String(mission.driver_id) === String(req.user.id);
-  if (mission.driver_id && !mine && status !== 'Declined') {
-    return res.status(409).json({ error: 'این بار را رانندهٔ دیگری قبول کرده است.' });
+  try {
+    const result = await applyLegacyDriverStatus({
+      missionId: req.params.id,
+      driverId: req.user.id,
+      status: req.body.status,
+      deliveryOtp: req.body.deliveryOtp,
+      exceptionReason: req.body.exceptionReason,
+    });
+    return res.json({ message: 'وضعیت بروزرسانی شد', status: result.driverStatus });
+  } catch (error) {
+    return res.status(error.statusCode || 400).json({ error: error.message || 'به‌روزرسانی وضعیت ناموفق بود.' });
   }
-
-  if (status === 'Accepted') {
-    if (mission.driver_id && !mine) {
-      return res.status(409).json({ error: 'این بار را رانندهٔ دیگری قبول کرده است.' });
-    }
-    mission.driver_id = req.user.id;
-    mission.driver_status = 'Accepted';
-    mission.status = 'driver_assigned';
-  } else if (status === 'Declined') {
-    const declined = Array.isArray(mission.declined_by) ? mission.declined_by : [];
-    mission.declined_by = [...new Set([...declined.map(String), String(req.user.id)])];
-    mission.changed('declined_by', true);
-  } else if (mine || !mission.driver_id) {
-    const next = {
-      EnRouteToPickup: { driver_status: 'EnRouteToPickup' },
-      ArrivedPickup: { driver_status: 'ArrivedPickup', status: 'at_pickup' },
-      WaybillIssued: { driver_status: 'WaybillIssued' },
-      InTransit: { driver_status: 'InTransit', status: 'in_transit' },
-      Completed: { driver_status: 'Completed', status: 'delivered' },
-      Cancelled: { driver_status: 'Cancelled', status: 'cancelled' },
-    }[status];
-    if (!next) return res.status(400).json({ error: 'وضعیت نامعتبر است' });
-    Object.assign(mission, next);
-    if (!mission.driver_id) mission.driver_id = req.user.id;
-  }
-
-  await mission.save();
-  return res.json({ message: 'وضعیت بروزرسانی شد', status: driverFacingStatus(mission) });
 });
 
 router.get('/missions/nearby', authMiddleware, async (req, res) => {

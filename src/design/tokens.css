@@ -1,0 +1,110 @@
+/* توکن‌های مشترک برند الموت. پنل ادمین از همین متغیرها استفاده می‌کند
+   تا بعداً اپ راننده (React Native) و پولیش بقیه پنل‌ها همان پالت را داشته باشند. */
+:root {
+  --alamut-primary: #087f8c;
+  --alamut-secondary: #159a9c;
+  --alamut-ink: #17383b;
+  --alamut-gold: #d7b56d;
+  --alamut-cream: #f7f6f0;
+  --alamut-mist: #e1f3f0;
+  --alamut-ok: #1f8a4c;
+  --alamut-warn: #a16207;
+  --alamut-crit: #b42318;
+  --alamut-progress: #1d4ed8;
+  --alamut-radius: 18px;
+  --alamut-shadow: 0 10px 30px -18px rgba(23, 56, 59, 0.35);
+  --alamut-blur: 18px;
+  --alamut-glass: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(255, 255, 255, 0.78));
+  --alamut-glass-border: rgba(255, 255, 255, 0.72);
+  --alamut-elevation: inset 0 1px 0 rgba(255, 255, 255, 0.85), 0 18px 40px -26px rgba(23, 56, 59, 0.48);
+}
+
+.panel-canvas {
+  background:
+    radial-gradient(720px 280px at 100% -8%, rgba(21, 154, 156, 0.2), transparent 62%),
+    radial-gradient(480px 220px at 0% 20%, rgba(215, 181, 109, 0.18), transparent 58%),
+    var(--alamut-cream);
+}
+
+.panel-card,
+.glass-card {
+  background: var(--alamut-glass);
+  border: 1px solid var(--alamut-glass-border);
+  border-radius: 22px;
+  box-shadow: var(--alamut-elevation);
+  backdrop-filter: blur(var(--alamut-blur)) saturate(150%);
+  -webkit-backdrop-filter: blur(var(--alamut-blur)) saturate(150%);
+}
+
+button.glass-card,
+a.glass-card {
+  cursor: pointer;
+  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+button.glass-card:hover,
+a.glass-card:hover {
+  border-color: rgba(21, 154, 156, 0.55);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 22px 42px -22px rgba(8, 127, 140, 0.38);
+}
+
+.panel-section {
+  overflow: hidden;
+  background: var(--alamut-glass);
+  border: 1px solid var(--alamut-glass-border);
+  border-radius: 22px;
+  box-shadow: var(--alamut-elevation);
+  backdrop-filter: blur(var(--alamut-blur)) saturate(150%);
+  -webkit-backdrop-filter: blur(var(--alamut-blur)) saturate(150%);
+}
+
+.panel-section-head {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.panel-section-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.panel-kicker {
+  margin: 0;
+  color: #6b5228;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.panel-side,
+.panel-dock {
+  background: rgba(255, 255, 255, 0.72);
+  border-color: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 14px 34px -20px rgba(23, 56, 59, 0.4);
+}
+
+.panel-kicker + h1,
+.panel-section-row h1 {
+  margin: 0;
+}
+
+:focus-visible {
+  outline: 2px solid var(--alamut-primary);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -151,9 +151,13 @@ export default function App() {
   const currentPath = location.pathname.replace(/^\/driver\/?/, "") || "dashboard";
   const layoutCurrent = currentPath === "mission-detail" ? "missions" : currentPath;
 
-  const handleMissionAction = async (mission, action) => {
+  const handleMissionAction = async (mission, action, extra = {}) => {
     try {
-      const res = await api.post(`/driver/missions/${mission.id}/change-status`, { status: action });
+      const res = await api.post(`/driver/missions/${mission.id}/change-status`, {
+        status: action,
+        deliveryOtp: extra.otp,
+        exceptionReason: extra.exceptionReason,
+      });
       setMissions((previous) => previous.map((item) =>
         item.id === mission.id ? { ...item, status: res.data.status } : item,
       ));
@@ -225,7 +229,7 @@ export default function App() {
                 };
                 if (statusMap[action]) handleMissionAction(mission, statusMap[action]);
               }}
-              onPodComplete={(mission) => handleMissionAction(mission, "Completed")}
+              onPodComplete={(mission, result) => handleMissionAction(mission, "Completed", result || {})}
             />
           ) : <Navigate to="/driver/missions" replace />}
         />

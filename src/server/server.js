@@ -17,6 +17,8 @@ const seedVehicleTypes = require('./utils/seedVehicles');
 const seedLocations = require('./utils/seedLocations');
 const startReminderScheduler = require('./utils/scheduler');
 const { attachChat } = require('./websocket');
+const { attachAdminSocket } = require('./admin/realtime');
+const { bootstrapAdmin } = require('./admin/bootstrap');
 
 const DRIVER_DATABASES = new Set(['alamut_bar', 'xbar_db']);
 
@@ -68,10 +70,29 @@ const startServer = async () => {
 
     await seedVehicleTypes();
     await seedLocations();
+    await bootstrapAdmin();
 
     const PORT = Number(process.env.PORT || 5088);
     const server = http.createServer(app);
-    attachChat(server);
+    const chatSockets = attachChat();
+    const adminSockets = attachAdminSocket();
+    server.on('upgrade', (request, socket, head) => {
+      let pathname = '';
+      try {
+        pathname = new URL(request.url, 'http://127.0.0.1').pathname;
+      } catch {
+        socket.destroy();
+        return;
+      }
+      const target = pathname === '/ws' ? chatSockets : pathname === '/ws/admin' ? adminSockets : null;
+      if (!target) {
+        socket.destroy();
+        return;
+      }
+      target.handleUpgrade(request, socket, head, (ws) => {
+        target.emit('connection', ws, request);
+      });
+    });
     server.listen(PORT, '0.0.0.0', () => {
       console.log(`سرور الموت روی پورت ${PORT} در حال اجراست`);
     });

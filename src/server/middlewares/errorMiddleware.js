@@ -34,7 +34,7 @@ function mapSequelizeError(err) {
 function mapMulterError(err) {
   if (err.name !== 'MulterError') return null;
   const messages = {
-    LIMIT_FILE_SIZE: 'حجم فایل بیشتر از حد مجاز (۵ مگابایت) است.',
+    LIMIT_FILE_SIZE: 'حجم فایل بیشتر از حد مجاز است.',
     LIMIT_FILE_COUNT: 'تعداد فایل‌ها بیشتر از حد مجاز است.',
     LIMIT_UNEXPECTED_FILE: 'تعداد یا نوع فایل ارسالی مجاز نیست.',
   };

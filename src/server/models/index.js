@@ -10,6 +10,14 @@ const Complaint = require('./Complaint');
 const Rating = require('./Rating');
 const Driver = require('./Driver');
 const Message = require('./Message');
+const Admin = require('./Admin');
+const OrderEvent = require('./OrderEvent');
+const Alert = require('./Alert');
+const Inspector = require('./Inspector');
+const InspectionReport = require('./InspectionReport');
+const SystemSetting = require('./SystemSetting');
+const AdminAuditLog = require('./AdminAuditLog');
+const DriverLocation = require('./DriverLocation');
 
 // User <-> CargoOwner (۱ به ۱)
 User.hasOne(CargoOwner, { foreignKey: 'user_id', onDelete: 'CASCADE' });
@@ -57,6 +65,25 @@ Shipment.belongsTo(Driver, { foreignKey: 'driver_id', as: 'driver' });
 Shipment.hasMany(Message, { foreignKey: 'shipment_id', as: 'messages' });
 Message.belongsTo(Shipment, { foreignKey: 'shipment_id' });
 
+Shipment.hasMany(OrderEvent, { foreignKey: 'shipmentId', as: 'events' });
+OrderEvent.belongsTo(Shipment, { foreignKey: 'shipmentId' });
+Admin.hasMany(OrderEvent, { foreignKey: 'performedByAdminId', as: 'events' });
+OrderEvent.belongsTo(Admin, { foreignKey: 'performedByAdminId', as: 'actor' });
+
+Shipment.hasMany(Alert, { foreignKey: 'shipmentId', as: 'alerts' });
+Alert.belongsTo(Shipment, { foreignKey: 'shipmentId' });
+Driver.hasMany(Alert, { foreignKey: 'driverId', as: 'alerts' });
+Alert.belongsTo(Driver, { foreignKey: 'driverId', as: 'driver' });
+
+Shipment.hasMany(InspectionReport, { foreignKey: 'shipmentId', as: 'inspections' });
+InspectionReport.belongsTo(Shipment, { foreignKey: 'shipmentId' });
+Inspector.hasMany(InspectionReport, { foreignKey: 'inspectorId' });
+InspectionReport.belongsTo(Inspector, { foreignKey: 'inspectorId', as: 'inspector' });
+Shipment.belongsTo(Inspector, { foreignKey: 'assigned_inspector_id', as: 'inspector' });
+
+Driver.hasMany(DriverLocation, { foreignKey: 'driverId', as: 'locations' });
+DriverLocation.belongsTo(Driver, { foreignKey: 'driverId' });
+
 module.exports = {
   sequelize,
   User,
@@ -70,4 +97,12 @@ module.exports = {
   Rating,
   Driver,
   Message,
+  Admin,
+  OrderEvent,
+  Alert,
+  Inspector,
+  InspectionReport,
+  SystemSetting,
+  AdminAuditLog,
+  DriverLocation,
 };

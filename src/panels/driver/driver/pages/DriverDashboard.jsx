@@ -34,6 +34,7 @@ export function DriverDashboard({
       {/* Greeting */}
       <div className="anim-text flex items-center justify-between">
         <div>
+          <p className="panel-kicker">پنل راننده</p>
           <h2 className="text-xl font-bold text-slate-800">
             سلام، {driver?.name?.trim() || "راننده"}
           </h2>

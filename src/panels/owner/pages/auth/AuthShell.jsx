@@ -8,7 +8,11 @@ const fadeUp = {
 
 export default function AuthShell({ title, subtitle, children }) {
   return (
-    <div className="grid min-h-screen bg-route-bg lg:grid-cols-2" dir="rtl">
+    <div className="min-h-screen bg-route-bg" dir="rtl">
+      <header className="bg-[#087f8c] px-4 py-3 text-[#f7f6f0] lg:hidden">
+        <BrandMark light subtitle="صاحب کالا" />
+      </header>
+      <div className="grid min-h-[calc(100vh-64px)] lg:min-h-screen lg:grid-cols-2">
       {/* پنل برند */}
       <div className="relative hidden overflow-hidden bg-ink-950 bg-ink-radial lg:flex lg:flex-col lg:justify-between lg:p-12">
         <RouteMotif />
@@ -60,13 +64,11 @@ export default function AuthShell({ title, subtitle, children }) {
           transition={{ duration: 0.4, ease: 'easeOut' }}
           className="w-full max-w-sm"
         >
-          <div className="mb-8 lg:hidden">
-            <BrandMark subtitle="پنل صاحب کالا" />
-          </div>
           <h1 className="text-2xl font-bold text-ink-900">{title}</h1>
           <p className="mt-1.5 mb-8 text-sm text-ink-300">{subtitle}</p>
           {children}
         </motion.div>
+      </div>
       </div>
     </div>
   );
