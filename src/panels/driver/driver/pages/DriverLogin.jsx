@@ -49,7 +49,7 @@ function OtpCells({ value, onChange }) {
           autoComplete={index === 0 ? "one-time-code" : "off"}
           aria-label={`رقم ${index + 1} از کد تأیید`}
           maxLength={1}
-          className="h-16 w-full rounded-2xl border border-[#d8e1dc] bg-[#f7f6f0] text-center text-[1.7rem] font-bold tabular-nums text-[#17383b] outline-none transition focus:border-[#087f8c] focus:bg-white focus:ring-4 focus:ring-[#087f8c]/15"
+          className="h-16 w-full rounded-md border border-[#d8e1dc] bg-white text-center text-[1.7rem] font-bold tabular-nums text-[#17383b] outline-none transition focus:border-[#087f8c] focus:ring-2 focus:ring-[#087f8c]/30"
           onChange={(event) => {
             const incoming = event.target.value.replace(/\D/g, "");
             if (!incoming) {
@@ -267,26 +267,39 @@ export function DriverLogin() {
   };
 
   return (
-    <div
-      className="min-h-screen bg-[#f7f6f0] flex items-center justify-center p-4"
-      dir="rtl"
-    >
-      <div className="w-full max-w-md">
-        <div className="mb-8 flex flex-col items-center text-center text-[#17383b]">
-          <span className="mb-3 block h-12 w-12" aria-hidden="true">
-            <svg viewBox="0 0 40 40" fill="none" className="h-full w-full stroke-current" strokeWidth="1.5" strokeLinejoin="bevel">
-              <path d="M5 28.5 17.5 8l7.1 11.8L30 10l5 8.7v9.8H5Z" />
-              <path d="M5 28.5h30M12 21l4.6 7.5M24.4 20l5.6 8.5" />
-            </svg>
-          </span>
-          <h1 className="text-2xl font-extrabold tracking-[0.18em]">ALAMUT</h1>
-          <p className="mt-2 text-sm text-[#526d70]">پنل راننده</p>
-        </div>
-
-        <div className="rounded-3xl bg-white shadow-2xl p-6 sm:p-8">
+    <div className="min-h-screen bg-[#f7f6f0]" dir="rtl">
+      <header className="bg-[#10282b] px-4 py-3 text-[#f7f6f0] lg:hidden">
+        <p className="text-[11px] font-medium text-[#d7b56d]">حمل بار، با خیال راحت</p>
+        <p className="text-sm font-extrabold tracking-[0.16em]">ALAMUT</p>
+      </header>
+      <div className="grid min-h-[calc(100vh-64px)] lg:min-h-screen lg:grid-cols-2">
+        <aside className="brand-rail hidden flex-col justify-between p-12 lg:flex">
+          <div>
+            <p className="text-[15px] font-extrabold tracking-[0.18em]">ALAMUT</p>
+            <p className="mt-1 text-[11px] text-[#f7f6f0]/70">حمل‌ونقل و لجستیک</p>
+          </div>
+          <div className="max-w-sm">
+            <p className="text-[11px] font-medium text-[#d7b56d]">حمل بار، با خیال راحت</p>
+            <p className="mt-3 text-3xl font-bold leading-snug text-[#f7f6f0]">
+              مسیر مطمئن،
+              <span className="mt-1 block text-[#159a9c]">حمل هوشمند.</span>
+            </p>
+            <p className="mt-4 text-sm leading-8 text-[#f7f6f0]/75">مأموریت را بپذیر، وضعیت را به‌روز کن و تحویل را با کد یک‌بارمصرف ببند.</p>
+          </div>
+          <div className="glass-card flex gap-8 px-5 py-4 text-sm text-[#f7f6f0]/75">
+            <div>
+              <p className="text-xl font-bold text-white">۲۴/۷</p>
+              <p className="text-xs">پشتیبانی مأموریت</p>
+            </div>
+          </div>
+        </aside>
+        <div className="flex items-start justify-center overflow-y-auto px-6 py-12">
+          <div className="w-full max-w-sm">
           {step === "phone" && (
             <form className="animate-in fade-in zoom-in-95 duration-300" onSubmit={(e) => { e.preventDefault(); handleSendOtp(); }}>
-              <div className="flex bg-slate-100 p-1.5 rounded-xl mb-6">
+              <h1 className="text-2xl font-bold text-[#17383b]">خوش اومدی</h1>
+              <p className="mt-1.5 mb-8 text-sm text-[#7d9394]">شماره موبایل را وارد کن تا کد تأیید بیاید.</p>
+              <div className="flex bg-[#eef2f0] p-1 rounded-md mb-6">
                 <button
                   type="button"
                   onClick={() => {
@@ -321,7 +334,7 @@ export function DriverLogin() {
                   placeholder="شماره موبایل (مثال: 0912...)"
                   dir="ltr"
                   maxLength={11}
-                  className="w-full rounded-xl border-2 border-slate-200 py-3.5 pr-12 pl-4 focus:border-blue-500 focus:outline-none"
+                  className="w-full rounded-md border border-[#d8e1dc] bg-white py-3.5 pr-12 pl-4 focus:border-blue-500 focus:outline-none"
                 />
               </div>
 
@@ -345,7 +358,7 @@ export function DriverLogin() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex items-center justify-center rounded-xl bg-blue-600 py-3.5 font-bold text-white hover:bg-blue-700 disabled:opacity-60 transition-all"
+                className="w-full flex items-center justify-center rounded-md bg-[#087f8c] py-3.5 font-bold text-[#f7f6f0] hover:bg-[#10282b] disabled:opacity-60 transition-all"
               >
                 {loading ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
@@ -394,7 +407,7 @@ export function DriverLogin() {
               <button
                 type="submit"
                 disabled={loading || code.length < 4}
-                className="w-full flex items-center justify-center rounded-xl bg-green-600 py-3.5 font-bold text-white hover:bg-green-700 disabled:opacity-60 transition-all"
+                className="w-full flex items-center justify-center rounded-md bg-[#087f8c] py-3.5 font-bold text-[#f7f6f0] hover:bg-[#10282b] disabled:opacity-60 transition-all"
               >
                 {loading ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
@@ -431,7 +444,7 @@ export function DriverLogin() {
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
                     placeholder="نام خود را وارد کنید"
-                    className="w-full rounded-xl border-2 border-slate-200 py-3 pr-12 pl-4 focus:border-blue-500 focus:outline-none"
+                    className="w-full rounded-md border border-[#d8e1dc] bg-white py-3 pr-12 pl-4 focus:border-blue-500 focus:outline-none"
                   />
                 </div>
                 <div className="relative">
@@ -441,7 +454,7 @@ export function DriverLogin() {
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
                     placeholder="نام خانوادگی خود را وارد کنید"
-                    className="w-full rounded-xl border-2 border-slate-200 py-3 pr-12 pl-4 focus:border-blue-500 focus:outline-none"
+                    className="w-full rounded-md border border-[#d8e1dc] bg-white py-3 pr-12 pl-4 focus:border-blue-500 focus:outline-none"
                   />
                 </div>
                 <div className="relative">
@@ -456,7 +469,7 @@ export function DriverLogin() {
                       setError("");
                     }}
                     placeholder="کد ملی (۱۰ رقم)"
-                    className="w-full rounded-xl border-2 border-slate-200 py-3 pr-12 pl-4 focus:border-blue-500 focus:outline-none"
+                    className="w-full rounded-md border border-[#d8e1dc] bg-white py-3 pr-12 pl-4 focus:border-blue-500 focus:outline-none"
                   />
                 </div>
                 <div className="relative">
@@ -471,7 +484,7 @@ export function DriverLogin() {
                       setError("");
                     }}
                     placeholder="شماره گواهینامه (۱۰ رقم)"
-                    className="w-full rounded-xl border-2 border-slate-200 py-3 pr-12 pl-4 focus:border-blue-500 focus:outline-none"
+                    className="w-full rounded-md border border-[#d8e1dc] bg-white py-3 pr-12 pl-4 focus:border-blue-500 focus:outline-none"
                   />
                 </div>
               </div>
@@ -484,7 +497,7 @@ export function DriverLogin() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex items-center justify-center rounded-xl bg-blue-600 py-3.5 font-bold text-white hover:bg-blue-700 disabled:opacity-60 transition-all"
+                className="w-full flex items-center justify-center rounded-md bg-[#087f8c] py-3.5 font-bold text-[#f7f6f0] hover:bg-[#10282b] disabled:opacity-60 transition-all"
               >
                 {loading ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
@@ -551,7 +564,7 @@ export function DriverLogin() {
                         setError("");
                       }}
                       placeholder="مثال: ۴۱۲۱۳۹۴"
-                      className="w-full rounded-xl border-2 border-slate-200 py-3 pr-12 pl-4 focus:border-blue-500 focus:outline-none"
+                      className="w-full rounded-md border border-[#d8e1dc] bg-white py-3 pr-12 pl-4 focus:border-blue-500 focus:outline-none"
                     />
                   </div>
                   <p className="mt-2 text-[11px] text-amber-600 flex items-center gap-1 bg-amber-50 p-2 rounded-lg border border-amber-100 leading-relaxed">
@@ -570,7 +583,7 @@ export function DriverLogin() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex items-center justify-center rounded-xl bg-blue-600 py-3.5 font-bold text-white hover:bg-blue-700 disabled:opacity-60 transition-all"
+                className="w-full flex items-center justify-center rounded-md bg-[#087f8c] py-3.5 font-bold text-[#f7f6f0] hover:bg-[#10282b] disabled:opacity-60 transition-all"
               >
                 {loading ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
@@ -649,7 +662,7 @@ export function DriverLogin() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex items-center justify-center rounded-xl bg-green-600 py-3.5 font-bold text-white hover:bg-green-700 disabled:opacity-60 transition-all"
+                className="w-full flex items-center justify-center rounded-md bg-[#087f8c] py-3.5 font-bold text-[#f7f6f0] hover:bg-[#10282b] disabled:opacity-60 transition-all"
               >
                 {loading ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
@@ -659,6 +672,7 @@ export function DriverLogin() {
               </button>
             </form>
           )}
+          </div>
         </div>
       </div>
     </div>
@@ -677,7 +691,7 @@ function SelectField({ title, icon: Icon, value, onChange, options, disabled }) 
           value={value}
           onChange={(e) => onChange(e.target.value)}
           disabled={disabled}
-          className="w-full rounded-xl border-2 border-slate-200 py-3 pr-12 pl-10 focus:border-blue-500 focus:outline-none bg-white appearance-none cursor-pointer disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed"
+          className="w-full rounded-md border border-[#d8e1dc] bg-white py-3 pr-12 pl-10 focus:border-blue-500 focus:outline-none bg-white appearance-none cursor-pointer disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed"
         >
           <option value="">{title} را انتخاب کنید</option>
           {options.map((o) => (

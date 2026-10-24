@@ -354,7 +354,7 @@ function RouteProgress({ current, maxReached, onStepClick }) {
                   ? `برو به «${step.title}»`
                   : "هنوز به این مرحله نرسیده‌اید"
               }
-              className={`flex shrink-0 items-center gap-2 rounded-full border px-2.5 py-1.5 text-xs transition ${
+              className={`flex shrink-0 items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs transition ${
                 active
                   ? "border-[#087f8c] bg-[#087f8c] text-[#f7f6f0]"
                   : done

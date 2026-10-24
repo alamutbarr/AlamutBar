@@ -47,36 +47,54 @@ export default function Shell() {
 
   const mobile = visible.filter((item) => item.mobile).slice(0, 4);
 
+  const toggleTheme = () => {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+    localStorage.setItem('alamut_admin_theme', next);
+  };
+
   return (
     <div className="admin-app" data-theme={theme}>
-      <header className="admin-top">
-        <BrandMark light subtitle="مرکز عملیات" />
-        <div style={{ flex: 1 }} />
-        <button type="button" className="btn secondary bell" onClick={() => navigate('/admin/alerts')} aria-label="هشدارها">
-          <Bell size={18} />
-          {alerts > 0 && <i>{alerts.toLocaleString('fa-IR')}</i>}
-        </button>
-        <button type="button" className="btn secondary" onClick={() => {
-          const next = theme === 'dark' ? 'light' : 'dark';
-          setTheme(next);
-          localStorage.setItem('alamut_admin_theme', next);
-        }} aria-label="تغییر تم">
-          {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-        </button>
-        <div style={{ textAlign: 'left' }}>
-          <strong>{user?.fullName}</strong>
-          <div style={{ fontSize: 12, opacity: 0.8 }}>{user?.roleLabels?.join(' · ')}</div>
+      <aside className="admin-side brand-rail">
+        <div className="admin-side-brand">
+          <BrandMark light subtitle="مرکز عملیات" />
+          <p className="admin-kicker">حمل بار، با خیال راحت</p>
         </div>
-        <button type="button" className="btn secondary" onClick={async () => { await logout(); navigate('/admin/login'); }} aria-label="خروج"><LogOut size={18} /></button>
-      </header>
-      <div className="admin-body">
-        <aside className="admin-side">
+        <nav>
           {visible.map((item) => (
             <NavLink key={item.to} to={item.to} end={item.end} className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
               <item.icon size={18} /> {item.label}
             </NavLink>
           ))}
-        </aside>
+        </nav>
+        <div className="admin-side-foot">
+          <strong>{user?.fullName}</strong>
+          <div className="muted">{user?.roleLabels?.join(' · ')}</div>
+          <div className="admin-side-actions">
+            <button type="button" className="btn secondary bell" onClick={() => navigate('/admin/alerts')} aria-label="هشدارها">
+              <Bell size={18} />
+              {alerts > 0 && <i>{alerts.toLocaleString('fa-IR')}</i>}
+            </button>
+            <button type="button" className="btn secondary" onClick={toggleTheme} aria-label="تغییر تم">
+              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+            <button type="button" className="btn secondary" onClick={async () => { await logout(); navigate('/admin/login'); }}>خروج</button>
+          </div>
+        </div>
+      </aside>
+      <div className="admin-body">
+        <header className="admin-top">
+          <span className="admin-mobile-brand"><BrandMark light subtitle="مرکز عملیات" /></span>
+          <div style={{ flex: 1 }} />
+          <button type="button" className="btn secondary bell" onClick={() => navigate('/admin/alerts')} aria-label="هشدارها">
+            <Bell size={18} />
+            {alerts > 0 && <i>{alerts.toLocaleString('fa-IR')}</i>}
+          </button>
+          <button type="button" className="btn secondary admin-mobile-brand" onClick={toggleTheme} aria-label="تغییر تم">
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+          <button type="button" className="btn secondary admin-mobile-brand" onClick={async () => { await logout(); navigate('/admin/login'); }} aria-label="خروج"><LogOut size={18} /></button>
+        </header>
         <main className="admin-main"><Outlet /></main>
       </div>
       <nav className="admin-bottom">

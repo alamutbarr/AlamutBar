@@ -143,7 +143,7 @@ export function DriverDashboard({
         <div className="space-y-2">
           <button
             onClick={() => onNavigate("missions")}
-            className="w-full flex items-center justify-between rounded-xl border border-white/60 bg-white/55 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-white/80"
+            className="w-full flex items-center justify-between rounded-md border border-[#d8e1dc] bg-white px-4 py-3 text-sm font-medium text-[#17383b] transition hover:border-[#087f8c]"
           >
             <span className="flex items-center gap-2">
               <Package className="w-4 h-4 text-blue-500" />

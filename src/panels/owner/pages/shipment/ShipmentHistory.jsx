@@ -61,7 +61,7 @@ export default function ShipmentHistory() {
                 <button
                   type="button"
                   onClick={() => setOpenId(s.id)}
-                  className="mt-3 rounded-full bg-[#087f8c] px-3 py-1.5 text-xs font-semibold text-[#f7f6f0]"
+                  className="mt-3 rounded-md bg-[#087f8c] px-3 py-1.5 text-xs font-semibold text-[#f7f6f0]"
                 >
                   جزئیات
                 </button>
@@ -105,7 +105,7 @@ export default function ShipmentHistory() {
                     <button
                       type="button"
                       onClick={() => setOpenId(s.id)}
-                      className="rounded-full bg-[#087f8c] px-3 py-1.5 text-xs font-semibold text-[#f7f6f0]"
+                      className="rounded-md bg-[#087f8c] px-3 py-1.5 text-xs font-semibold text-[#f7f6f0]"
                     >
                       جزئیات
                     </button>

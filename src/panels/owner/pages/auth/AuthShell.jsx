@@ -9,7 +9,7 @@ const fadeUp = {
 export default function AuthShell({ title, subtitle, children }) {
   return (
     <div className="min-h-screen bg-route-bg" dir="rtl">
-      <header className="bg-[#087f8c] px-4 py-3 text-[#f7f6f0] lg:hidden">
+      <header className="bg-ink-950 px-4 py-3 text-[#f7f6f0] lg:hidden">
         <BrandMark light subtitle="صاحب کالا" />
       </header>
       <div className="grid min-h-[calc(100vh-64px)] lg:min-h-screen lg:grid-cols-2">

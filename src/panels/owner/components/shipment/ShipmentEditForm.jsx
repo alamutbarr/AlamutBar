@@ -357,7 +357,7 @@ export default function ShipmentEditForm({ form, onChange }) {
               type="button"
               key={key}
               onClick={() => set("urgency", key)}
-              className={`rounded-full border px-3 py-1.5 text-xs ${
+              className={`rounded-md border px-3 py-1.5 text-xs ${
                 form.urgency === key ? "border-[#087f8c] bg-[#e7f4f5] text-[#087f8c]" : "border-[#d8e1dc] text-[#526d70]"
               }`}
             >
@@ -395,7 +395,7 @@ export default function ShipmentEditForm({ form, onChange }) {
                   type="button"
                   key={variant}
                   onClick={() => toggleVariant(variant)}
-                  className={`rounded-full border px-3 py-1.5 text-xs ${
+                  className={`rounded-md border px-3 py-1.5 text-xs ${
                     active ? "border-[#087f8c] bg-[#087f8c] text-white" : "border-[#d8e1dc] text-[#17383b]"
                   }`}
                 >

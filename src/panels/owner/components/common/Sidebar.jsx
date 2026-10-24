@@ -14,6 +14,7 @@ import { getMyNotifications } from "../../api/notification.api";
 import Avatar from "./Avatar";
 import Modal from "./Modal";
 import Button from "./Button";
+import BrandMark from "./BrandMark";
 
 const links = [
   { to: "/owner/dashboard", label: "داشبورد", icon: LayoutGrid },
@@ -46,12 +47,13 @@ export default function Sidebar({ onClose = () => {} }) {
 
   return (
     <>
-      <aside className="panel-side hidden h-full w-64 shrink-0 flex-col overflow-hidden border-l text-[#17383b] lg:flex">
-        <div className="px-5 py-5">
-          <p className="text-xs text-[#526d70]">میانبرها</p>
+      <aside className="brand-rail hidden h-full w-64 shrink-0 flex-col overflow-hidden lg:flex">
+        <div className="px-5 pb-2 pt-6">
+          <BrandMark light subtitle="صاحب کالا" />
+          <p className="mt-5 text-[11px] font-medium text-[#d7b56d]">حمل بار، با خیال راحت</p>
         </div>
 
-        <nav className="relative flex-1 space-y-1 px-3">
+        <nav className="flex-1 space-y-1 px-3 pt-4">
           {links.map(({ to, label, icon: Icon, badgeKey }) => {
             const isActive = location.pathname === to;
             return (
@@ -59,16 +61,16 @@ export default function Sidebar({ onClose = () => {} }) {
                 key={to}
                 to={to}
                 onClick={onClose}
-                className={`relative flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm transition-colors ${
+                className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors ${
                   isActive
-                    ? "bg-[#e1f3f0] font-bold text-[#087f8c]"
-                    : "text-[#17383b] hover:bg-[#f7f6f0]"
+                    ? "bg-white/10 font-bold text-[#f7f6f0]"
+                    : "text-[#f7f6f0]/75 hover:bg-white/5"
                 }`}
               >
-                <Icon size={18} strokeWidth={2} className="relative" />
-                <span className="relative flex-1">{label}</span>
+                <Icon size={18} strokeWidth={2} />
+                <span className="flex-1">{label}</span>
                 {badgeKey === "unread" && unread > 0 && (
-                  <span className="tabular relative flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#087f8c] px-1 text-[11px] font-bold text-[#f7f6f0]">
+                  <span className="tabular flex h-5 min-w-[20px] items-center justify-center rounded-md bg-[#159a9c] px-1 text-[11px] font-bold text-[#f7f6f0]">
                     {unread}
                   </span>
                 )}
@@ -77,15 +79,15 @@ export default function Sidebar({ onClose = () => {} }) {
           })}
         </nav>
 
-        <div className="relative border-t border-[#d8e1dc] p-3">
-          <div className="mb-2 flex items-center gap-3 rounded-lg px-3 py-2">
+        <div className="border-t border-white/10 p-3">
+          <div className="mb-2 flex items-center gap-3 rounded-md px-3 py-2">
             <Avatar
               avatarUrl={user?.avatar_url}
               firstName={user?.first_name}
               lastName={user?.last_name}
             />
             <div className="min-w-0 flex-1 leading-tight">
-              <p className="truncate text-sm text-[#17383b]">
+              <p className="truncate text-sm text-[#f7f6f0]">
                 {user?.first_name
                   ? `${user.first_name} ${user.last_name}`
                   : user?.phone_number}
@@ -94,7 +96,7 @@ export default function Sidebar({ onClose = () => {} }) {
           </div>
           <button
             onClick={() => setLogoutOpen(true)}
-            className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-sm text-[#526d70] transition-colors hover:bg-[#fdeceb] hover:text-[#b42318]"
+            className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm text-[#f7f6f0]/70 transition-colors hover:bg-white/5 hover:text-[#f7f6f0]"
           >
             <LogOut size={18} strokeWidth={2} />
             خروج از حساب

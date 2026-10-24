@@ -11,29 +11,55 @@
   --alamut-warn: #a16207;
   --alamut-crit: #b42318;
   --alamut-progress: #1d4ed8;
-  --alamut-radius: 18px;
-  --alamut-shadow: 0 10px 30px -18px rgba(23, 56, 59, 0.35);
-  --alamut-blur: 18px;
-  --alamut-glass: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(255, 255, 255, 0.78));
-  --alamut-glass-border: rgba(255, 255, 255, 0.72);
-  --alamut-elevation: inset 0 1px 0 rgba(255, 255, 255, 0.85), 0 18px 40px -26px rgba(23, 56, 59, 0.48);
+  --alamut-radius: 8px;
+  --alamut-shadow: 0 1px 0 rgba(23, 56, 59, 0.04), 0 10px 28px -18px rgba(23, 56, 59, 0.28);
+  --alamut-line: #d8e1dc;
 }
 
 .panel-canvas {
-  background:
-    radial-gradient(720px 280px at 100% -8%, rgba(21, 154, 156, 0.2), transparent 62%),
-    radial-gradient(480px 220px at 0% 20%, rgba(215, 181, 109, 0.18), transparent 58%),
-    var(--alamut-cream);
+  background: var(--alamut-cream);
 }
 
 .panel-card,
+.panel-section,
 .glass-card {
-  background: var(--alamut-glass);
-  border: 1px solid var(--alamut-glass-border);
-  border-radius: 22px;
-  box-shadow: var(--alamut-elevation);
-  backdrop-filter: blur(var(--alamut-blur)) saturate(150%);
-  -webkit-backdrop-filter: blur(var(--alamut-blur)) saturate(150%);
+  background: #fff;
+  border: 1px solid var(--alamut-line);
+  border-radius: var(--alamut-radius);
+  box-shadow: var(--alamut-shadow);
+}
+
+.bg-ink-950 .glass-card,
+.brand-rail .glass-card {
+  background: rgba(247, 246, 240, 0.1);
+  border-color: rgba(247, 246, 240, 0.18);
+  box-shadow: none;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.brand-rail {
+  position: relative;
+  overflow: hidden;
+  background-color: #10282b;
+  background-image: radial-gradient(120% 80% at 100% 0%, rgba(215, 181, 109, 0.16), transparent 55%);
+  color: #f7f6f0;
+}
+
+.brand-rail::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.4;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 480 640' fill='none'%3E%3Cpath d='M-20 560C100 560 90 420 210 400S340 300 320 200 420 60 500 40' stroke='%23159a9c' stroke-width='2' stroke-dasharray='2 14' stroke-linecap='round'/%3E%3Ccircle cx='210' cy='400' r='4' fill='%23d8e1dc'/%3E%3Ccircle cx='320' cy='200' r='4' fill='%23d8e1dc'/%3E%3Ccircle cx='36' cy='530' r='5' fill='%23d7b56d'/%3E%3Ccircle cx='470' cy='52' r='5' fill='%23d7b56d'/%3E%3C/svg%3E");
+  background-size: cover;
+  background-position: center;
+}
+
+.brand-rail > * {
+  position: relative;
+  z-index: 1;
 }
 
 button.glass-card,
@@ -50,12 +76,6 @@ a.glass-card:hover {
 
 .panel-section {
   overflow: hidden;
-  background: var(--alamut-glass);
-  border: 1px solid var(--alamut-glass-border);
-  border-radius: 22px;
-  box-shadow: var(--alamut-elevation);
-  backdrop-filter: blur(var(--alamut-blur)) saturate(150%);
-  -webkit-backdrop-filter: blur(var(--alamut-blur)) saturate(150%);
 }
 
 .panel-section-head {
@@ -79,13 +99,11 @@ a.glass-card:hover {
   letter-spacing: 0.04em;
 }
 
-.panel-side,
 .panel-dock {
-  background: rgba(255, 255, 255, 0.72);
-  border-color: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 14px 34px -20px rgba(23, 56, 59, 0.4);
+  background: #fff;
+  border: 1px solid var(--alamut-line);
+  border-radius: var(--alamut-radius);
+  box-shadow: var(--alamut-shadow);
 }
 
 .panel-kicker + h1,
