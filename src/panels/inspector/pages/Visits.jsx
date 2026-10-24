@@ -23,7 +23,10 @@ export default function Visits({ scope = 'open' }) {
 
   return (
     <>
-      <h1 style={{ margin: 0 }}>{scope === 'done' ? 'مراجعه‌های بسته‌شده' : 'مراجعه‌های امروز'}</h1>
+      <header className="panel-section-head">
+        <p className="panel-kicker">متصدی میدان</p>
+        <h1 style={{ margin: 0 }}>{scope === 'done' ? 'مراجعه‌های بسته‌شده' : 'مراجعه‌های امروز'}</h1>
+      </header>
       <p className="inspector-muted">{data.payerNote}</p>
       {data.missions.map((mission) => (
         <button key={mission.id} type="button" className="inspector-card" style={{ textAlign: 'right' }} onClick={() => navigate(`/inspector/missions/${mission.id}`)}>

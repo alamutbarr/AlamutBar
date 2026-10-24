@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 
 export function Modal({ open, title, onClose, children }) {
   if (!open) return null;
@@ -33,12 +33,21 @@ export function Empty({ text }) {
 }
 
 export function Page({ title, action, children }) {
+  const reduce = useReducedMotion();
   return (
-    <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', marginBottom: 16 }}>
-        <h1 style={{ margin: 0, fontSize: 26 }}>{title}</h1>
-        {action}
-      </div>
+    <motion.section
+      className="panel-page"
+      initial={reduce ? false : { opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: reduce ? 0 : 0.25 }}
+    >
+      <header className="panel-section-head">
+        <p className="panel-kicker">مرکز عملیات</p>
+        <div className="panel-section-row">
+          <h1 style={{ fontSize: 26 }}>{title}</h1>
+          {action}
+        </div>
+      </header>
       {children}
     </motion.section>
   );

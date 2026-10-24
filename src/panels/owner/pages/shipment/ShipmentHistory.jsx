@@ -23,6 +23,7 @@ export default function ShipmentHistory() {
     <div>
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
+          <p className="panel-kicker">صاحب کالا</p>
           <h1 className="text-2xl font-bold text-ink-900">بارهای من</h1>
           <p className="mt-1 text-sm text-ink-300">فهرست کامل درخواست‌های حمل ثبت‌شده</p>
         </div>
@@ -31,7 +32,7 @@ export default function ShipmentHistory() {
         </Button>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-ink-100 bg-white shadow-panel">
+      <section className="panel-section">
         {loading ? (
           <p className="px-5 py-14 text-center text-sm text-ink-300">در حال بارگذاری...</p>
         ) : shipments.length === 0 ? (
@@ -115,7 +116,7 @@ export default function ShipmentHistory() {
           </table>
           </>
         )}
-      </div>
+      </section>
 
       <ShipmentDetailsModal
         open={openId != null}

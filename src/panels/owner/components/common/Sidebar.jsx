@@ -46,7 +46,7 @@ export default function Sidebar({ onClose = () => {} }) {
 
   return (
     <>
-      <aside className="hidden h-full w-64 shrink-0 flex-col overflow-hidden border-l border-[#d8e1dc] bg-white/75 text-[#17383b] backdrop-blur lg:flex">
+      <aside className="panel-side hidden h-full w-64 shrink-0 flex-col overflow-hidden border-l text-[#17383b] lg:flex">
         <div className="px-5 py-5">
           <p className="text-xs text-[#526d70]">میانبرها</p>
         </div>

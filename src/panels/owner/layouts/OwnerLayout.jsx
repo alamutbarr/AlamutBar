@@ -26,7 +26,7 @@ export default function OwnerLayout() {
   const name = user?.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : user?.phone_number;
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-[#f7f6f0]" dir="rtl">
+    <div className="panel-canvas flex h-screen flex-col overflow-hidden" dir="rtl">
       <header className="z-30 flex items-center gap-3 bg-[#087f8c] px-4 py-3 text-[#f7f6f0]">
         <BrandMark light subtitle="صاحب کالا" />
         <div className="flex-1" />
@@ -57,7 +57,7 @@ export default function OwnerLayout() {
           </div>
         </main>
       </div>
-      <nav className="fixed inset-x-3 bottom-3 z-40 flex gap-1 rounded-[22px] border border-[#17383b]/10 bg-white/90 p-1.5 shadow-panel backdrop-blur lg:hidden">
+      <nav className="panel-dock fixed inset-x-3 bottom-3 z-40 flex gap-1 rounded-[22px] border p-1.5 lg:hidden">
         {MOBILE.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}

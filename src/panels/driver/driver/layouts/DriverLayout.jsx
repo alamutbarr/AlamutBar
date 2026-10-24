@@ -18,8 +18,8 @@ export function DriverLayout({ current, onNavigate, onLogout, driverName, childr
         return () => window.removeEventListener('keydown', onKeyDown);
     }, [confirmLogout]);
 
-    return (<div className="isolate relative min-h-screen flex bg-[#f7f6f0]" dir="rtl">
-      <aside className="hidden lg:flex w-64 flex-col fixed inset-y-0 right-0 border-l border-[#d8e1dc] bg-white/80 text-[#17383b] backdrop-blur">
+    return (<div className="panel-canvas isolate relative min-h-screen flex" dir="rtl">
+      <aside className="panel-side hidden lg:flex w-64 flex-col fixed inset-y-0 right-0 border-l text-[#17383b]">
         <div className="flex items-center gap-3 border-b border-[#d8e1dc] bg-[#087f8c] p-5 text-[#f7f6f0]">
           <span className="block h-9 w-9 shrink-0" aria-hidden="true">
             <svg viewBox="0 0 40 40" fill="none" className="h-full w-full stroke-current" strokeWidth="1.5" strokeLinejoin="bevel">
@@ -76,7 +76,7 @@ export function DriverLayout({ current, onNavigate, onLogout, driverName, childr
         <main className="pb-[calc(4.75rem+env(safe-area-inset-bottom))] lg:pb-6">{children}</main>
       </div>
 
-      <nav className="lg:hidden fixed inset-x-3 bottom-3 z-30 grid grid-cols-3 rounded-[22px] border border-[#17383b]/10 bg-white/90 p-1.5 pb-[max(0.4rem,env(safe-area-inset-bottom))] shadow-panel backdrop-blur">
+      <nav className="panel-dock lg:hidden fixed inset-x-3 bottom-3 z-30 grid grid-cols-3 rounded-[22px] border p-1.5 pb-[max(0.4rem,env(safe-area-inset-bottom))]">
         {navItems.map((item) => {
             const Icon = item.icon;
             const active = current === item.key;
