@@ -178,9 +178,21 @@ router.get('/me', requireDriver, asyncHandler(async (req, res) => {
     verificationStatus: driver.verificationStatus,
     availability: driver.availability,
     plate: driver.plate,
-    isGpsActive: driver.isGpsActive,
-    lastLocationAt: driver.lastLocationAt,
+    tractorType: driver.tractorType,
+    trailerType: driver.trailerType,
+    documents: driver.documents || { personal: [], vehicle: [], insurance: [] },
+    push: { registered: Boolean(driver.expoPushToken), stub: driver.expoPushToken === 'stub' },
   });
+}));
+
+router.post('/push-token', requireDriver, asyncHandler(async (req, res) => {
+  const driver = await Driver.findByPk(req.user.id);
+  if (!driver) throw new AppError('راننده پیدا نشد.', 401);
+  const token = req.body.token ? String(req.body.token).slice(0, 255) : (req.body.stub ? 'stub' : null);
+  driver.expoPushToken = token;
+  driver.pushPlatform = req.body.platform ? String(req.body.platform).slice(0, 16) : null;
+  await driver.save();
+  ok(res, { registered: Boolean(token), stub: token === 'stub' }, 'نشانی اعلان ثبت شد.');
 }));
 
 router.get('/missions', requireDriver, asyncHandler(async (req, res) => {

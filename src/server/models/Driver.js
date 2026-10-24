@@ -26,6 +26,8 @@ const Driver = sequelize.define('Driver', {
   lastLng: { type: DataTypes.DECIMAL(11, 8), allowNull: true },
   lastLocationAt: { type: DataTypes.DATE, allowNull: true },
   isGpsActive: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+  expoPushToken: { type: DataTypes.STRING(255), allowNull: true },
+  pushPlatform: { type: DataTypes.STRING(16), allowNull: true },
   refreshTokenHash: { type: DataTypes.STRING(64), allowNull: true },
   vehicleSpecs: {
     type: DataTypes.TEXT,
