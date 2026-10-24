@@ -1,35 +1,48 @@
-import { useEffect, useState } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
-import { Menu } from 'lucide-react';
+import { useState } from 'react';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Bell, History, LayoutGrid, LogOut, PackagePlus, ShieldAlert, User } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import Sidebar from '../components/common/Sidebar';
 import BrandMark from '../components/common/BrandMark';
+import { useAuth } from '../hooks/useAuth';
+
+const MOBILE = [
+  { to: '/owner/dashboard', label: 'خانه', icon: LayoutGrid, end: true },
+  { to: '/owner/create-shipment', label: 'ثبت بار', icon: PackagePlus },
+  { to: '/owner/shipments', label: 'بارها', icon: History },
+  { to: '/owner/notifications', label: 'اعلان', icon: Bell },
+];
+
+const MORE = [
+  { to: '/owner/complaints', label: 'ثبت شکایت', icon: ShieldAlert },
+  { to: '/owner/profile', label: 'پروفایل', icon: User },
+];
 
 export default function OwnerLayout() {
   const location = useLocation();
-  const [menuOpen, setMenuOpen] = useState(false);
-
-  useEffect(() => {
-    setMenuOpen(false);
-  }, [location.pathname]);
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+  const [more, setMore] = useState(false);
+  const name = user?.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : user?.phone_number;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-route-bg" dir="rtl">
-      <Sidebar open={menuOpen} onClose={() => setMenuOpen(false)} />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex items-center justify-between border-b border-route-line bg-[#f7f6f0]/95 px-4 py-3 backdrop-blur lg:hidden">
-          <BrandMark subtitle="صاحب کالا" />
-          <button
-            type="button"
-            onClick={() => setMenuOpen(true)}
-            className="rounded-md p-2 text-ink-700 hover:bg-white"
-            aria-label="باز کردن منو"
-          >
-            <Menu size={22} />
-          </button>
-        </header>
-        <main className="flex-1 overflow-y-auto">
-          <div className="w-full px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
+    <div className="flex h-screen flex-col overflow-hidden bg-[#f7f6f0]" dir="rtl">
+      <header className="z-30 flex items-center gap-3 bg-[#087f8c] px-4 py-3 text-[#f7f6f0]">
+        <BrandMark light subtitle="صاحب کالا" />
+        <div className="flex-1" />
+        {name && <span className="hidden max-w-[14rem] truncate text-sm sm:block">{name}</span>}
+        <button
+          type="button"
+          className="hidden rounded-2xl border border-white/30 px-3 py-2 text-sm lg:inline-flex"
+          onClick={() => { logout(); navigate('/owner/login'); }}
+        >
+          خروج
+        </button>
+      </header>
+      <div className="flex min-h-0 flex-1">
+        <Sidebar />
+        <main className="min-w-0 flex-1 overflow-y-auto">
+          <div className="w-full px-4 py-5 pb-28 sm:px-6 sm:py-8 lg:px-8 lg:pb-8">
             <AnimatePresence mode="wait">
               <motion.div
                 key={location.pathname}
@@ -44,6 +57,40 @@ export default function OwnerLayout() {
           </div>
         </main>
       </div>
+      <nav className="fixed inset-x-3 bottom-3 z-40 flex gap-1 rounded-[22px] border border-[#17383b]/10 bg-white/90 p-1.5 shadow-panel backdrop-blur lg:hidden">
+        {MOBILE.map(({ to, label, icon: Icon }) => (
+          <NavLink
+            key={to}
+            to={to}
+            className={({ isActive }) => `flex flex-1 flex-col items-center gap-1 rounded-2xl py-2 text-[11px] font-bold ${isActive ? 'bg-[#e1f3f0] text-[#087f8c]' : 'text-[#526d70]'}`}
+          >
+            <Icon size={18} />
+            {label}
+          </NavLink>
+        ))}
+        <button type="button" className="flex flex-1 flex-col items-center gap-1 rounded-2xl py-2 text-[11px] font-bold text-[#526d70]" onClick={() => setMore(true)}>
+          بیشتر
+        </button>
+      </nav>
+      {more && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <button type="button" className="absolute inset-0 bg-[#10282b]/45" aria-label="بستن" onClick={() => setMore(false)} />
+          <div className="absolute inset-x-3 bottom-3 rounded-[22px] bg-[#f7f6f0] p-3 shadow-panel-lg">
+            {MORE.map(({ to, label, icon: Icon }) => (
+              <NavLink key={to} to={to} onClick={() => setMore(false)} className="flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-bold text-[#17383b]">
+                <Icon size={18} /> {label}
+              </NavLink>
+            ))}
+            <button
+              type="button"
+              className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-sm font-bold text-[#b42318]"
+              onClick={() => { setMore(false); logout(); navigate('/owner/login'); }}
+            >
+              <LogOut size={18} /> خروج
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

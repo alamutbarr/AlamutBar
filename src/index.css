@@ -153,6 +153,7 @@ html {
 .glass-card {
   background-color: #fffcf7;
   border: 1px solid #d8e1dc;
+  border-radius: 18px;
   box-shadow: 0 10px 28px -18px rgba(23, 56, 59, 0.28);
   transition: background-color 220ms ease, box-shadow 220ms ease, border-color 220ms ease, transform 220ms ease;
 }

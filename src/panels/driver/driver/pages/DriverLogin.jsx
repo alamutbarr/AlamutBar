@@ -268,11 +268,11 @@ export function DriverLogin() {
 
   return (
     <div
-      className="min-h-screen bg-slate-900 flex items-center justify-center p-4"
+      className="min-h-screen bg-[#f7f6f0] flex items-center justify-center p-4"
       dir="rtl"
     >
       <div className="w-full max-w-md">
-        <div className="mb-8 flex flex-col items-center text-center text-[#f7f6f0]">
+        <div className="mb-8 flex flex-col items-center text-center text-[#17383b]">
           <span className="mb-3 block h-12 w-12" aria-hidden="true">
             <svg viewBox="0 0 40 40" fill="none" className="h-full w-full stroke-current" strokeWidth="1.5" strokeLinejoin="bevel">
               <path d="M5 28.5 17.5 8l7.1 11.8L30 10l5 8.7v9.8H5Z" />
@@ -280,7 +280,7 @@ export function DriverLogin() {
             </svg>
           </span>
           <h1 className="text-2xl font-extrabold tracking-[0.18em]">ALAMUT</h1>
-          <p className="mt-2 text-sm text-[#f7f6f0]/70">پنل راننده</p>
+          <p className="mt-2 text-sm text-[#526d70]">پنل راننده</p>
         </div>
 
         <div className="rounded-3xl bg-white shadow-2xl p-6 sm:p-8">

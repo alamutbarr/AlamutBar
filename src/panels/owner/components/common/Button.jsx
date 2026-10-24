@@ -35,7 +35,7 @@ export default function Button({
   return (
     <MotionComponent
       whileTap={isDisabled ? undefined : { scale: 0.97 }}
-      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-md font-semibold
+      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl font-semibold
         transition-colors duration-150 focus-visible:outline focus-visible:outline-2
         focus-visible:outline-offset-2 disabled:cursor-not-allowed
         ${variants[variant]} ${sizes[size]} ${className}`}
