@@ -17,6 +17,16 @@ const Driver = sequelize.define('Driver', {
   tractorType: { type: DataTypes.STRING(50) },
   trailerType: { type: DataTypes.STRING(50) },
   plate: { type: DataTypes.STRING(20) },
+  verificationStatus: { type: DataTypes.STRING(32), allowNull: false, defaultValue: 'PENDING_VERIFICATION' },
+  availability: { type: DataTypes.STRING(16), allowNull: false, defaultValue: 'OFFLINE' },
+  rejectionReason: { type: DataTypes.TEXT, allowNull: true },
+  documents: { type: DataTypes.JSON, allowNull: true },
+  performanceStats: { type: DataTypes.JSON, allowNull: true },
+  lastLat: { type: DataTypes.DECIMAL(10, 8), allowNull: true },
+  lastLng: { type: DataTypes.DECIMAL(11, 8), allowNull: true },
+  lastLocationAt: { type: DataTypes.DATE, allowNull: true },
+  isGpsActive: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+  refreshTokenHash: { type: DataTypes.STRING(64), allowNull: true },
   vehicleSpecs: {
     type: DataTypes.TEXT,
     get() {

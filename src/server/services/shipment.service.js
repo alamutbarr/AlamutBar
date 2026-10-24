@@ -265,6 +265,8 @@ async function confirmDelivery(ownerId, shipmentId) {
   }
 
   shipment.status = 'completed';
+  shipment.workflow_status = 'COMPLETED';
+  shipment.driver_status = shipment.driver_status || 'Completed';
   await shipment.save();
 
   await notificationService.notify(ownerId, {

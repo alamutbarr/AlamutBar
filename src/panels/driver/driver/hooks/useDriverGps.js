@@ -14,14 +14,19 @@ export function useDriverGps(enabled, missionId) {
     setQueueSize(queueRef.current.size());
   }, []);
 
-  const sendBatch = useCallback(() => {
-    if (!queueRef.current) return;
+  const sendBatch = useCallback(async () => {
+    if (!queueRef.current || !missionId) return;
     const batch = queueRef.current.getBatch(20);
-    if (batch.length > 0) {
+    if (batch.length === 0) return;
+    try {
+      const { api } = await import('../../services/api');
+      await api.post('/v1/driver/location', { missionId, points: batch, active: true });
       queueRef.current.removeBatch(batch.length);
       setQueueSize(queueRef.current.size());
+    } catch {
+      setQueueSize(queueRef.current.size());
     }
-  }, []);
+  }, [missionId]);
 
   useEffect(() => {
     if (!enabled || !missionId) {

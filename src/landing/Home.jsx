@@ -130,6 +130,7 @@ function Home() {
           {navItems.map((item, index) => <a key={item.href} href={item.href} onClick={closeMenu}><span>{faPad(index + 1)}</span>{item.label}<ArrowUpLeft size={18} /></a>)}
           <a href="/driver" onClick={closeMenu}><span>{faPad(navItems.length + 1)}</span>ورود رانندگان<ArrowUpLeft size={18} /></a>
           <a href="/owner/login" onClick={closeMenu}><span>{faPad(navItems.length + 2)}</span>ورود صاحب کالا<ArrowUpLeft size={18} /></a>
+          <a href="/admin" onClick={closeMenu}><span>{faPad(navItems.length + 3)}</span>ورود اپراتور<ArrowUpLeft size={18} /></a>
           <p>بار جابه‌جا می‌شود؛ اعتماد، ماندگار می‌ماند.</p>
         </div>
         {menuOpen && <button className="mobile-scrim" aria-label="بستن منو" onClick={closeMenu} />}
@@ -291,6 +292,7 @@ function Home() {
             <h2 id="entry-title" className="font-display">کدام پنل را می‌خواهید؟</h2>
             <a className="entry-choice" href="/driver">ورود رانندگان <ArrowUpLeft size={18} /></a>
             <a className="entry-choice" href="/owner/login">ورود صاحب کالا <ArrowUpLeft size={18} /></a>
+            <a className="entry-choice entry-choice-admin" href="/admin">ورود اپراتور <ArrowUpLeft size={18} /></a>
             <button type="button" className="entry-close" onClick={() => setEntryOpen(false)}>بستن</button>
           </div>
         </div>

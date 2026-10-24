@@ -137,6 +137,24 @@ const Shipment = sequelize.define(
     // وضعیت ریز پنل راننده (Accepted، InTransit، ...). وضعیت صاحب کالا در status می‌ماند.
     driver_status: { type: DataTypes.STRING(40), allowNull: true },
     declined_by: { type: DataTypes.JSON, allowNull: true },
+
+    // چرخه دوازده‌مرحله‌ای پنل ادمین. status برای پنل صاحب کالا دست نمی‌خورد.
+    workflow_status: { type: DataTypes.STRING(40), allowNull: true },
+    eta: { type: DataTypes.DATE, allowNull: true },
+    assigned_inspector_id: { type: DataTypes.INTEGER, allowNull: true },
+    waybill_number: { type: DataTypes.STRING(40), allowNull: true },
+    delivery_otp: { type: DataTypes.STRING(8), allowNull: true },
+    final_price: { type: DataTypes.BIGINT, allowNull: true },
+    penalty_amount: { type: DataTypes.BIGINT, allowNull: true },
+    delay_minutes: { type: DataTypes.INTEGER, allowNull: true },
+    force_majeure: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+    force_majeure_reason: { type: DataTypes.TEXT, allowNull: true },
+    deviation_since: { type: DataTypes.DATE, allowNull: true },
+    origin_arrived_at: { type: DataTypes.DATE, allowNull: true },
+    dest_arrived_at: { type: DataTypes.DATE, allowNull: true },
+    priority_score: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+    requires_inspector: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+    replaced_from_driver_id: { type: DataTypes.INTEGER.UNSIGNED, allowNull: true },
   },
   {
     tableName: "shipments",

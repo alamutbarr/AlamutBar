@@ -9,6 +9,7 @@
 .entry-card h2 { margin: 0 0 8px; font-size: 32px; line-height: 1.4; }
 .entry-choice { display: flex; align-items: center; justify-content: space-between; min-height: 56px; padding: 0 16px; text-decoration: none; color: #f7f6f0; background: #17383b; font-weight: 600; }
 .entry-choice:last-of-type { background: #087f8c; }
+.entry-choice-admin { background: #159a9c; }
 .entry-close { border: 0; background: transparent; color: #526d70; cursor: pointer; padding: 8px 0; }
 ::selection { background: #087f8c; color: #f7f6f0; }
 .font-display { font-family: var(--app-font-serif); }

@@ -34,7 +34,7 @@ export function PodFlow({ mission, onComplete, }) {
         }
         setError('');
         setStep('done');
-        onComplete({ otpVerified: true, photosUploaded: photos.length });
+        onComplete({ otp, otpVerified: true, photosUploaded: photos.length });
     };
     const handleOtpNotReceived = () => {
         setStep('otp_not_received');
@@ -47,6 +47,7 @@ export function PodFlow({ mission, onComplete, }) {
         setError('');
         setStep('done');
         onComplete({
+            otp: '',
             otpVerified: false,
             photosUploaded: photos.length,
             exceptionReason: exceptionReason.trim(),

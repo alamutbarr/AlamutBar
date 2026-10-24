@@ -5,6 +5,8 @@ import { AuthProvider as OwnerAuth } from './panels/owner/context/AuthContext.js
 import { ToastProvider } from './panels/owner/context/ToastContext.jsx';
 import DriverApp from './panels/driver/App.jsx';
 import { AuthProvider as DriverAuth } from './panels/driver/contexts/AuthContext.jsx';
+import AdminApp from './panels/admin/App.jsx';
+import { AdminAuthProvider } from './panels/admin/auth.jsx';
 
 export default function App() {
   return (
@@ -26,6 +28,14 @@ export default function App() {
           <DriverAuth>
             <DriverApp />
           </DriverAuth>
+        )}
+      />
+      <Route
+        path="/admin/*"
+        element={(
+          <AdminAuthProvider>
+            <AdminApp />
+          </AdminAuthProvider>
         )}
       />
     </Routes>

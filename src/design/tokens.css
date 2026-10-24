@@ -1,0 +1,16 @@
+/* توکن‌های مشترک برند الموت. پنل ادمین از همین متغیرها استفاده می‌کند
+   تا بعداً اپ راننده (React Native) و پولیش بقیه پنل‌ها همان پالت را داشته باشند. */
+:root {
+  --alamut-primary: #087f8c;
+  --alamut-secondary: #159a9c;
+  --alamut-ink: #17383b;
+  --alamut-gold: #d7b56d;
+  --alamut-cream: #f7f6f0;
+  --alamut-mist: #e1f3f0;
+  --alamut-ok: #1f8a4c;
+  --alamut-warn: #a16207;
+  --alamut-crit: #b42318;
+  --alamut-progress: #1d4ed8;
+  --alamut-radius: 18px;
+  --alamut-shadow: 0 10px 30px -18px rgba(23, 56, 59, 0.35);
+}
