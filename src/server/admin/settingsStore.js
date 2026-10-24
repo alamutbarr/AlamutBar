@@ -1,4 +1,5 @@
 const { SystemSetting } = require('../models');
+const { DEFAULT_CHECKLIST, DEFAULT_REQUIRED } = require('../inspector/policy');
 
 const SETTING_DEFAULTS = {
   dispatch_delay_minutes: { value: 45, description: 'تحمل تأخیر اعزام نسبت به ETA (دقیقه)' },
@@ -14,6 +15,15 @@ const SETTING_DEFAULTS = {
   penalty_per_step: { value: 250000, description: 'مبلغ هر پله جریمه (تومان)' },
   penalty_cap_ratio: { value: 0.15, description: 'سقف جریمه نسبت به کرایه' },
   sensitive_cargo_value: { value: 500000000, description: 'آستانه ارزش برای الزام متصدی (تومان، پیش‌فرض عملیاتی)' },
+  inspector_required_mode: { value: 'flagged_or_value', description: 'الزام متصدی: flagged_or_value یا all یا assigned_only' },
+  inspector_dispatch_payer: { value: 'alamut', description: 'مسئول هماهنگی اعزام متصدی: alamut یا cargo_owner یا carrier. تسویه در این نسخه نیست' },
+  inspector_grace_minutes: { value: 30, description: 'مهلت حضور متصدی بعد از پایان پنجره بارگیری (دقیقه)' },
+  inspector_no_show_policy: { value: 'alert', description: 'غیبت متصدی فقط هشدار می‌سازد و بازرسی را حذف نمی‌کند' },
+  weight_discrepancy_kg: { value: 200, description: 'اختلاف وزن قابل قبول نسبت به وزن اعلامی (کیلوگرم)' },
+  value_discrepancy_ratio: { value: 0.05, description: 'نسبت اختلاف ارزش کالا که مغایرت حساب می‌شود' },
+  inspector_final_approval: { value: 'supervisor', description: 'تأیید نهایی: supervisor، یا inspector فقط برای مراجعه کامل و بدون مغایرت' },
+  inspector_required_items: { value: DEFAULT_REQUIRED, description: 'مدارک الزامی متصدی: عکس پلمب و مهار، وزن خالی و پر، ارزش دقیق' },
+  inspector_checklist: { value: DEFAULT_CHECKLIST, description: 'چک‌لیست مراجعه متصدی' },
 };
 
 let cache = null;

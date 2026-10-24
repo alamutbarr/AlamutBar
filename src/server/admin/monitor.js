@@ -1,5 +1,6 @@
 const { Op } = require('sequelize');
-const { Shipment, Driver, DriverLocation, Alert, City } = require('../models');
+const { Shipment, Driver, DriverLocation, Alert, City, InspectionReport } = require('../models');
+const { needsInspector, inspectorNoShow } = require('../inspector/policy');
 const { evaluateMonitor } = require('./alertRules');
 const { ACTIVE_TRIP } = require('./workflow');
 const { getSettings } = require('./settingsStore');
@@ -79,6 +80,19 @@ async function evaluateShipment(shipment, driver, settings) {
   }
   await shipment.save();
   for (const draft of result.alerts) await openAlert(shipment, driver, draft);
+  const report = await InspectionReport.findOne({
+    where: { shipmentId: shipment.id },
+    order: [['createdAt', 'DESC']],
+  });
+  const absence = inspectorNoShow({
+    needs: needsInspector(shipment, settings),
+    workflowStatus: shipment.workflow_status,
+    loadingDate: shipment.loading_date,
+    loadingTimeTo: shipment.loading_time_to,
+    graceMinutes: settings.inspector_grace_minutes,
+    report,
+  });
+  if (absence) await openAlert(shipment, driver, absence);
 }
 
 async function ingestDriverPing({ driver, missionId, points = [], active = true }) {

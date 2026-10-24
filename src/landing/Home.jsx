@@ -131,6 +131,7 @@ function Home() {
           <a href="/driver" onClick={closeMenu}><span>{faPad(navItems.length + 1)}</span>ورود رانندگان<ArrowUpLeft size={18} /></a>
           <a href="/owner/login" onClick={closeMenu}><span>{faPad(navItems.length + 2)}</span>ورود صاحب کالا<ArrowUpLeft size={18} /></a>
           <a href="/admin" onClick={closeMenu}><span>{faPad(navItems.length + 3)}</span>ورود اپراتور<ArrowUpLeft size={18} /></a>
+          <a href="/inspector" onClick={closeMenu}><span>{faPad(navItems.length + 4)}</span>ورود متصدی<ArrowUpLeft size={18} /></a>
           <p>بار جابه‌جا می‌شود؛ اعتماد، ماندگار می‌ماند.</p>
         </div>
         {menuOpen && <button className="mobile-scrim" aria-label="بستن منو" onClick={closeMenu} />}
@@ -293,6 +294,7 @@ function Home() {
             <a className="entry-choice" href="/driver">ورود رانندگان <ArrowUpLeft size={18} /></a>
             <a className="entry-choice" href="/owner/login">ورود صاحب کالا <ArrowUpLeft size={18} /></a>
             <a className="entry-choice entry-choice-admin" href="/admin">ورود اپراتور <ArrowUpLeft size={18} /></a>
+            <a className="entry-choice entry-choice-inspector" href="/inspector">ورود متصدی <ArrowUpLeft size={18} /></a>
             <button type="button" className="entry-close" onClick={() => setEntryOpen(false)}>بستن</button>
           </div>
         </div>

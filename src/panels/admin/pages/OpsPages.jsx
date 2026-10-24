@@ -49,7 +49,7 @@ function Inspections() {
                 <strong>{report.trackingCode}</strong>
                 <Badge tone={report.decision === 'STOPPED' ? 'crit' : report.decision === 'PENDING' ? 'warn' : 'ok'}>{DECISIONS[report.decision] || report.decision}</Badge>
               </div>
-              <p className="muted">{report.inspectorName || 'بدون متصدی'} — خالص {report.weightNet ?? '—'} کیلو</p>
+              <p className="muted">{report.inspectorName || 'بدون متصدی'} — خالص {report.weightNet ?? '—'} کیلو{report.recordedCargoValue ? ` — ارزش دقیق ${Number(report.recordedCargoValue).toLocaleString('fa-IR')}` : ''}</p>
               {(report.discrepancies || []).length > 0 && <p>مغایرت: {report.discrepancies.map((item) => item.note || item).join('، ')}</p>}
               {report.decision === 'PENDING' && (
                 <div style={{ display: 'grid', gap: 8 }}>
@@ -255,11 +255,16 @@ function Settings() {
               <strong>{row.description || row.key}</strong>
               <div className="muted">{row.key}</div>
               <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                <input className="field" value={drafts[row.key] ?? String(row.value)} onChange={(event) => setDrafts({ ...drafts, [row.key]: event.target.value })} />
+                <input className="field" value={drafts[row.key] ?? (row.value != null && typeof row.value === 'object' ? JSON.stringify(row.value) : String(row.value ?? ''))} onChange={(event) => setDrafts({ ...drafts, [row.key]: event.target.value })} />
                 <button type="button" className="btn" onClick={async () => {
-                  const raw = drafts[row.key] ?? String(row.value);
-                  const value = raw === 'true' ? true : raw === 'false' ? false : (Number.isNaN(Number(raw)) ? raw : Number(raw));
+                  const raw = drafts[row.key] ?? (row.value != null && typeof row.value === 'object' ? JSON.stringify(row.value) : String(row.value ?? ''));
                   try {
+                    let value = raw;
+                    const text = String(raw).trim();
+                    if (text.startsWith('[') || text.startsWith('{')) value = JSON.parse(text);
+                    else if (text === 'true') value = true;
+                    else if (text === 'false') value = false;
+                    else if (text !== '' && !Number.isNaN(Number(text))) value = Number(text);
                     await api(`/settings/${row.key}`, { method: 'PATCH', body: { value } });
                     toast.success('ذخیره شد');
                     reload();

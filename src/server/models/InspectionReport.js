@@ -11,6 +11,8 @@ const InspectionReport = sequelize.define('InspectionReport', {
   weightEmpty: { type: DataTypes.DECIMAL(10, 2), allowNull: true },
   weightFull: { type: DataTypes.DECIMAL(10, 2), allowNull: true },
   weightNet: { type: DataTypes.DECIMAL(10, 2), allowNull: true },
+  recordedCargoValue: { type: DataTypes.DECIMAL(15, 0), allowNull: true },
+  actualCargoType: { type: DataTypes.STRING(80), allowNull: true },
   discrepancies: { type: DataTypes.JSON, allowNull: true },
   decision: { type: DataTypes.STRING(20), allowNull: false, defaultValue: 'PENDING' },
   decisionNote: { type: DataTypes.TEXT, allowNull: true },

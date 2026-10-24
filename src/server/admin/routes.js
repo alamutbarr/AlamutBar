@@ -95,7 +95,7 @@ router.get('/dashboard', requirePermission('dashboard'), asyncHandler(async (req
         count: byStatus[status] || 0,
       })),
       trend: Object.entries(days).map(([date, count]) => ({ date, count })),
-      alertTypes: ['GPS_CUT', 'ROUTE_DEVIATION', 'DELAY', 'OTHER'].map((type) => ({
+      alertTypes: ['GPS_CUT', 'ROUTE_DEVIATION', 'DELAY', 'INSPECTOR_ABSENT', 'OTHER'].map((type) => ({
         type,
         count: alerts.filter((item) => item.type === type).length,
       })),
@@ -321,6 +321,7 @@ router.get('/inspections', requirePermission('inspections'), asyncHandler(async 
       inspectorName: row.inspector?.fullName,
       weightNet: row.weightNet != null ? Number(row.weightNet) : null,
       discrepancies: row.discrepancies || [],
+      recordedCargoValue: row.recordedCargoValue != null ? Number(row.recordedCargoValue) : null,
       decision: row.decision,
       decisionNote: row.decisionNote,
       createdAt: row.createdAt,

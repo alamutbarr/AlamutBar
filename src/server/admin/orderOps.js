@@ -8,6 +8,7 @@ const { audit, logEvent, pageOf } = require('./audit');
 const { deriveWorkflow, legacyPatch, isKnownStatus, WORKFLOW_LABELS, ACTIVE_TRIP } = require('./workflow');
 const { calculatePenalty } = require('./penalty');
 const { getSettings } = require('./settingsStore');
+const { needsInspector } = require('../inspector/policy');
 const { publish } = require('./realtime');
 
 const includes = [
@@ -362,7 +363,8 @@ async function changeStatus(admin, id, body) {
 }
 
 async function assertInspectionClear(shipment) {
-  if (!shipment.requires_inspector) return;
+  const settings = await getSettings();
+  if (!needsInspector(shipment, settings)) return;
   const report = await InspectionReport.findOne({
     where: { shipmentId: shipment.id, decision: { [Op.in]: ['APPROVED', 'CORRECTED'] } },
   });

@@ -8,7 +8,7 @@
     "dev:web": "vite --host 0.0.0.0 --port 4179",
     "start": "node src/server/server.js",
     "build": "vite build",
-    "test": "node --test src/server/admin/*.test.js src/server/mobile/*.test.js"
+    "test": "node --test src/server/admin/*.test.js src/server/mobile/*.test.js src/server/inspector/*.test.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

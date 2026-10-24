@@ -29,6 +29,7 @@ export const ALERT_LABELS = {
   GPS_CUT: 'قطع GPS',
   ROUTE_DEVIATION: 'انحراف مسیر',
   DELAY: 'تأخیر اعزام',
+  INSPECTOR_ABSENT: 'غیبت متصدی',
   OTHER: 'سایر',
 };
 
