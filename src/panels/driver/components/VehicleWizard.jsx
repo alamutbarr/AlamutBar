@@ -17,6 +17,33 @@ function labelOf(options, value) {
   return options?.find((option) => option.value === value)?.label || '';
 }
 
+function rawValue(step, tractorType, trailerType, specs) {
+  if (step.id === 'tractor') return tractorType;
+  if (step.id === 'trailer') return trailerType;
+  if (step.field) return specs[step.field.key] || '';
+  return '';
+}
+
+function optionsFor(step, tractorType) {
+  if (step.id === 'tractor') return TRACTOR_TYPES;
+  if (step.id === 'trailer') return TRAILER_TYPES[tractorType] || [];
+  return step.field?.options || [];
+}
+
+function isComplete(step, tractorType, trailerType, specs) {
+  if (step.id === 'summary') return true;
+  const value = rawValue(step, tractorType, trailerType, specs);
+  if (!value) return false;
+  return optionsFor(step, tractorType).some((option) => option.value === value);
+}
+
+function nextIndex(steps, fromIndex, tractorType, trailerType, specs) {
+  for (let index = fromIndex + 1; index < steps.length; index += 1) {
+    if (!isComplete(steps[index], tractorType, trailerType, specs)) return index;
+  }
+  return steps.length - 1;
+}
+
 export function VehicleWizard({
   tractorType,
   trailerType,
@@ -45,9 +72,14 @@ export function VehicleWizard({
 
   const [currentId, setCurrentId] = useState('tractor');
   const [maxReached, setMaxReached] = useState(0);
-  const currentIndex = Math.max(0, steps.findIndex((step) => step.id === currentId));
+  const [returnToSummary, setReturnToSummary] = useState(false);
+  const foundIndex = steps.findIndex((step) => step.id === currentId);
+  const currentIndex = foundIndex === -1
+    ? nextIndex(steps, -1, tractorType, trailerType, specs)
+    : foundIndex;
   const current = steps[currentIndex] || steps[0];
   const fillPercent = Math.round((currentIndex / Math.max(1, steps.length - 1)) * 100);
+  const summaryIndex = steps.findIndex((step) => step.id === 'summary');
 
   const goTo = (index) => {
     const next = Math.max(0, Math.min(steps.length - 1, index));
@@ -56,26 +88,45 @@ export function VehicleWizard({
   };
 
   const valueOf = (step) => {
-    if (step.id === 'tractor') return labelOf(TRACTOR_TYPES, tractorType);
-    if (step.id === 'trailer') return labelOf(TRAILER_TYPES[tractorType], trailerType);
-    if (step.field) return labelOf(step.field.options, specs[step.field.key]);
-    return '';
+    if (step.id === 'summary') return '';
+    return labelOf(optionsFor(step, tractorType), rawValue(step, tractorType, trailerType, specs));
   };
 
-  const canAdvance = () => Boolean(valueOf(current));
+  const canAdvance = () => isComplete(current, tractorType, trailerType, specs);
 
   const next = () => {
+    const missing = steps.find((step) => !isComplete(step, tractorType, trailerType, specs));
     if (current.id === 'summary') {
+      if (missing) {
+        goTo(steps.findIndex((step) => step.id === missing.id));
+        return;
+      }
       onConfirm();
       return;
     }
     if (!canAdvance()) return;
+    if (returnToSummary) {
+      const target = nextIndex(steps, currentIndex, tractorType, trailerType, specs);
+      if (target === summaryIndex) setReturnToSummary(false);
+      goTo(target);
+      return;
+    }
     goTo(currentIndex + 1);
   };
 
   const back = () => {
+    if (returnToSummary && canAdvance()) {
+      setReturnToSummary(false);
+      goTo(summaryIndex);
+      return;
+    }
     if (currentIndex === 0) onBack();
     else goTo(currentIndex - 1);
+  };
+
+  const editStep = (stepId) => {
+    setReturnToSummary(true);
+    goTo(steps.findIndex((step) => step.id === stepId));
   };
 
   const options = current.id === 'tractor'
@@ -195,7 +246,7 @@ export function VehicleWizard({
                 </div>
                 <button
                   type="button"
-                  onClick={() => goTo(steps.findIndex((item) => item.id === step.id))}
+                  onClick={() => editStep(step.id)}
                   className="inline-flex items-center gap-1 rounded-md border border-[#d8e1dc] px-2.5 py-1.5 text-xs font-bold text-[#087f8c]"
                 >
                   <Pencil className="h-3.5 w-3.5" />
@@ -217,7 +268,9 @@ export function VehicleWizard({
       >
         {current.id === 'summary' ? (loading ? 'در حال ثبت...' : 'تأیید و ورود') : (
           <>
-            ادامه
+            {returnToSummary && nextIndex(steps, currentIndex, tractorType, trailerType, specs) === summaryIndex
+              ? 'بازگشت به بازبینی'
+              : 'ادامه'}
             <ChevronLeft className="h-4 w-4" />
           </>
         )}

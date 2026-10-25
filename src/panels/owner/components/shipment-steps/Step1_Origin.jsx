@@ -7,6 +7,7 @@ import StepHeader from "./StepHeader";
 import { getCities, getZonesByCity } from "../../api/location.api";
 import { cityOptionKey, mergeCityCatalog } from "../../data/mergeCities";
 import { IRAN_CITIES } from "../../data/iranCities";
+import { nearestCity, pinWithinCity } from "../../utils/cityBounds";
 
 const TEHRAN_ZONES = [
   { id: 1, name: "مرکز، شمال و بافت متراکم" },
@@ -19,6 +20,7 @@ const TEHRAN_ZONES = [
 export default function Step1_Origin({ data, onChange }) {
   const [cities, setCities] = useState([]);
   const [zones, setZones] = useState([]);
+  const [pinError, setPinError] = useState("");
 
   // بارگذاری شهرها: اولویت با دیتابیس است؛ در صورت خالی بودن یا آفلاین بودن، از دیتای کامل استفاده می‌شود
   useEffect(() => {
@@ -62,7 +64,31 @@ export default function Step1_Origin({ data, onChange }) {
     }
   }, [data.origin_city_id, availableZones]);
 
+  useEffect(() => {
+    if (!selectedCity || selectedCity.lat == null) return;
+    if (data.origin_lat === "" || data.origin_lat == null) return;
+    if (pinWithinCity({ lat: data.origin_lat, lng: data.origin_lng }, selectedCity)) return;
+    onChange("origin_lat", "");
+    onChange("origin_lng", "");
+    setPinError("نقطهٔ قبلی خارج از شهر انتخاب‌شده بود و پاک شد.");
+  }, [selectedCity?.id, selectedCity?.lat, selectedCity?.lng]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handlePick = (lat, lng, address) => {
+    let city = selectedCity;
+    if (!city) {
+      city = nearestCity({ lat, lng }, cities);
+      if (!city) {
+        setPinError("شهری در محدودهٔ این نقطه پیدا نشد. شهر را از فهرست انتخاب کنید.");
+        return;
+      }
+      onChange("origin_city_id", Number(city.id));
+      onChange("origin_city_name", city.name?.trim() || "");
+      onChange("origin_zone_id", "");
+    } else if (!pinWithinCity({ lat, lng }, city)) {
+      setPinError(`این نقطه داخل «${city.name}» نیست.`);
+      return;
+    }
+    setPinError("");
     onChange("origin_lat", lat);
     onChange("origin_lng", lng);
     if (address) onChange("origin_address", address);
@@ -126,9 +152,17 @@ export default function Step1_Origin({ data, onChange }) {
       <LocationPicker
         lat={data.origin_lat}
         lng={data.origin_lng}
+        focus={selectedCity?.lat != null ? { lat: Number(selectedCity.lat), lng: Number(selectedCity.lng) } : null}
         onPick={handlePick}
         placeholder="جست‌وجوی آدرس مبدأ..."
       />
+      {pinError && <p className="text-sm text-red-600">{pinError}</p>}
+      {data.origin_lat !== "" && data.origin_lat != null && (
+        <p className="text-xs text-[#526d70]" data-pin="origin">
+          موقعیت ثبت‌شده داخل {selectedCity?.name || "شهر انتخاب‌شده"}:{" "}
+          <bdi dir="ltr">{Number(data.origin_lat).toFixed(4)}, {Number(data.origin_lng).toFixed(4)}</bdi>
+        </p>
+      )}
 
       <Input
         as="textarea"

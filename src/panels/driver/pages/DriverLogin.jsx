@@ -114,6 +114,7 @@ export function DriverLogin() {
   const [specs, setSpecs] = useState({});
 
   const handleTractorChange = (value) => {
+    if (value === tractorType) return;
     setTractorType(value);
     setTrailerType("");
     setSpecs({});
@@ -121,8 +122,16 @@ export function DriverLogin() {
   };
 
   const handleTrailerChange = (value) => {
+    if (value === trailerType) return;
     setTrailerType(value);
-    setSpecs({});
+    setSpecs((prev) => {
+      const next = {};
+      for (const field of getVehicleFields(tractorType, value)) {
+        const current = prev[field.key];
+        if (current && field.options?.some((option) => option.value === current)) next[field.key] = current;
+      }
+      return next;
+    });
     setError("");
   };
 

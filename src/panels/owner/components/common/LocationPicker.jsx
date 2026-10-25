@@ -9,6 +9,7 @@ import {
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Search, MapPin, LocateFixed, Loader2 } from "lucide-react";
+import { boundsAround } from "../../utils/cityBounds";
 
 // آیکن پیش‌فرض Leaflet با باندلرهایی مثل Vite به‌درستی لود نمی‌شود؛
 // این یک راه‌حل شناخته‌شده است: آدرس آیکن‌ها را از CDN می‌دهیم
@@ -59,10 +60,24 @@ function FlyToOnChange({ position }) {
   return null;
 }
 
+function FocusCity({ center, hasPin }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!center) {
+      map.setMaxBounds(null);
+      return;
+    }
+    map.setMaxBounds(boundsAround(center));
+    if (!hasPin) map.flyTo([center.lat, center.lng], 12, { duration: 0.6 });
+  }, [center?.lat, center?.lng, hasPin]); // eslint-disable-line react-hooks/exhaustive-deps
+  return null;
+}
+
 export default function LocationPicker({
   lat,
   lng,
   onPick,
+  focus = null,
   placeholder = "جست‌وجوی آدرس یا نام محل...",
 }) {
   const [query, setQuery] = useState("");
@@ -186,6 +201,7 @@ export default function LocationPicker({
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           <ClickHandler onPick={handlePick} />
+          <FocusCity center={focus} hasPin={Boolean(position)} />
           <FlyToOnChange position={position} />
           {position && (
             <Marker

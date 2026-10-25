@@ -78,6 +78,7 @@ export function shipmentToForm(shipment) {
     origin_lat: shipment.origin_lat,
     origin_lng: shipment.origin_lng,
     dest_city_id: shipment.dest_city_id || "",
+    dest_city_name: shipment.destCity?.name?.trim() || "",
     dest_zone_id: shipment.dest_zone_id || "",
     dest_address: shipment.dest_address || "",
     dest_lat: shipment.dest_lat ?? "",
@@ -110,7 +111,7 @@ export function shipmentToForm(shipment) {
 
 export function formToPayload(form) {
   const blankToNull = (value) => (value === "" || value == null ? null : Number(value));
-  const { origin_city_name, ...rest } = form;
+  const { origin_city_name, dest_city_name, ...rest } = form;
   return {
     ...rest,
     origin_city_id: Number(form.origin_city_id),
@@ -271,10 +272,19 @@ export default function ShipmentEditForm({ form, onChange }) {
             value={form.dest_city_id}
             options={options}
             placeholder="جستجو یا انتخاب شهر..."
-            onChange={(cityId) => onChange({ ...form, dest_city_id: cityId ? Number(cityId) : "", dest_zone_id: "" })}
+            onChange={(cityId) => {
+              const city = cities.find((item) => String(item.id) === String(cityId));
+              onChange({
+                ...form,
+                dest_city_id: cityId ? Number(cityId) : "",
+                dest_city_name: city?.name?.trim() || "",
+                dest_zone_id: "",
+              });
+            }}
           />
           <SearchableSelect
-            label="محدوده مقصد (اختیاری)"
+            label={destIsTehran ? "محدوده مقصد" : "محدوده مقصد (اختیاری)"}
+            required={destIsTehran}
             disabled={!form.dest_city_id}
             value={form.dest_zone_id}
             options={destZoneOptions}

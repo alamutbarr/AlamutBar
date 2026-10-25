@@ -14,6 +14,7 @@ const ROLES = [
 ];
 
 const DECISIONS = { PENDING: 'در انتظار', APPROVED: 'تأیید', CORRECTED: 'اصلاح شد', STOPPED: 'توقف' };
+const KYC_STATUS = { MISSING: 'ارسال نشده', PENDING: 'در انتظار بررسی', APPROVED: 'تأیید شد', REJECTED: 'رد شد' };
 const COMPLAINT = { pending: 'باز', reviewed: 'بررسی شد', resolved: 'حل شد', rejected: 'رد شد' };
 
 function useLoad(loader, deps) {
@@ -99,6 +100,7 @@ function Inspections() {
 function Customers() {
   const { can } = useAdmin();
   const [q, setQ] = useState('');
+  const [reasons, setReasons] = useState({});
   const { data, error, reload } = useLoad(() => api(`/customers?q=${encodeURIComponent(q)}`), [q]);
   if (error) return <p className="muted">{error}</p>;
   if (!data) return <SkeletonRows />;
@@ -111,6 +113,17 @@ function Customers() {
     } catch (err) { toast.error(err.message); }
   }
 
+  async function review(ownerId, key, decision) {
+    try {
+      await api(`/customers/${ownerId}/kyc/review`, {
+        method: 'POST',
+        body: { key, decision, note: reasons[`${ownerId}:${key}`] || '' },
+      });
+      toast.success(decision === 'APPROVED' ? 'مدرک تأیید شد' : 'دلیل رد ارسال شد');
+      reload();
+    } catch (err) { toast.error(err.message); }
+  }
+
   return (
     <Page title="صاحبان کالا">
       <input className="field" style={{ marginBottom: 12 }} placeholder="نام یا شرکت" value={q} onChange={(event) => setQ(event.target.value)} />
@@ -118,19 +131,42 @@ function Customers() {
         {data.items.map((owner) => (
           <article key={owner.id} className="card" style={{ padding: 14 }}>
             <strong>{owner.companyName || owner.fullName}</strong>
-            <p className="muted">{owner.fullName} — {owner.phone} — کد ملی {owner.nationalId || '—'}</p>
+            <p className="muted">{owner.fullName} — {owner.phone} — کد ملی {owner.nationalId || '—'} — کد پستی {owner.postalCode || '—'}</p>
             <p>سقف قیمت: {money(owner.priceCeiling)} — متصدی اجباری: {owner.requireInspector ? 'بله' : 'خیر'}</p>
             <Badge tone={owner.verificationStatus === 'VERIFIED' ? 'ok' : owner.verificationStatus === 'REJECTED' ? 'crit' : 'warn'}>
-              {owner.verificationStatus === 'VERIFIED' ? 'تأیید مدارک' : owner.verificationStatus === 'REJECTED' ? 'رد مدارک' : 'در انتظار مدارک'}
+              {owner.verificationStatus === 'VERIFIED' ? 'همه مدارک تأیید شد' : owner.verificationStatus === 'REJECTED' ? 'مدرکی رد شده' : 'در انتظار تکمیل مدارک'}
             </Badge>
             {owner.verificationNote && <p>{owner.verificationNote}</p>}
+            <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
+              {(owner.kyc?.documents || []).map((doc) => (
+                <div key={doc.key} style={{ border: '1px solid #d8e1dc', borderRadius: 8, padding: 10 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+                    <strong>{doc.title}</strong>
+                    <Badge tone={doc.status === 'APPROVED' ? 'ok' : doc.status === 'REJECTED' ? 'crit' : 'warn'}>{KYC_STATUS[doc.status] || doc.status}</Badge>
+                  </div>
+                  {doc.url ? (
+                    <a href={doc.url} target="_blank" rel="noreferrer">
+                      <img src={doc.url} alt={doc.title} style={{ display: 'block', marginTop: 8, maxWidth: 240, maxHeight: 160, objectFit: 'contain', background: '#f7f6f0' }} />
+                    </a>
+                  ) : <p className="muted">ارسال نشده</p>}
+                  {doc.note && <p>دلیل رد: {doc.note}</p>}
+                  {can('owners.documents') && doc.url && (
+                    <div style={{ display: 'grid', gap: 8, marginTop: 8 }}>
+                      <button type="button" className="btn" onClick={() => review(owner.id, doc.key, 'APPROVED')}>تأیید این مدرک</button>
+                      <textarea
+                        className="area"
+                        placeholder="دلیل رد این مدرک"
+                        value={reasons[`${owner.id}:${doc.key}`] || ''}
+                        onChange={(event) => setReasons((current) => ({ ...current, [`${owner.id}:${doc.key}`]: event.target.value }))}
+                      />
+                      <button type="button" className="btn secondary" onClick={() => review(owner.id, doc.key, 'REJECTED')}>ارسال دلیل رد</button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
             {can('owners.documents') && (
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
-                <button type="button" className="btn" onClick={() => save(owner.id, { verificationStatus: 'VERIFIED' })}>تأیید</button>
-                <button type="button" className="btn secondary" onClick={() => {
-                  const note = window.prompt('دلیل رد مدارک');
-                  if (note) save(owner.id, { verificationStatus: 'REJECTED', note });
-                }}>رد</button>
                 <button type="button" className="btn secondary" onClick={() => save(owner.id, { requireInspector: !owner.requireInspector })}>
                   {owner.requireInspector ? 'حذف الزام متصدی' : 'الزام متصدی'}
                 </button>

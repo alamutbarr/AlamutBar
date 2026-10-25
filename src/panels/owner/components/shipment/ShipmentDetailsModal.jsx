@@ -45,6 +45,10 @@ export default function ShipmentDetailsModal({ shipmentId, open, onClose, onSave
       setError("برای شهر تهران، محدوده مبدأ الزامی است.");
       return;
     }
+    if (String(form.dest_city_name || "").trim() === "تهران" && !form.dest_zone_id) {
+      setError("برای شهر تهران، محدوده مقصد الزامی است.");
+      return;
+    }
     if (!form.loading_time_ranges?.length) {
       setError("حداقل یک بازهٔ بارگیری را انتخاب کنید.");
       return;

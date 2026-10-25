@@ -3,6 +3,7 @@ const AppError = require('../utils/AppError');
 const generateTrackingCode = require('../utils/generateTrackingCode');
 const vehicleMatchService = require('./vehicleMatch.service');
 const notificationService = require('./notification.service');
+const { assertPinInCity } = require('./cityBounds');
 
 const shipmentIncludes = [
   { model: VehicleType, as: 'vehicleType' },
@@ -66,6 +67,12 @@ async function validateReferences(payload) {
   if (tehranOrigin && !payload.origin_zone_id) {
     throw new AppError('برای شهر تهران، انتخاب محدوده مبدأ الزامی است.', 400);
   }
+  const tehranDest = String(destCity.name || '').trim() === 'تهران';
+  if (tehranDest && !payload.dest_zone_id) {
+    throw new AppError('برای شهر تهران، انتخاب محدوده مقصد الزامی است.', 400);
+  }
+  assertPinInCity({ lat: payload.origin_lat, lng: payload.origin_lng }, originCity, 'مبدأ');
+  assertPinInCity({ lat: payload.dest_lat, lng: payload.dest_lng }, destCity, 'مقصد');
 
   if (payload.origin_zone_id) {
     const originZone = await Zone.findByPk(payload.origin_zone_id);

@@ -49,6 +49,14 @@ const CargoOwner = sequelize.define(
       type: DataTypes.TEXT,
       allowNull: true,
     },
+    postal_code: {
+      type: DataTypes.STRING(10),
+      allowNull: true,
+    },
+    kyc: {
+      type: DataTypes.JSON,
+      allowNull: true,
+    },
   },
   {
     tableName: "cargo_owners",

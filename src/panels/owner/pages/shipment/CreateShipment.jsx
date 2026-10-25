@@ -30,7 +30,7 @@ const STEPS = [
   { title: "عکس و توضیح", Component: Step7_PhotosNotes },
   { title: "زمان", Component: Step8_DateUrgency },
   { title: "خودرو", Component: Step9_Vehicle },
-  { title: "بارگیری/تخلیه", Component: Step10_HandlingMethods },
+  { title: "بارگیری", Component: Step10_HandlingMethods },
   { title: "گیرنده", Component: Step11_Contact },
   { title: "تأیید", Component: Step12_Confirm },
   { title: "پایان", Component: Step13_Done },
@@ -40,7 +40,7 @@ const TOTAL_VISIBLE_STEPS = STEPS.length - 1; // بدون احتساب صفحه 
 
 const REQUIRED_FIELDS_BY_STEP = {
   1: ["origin_city_id", "origin_address", "origin_lat", "origin_lng"],
-  2: ["dest_city_id"],
+  2: ["dest_city_id", "dest_lat", "dest_lng"],
   3: ["cargo_type", "weight_kg"],
   4: ["cargo_value"],
   6: ["loading_date", "loading_time_from", "loading_time_to", "urgency"],
@@ -59,6 +59,7 @@ const emptyFormData = {
   origin_lat: "",
   origin_lng: "",
   dest_city_id: "",
+  dest_city_name: "",
   dest_zone_id: "",
   dest_address: "",
   dest_lat: "",
@@ -118,6 +119,13 @@ export default function CreateShipment() {
       return false;
     }
     if (
+      stepNum === 2 &&
+      String(formData.dest_city_name || "").trim() === "تهران" &&
+      !formData.dest_zone_id
+    ) {
+      return false;
+    }
+    if (
       stepNum === 4 &&
       !(Number(formData.cargo_value) >= MIN_CARGO_VALUE_RIAL)
     )
@@ -161,6 +169,17 @@ export default function CreateShipment() {
         !formData.origin_zone_id
       ) {
         setStepError("برای شهر تهران، محدوده مبدأ الزامی است.");
+      } else if (
+        currentStep === 2 &&
+        String(formData.dest_city_name || "").trim() === "تهران" &&
+        !formData.dest_zone_id
+      ) {
+        setStepError("برای شهر تهران، محدوده مقصد الزامی است.");
+      } else if (
+        (currentStep === 1 && !formData.origin_lat) ||
+        (currentStep === 2 && !formData.dest_lat)
+      ) {
+        setStepError("محل را روی نقشه، داخل شهر انتخاب‌شده، مشخص کنید.");
       } else {
         setStepError("لطفاً فیلدهای الزامی این مرحله را تکمیل کنید.");
       }
@@ -195,6 +214,7 @@ export default function CreateShipment() {
     delete payload.trackingCode;
     if (payload.cargo_type !== "other") delete payload.cargo_type_other;
     delete payload.origin_city_name;
+    delete payload.dest_city_name;
     ["origin_zone_id", "dest_zone_id"].forEach((k) => {
       if (payload[k] === "") payload[k] = null;
     });

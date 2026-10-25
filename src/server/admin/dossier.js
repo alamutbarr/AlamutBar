@@ -70,4 +70,20 @@ async function renderDossier(order) {
   }
 }
 
-module.exports = { renderDossier, buildHtml };
+function sendPdf(res, body, filename) {
+  const buffer = Buffer.isBuffer(body) ? body : Buffer.from(body);
+  if (buffer.subarray(0, 5).toString('latin1') !== '%PDF-') {
+    const error = new Error('پرونده PDF ساخته نشد.');
+    error.statusCode = 500;
+    throw error;
+  }
+  const asciiName = String(filename || 'alamut.pdf').replace(/[^\w.-]+/g, '-');
+  res.status(200);
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Length', buffer.length);
+  res.setHeader('Content-Disposition', `attachment; filename="${asciiName}"`);
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.end(buffer);
+}
+
+module.exports = { renderDossier, buildHtml, sendPdf };

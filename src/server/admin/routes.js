@@ -16,7 +16,9 @@ const orderOps = require('./orderOps');
 const { getSettings, listSettings, clearSettingsCache, SETTING_DEFAULTS } = require('./settingsStore');
 const { mapSnapshot } = require('./monitor');
 const { WORKFLOW_STATUSES, WORKFLOW_LABELS, ACTIVE_TRIP } = require('./workflow');
-const { renderDossier } = require('./dossier');
+const { renderDossier, sendPdf } = require('./dossier');
+const ownerKyc = require('./ownerKyc');
+const notificationService = require('../services/notification.service');
 const { reviewDocument } = require('./documents');
 const chat = require('../chat/service');
 const { buildWorkbook } = require('./reports');
@@ -140,10 +142,7 @@ router.post('/orders/:id/penalty', requirePermission('orders.penalty'), asyncHan
 router.get('/orders/:id/dossier', requirePermission('orders.read'), asyncHandler(async (req, res) => {
   const order = await orderOps.getOrder(req.params.id);
   const body = await renderDossier(order);
-  res.setHeader('Content-Type', 'application/pdf');
-  res.setHeader('Content-Length', body.length);
-  res.setHeader('Content-Disposition', `attachment; filename="alamut-${order.trackingCode}.pdf"`);
-  res.end(body);
+  sendPdf(res, body, `alamut-${order.trackingCode}.pdf`);
 }));
 
 router.get('/drivers/ready', requirePermission('drivers.queue'), asyncHandler(async (req, res) => {
@@ -469,8 +468,10 @@ router.get('/customers', requirePermission('owners.read'), asyncHandler(async (r
         nationalId: row.national_id,
         requireInspector: row.require_inspector,
         priceCeiling: row.price_ceiling != null ? Number(row.price_ceiling) : null,
+        postalCode: row.postal_code || null,
         verificationStatus: row.verification_status,
         verificationNote: row.verification_note,
+        kyc: ownerKyc.present(row.kyc),
       })),
       total: count,
       page,
@@ -487,18 +488,38 @@ router.patch('/customers/:id', requirePermission('owners.documents'), asyncHandl
     owner.price_ceiling = req.body.priceCeiling === null || req.body.priceCeiling === '' ? null : Number(req.body.priceCeiling);
   }
   if (req.body.verificationStatus) {
-    if (!['PENDING', 'VERIFIED', 'REJECTED'].includes(req.body.verificationStatus)) {
-      throw new AppError('وضعیت تأیید نامعتبر است.', 400);
-    }
-    if (req.body.verificationStatus === 'REJECTED' && String(req.body.note || '').trim().length < 3) {
-      throw new AppError('دلیل رد را بنویسید.', 400);
-    }
-    owner.verification_status = req.body.verificationStatus;
+    throw new AppError('هویت صاحب کالا مدرک‌به‌مدرک بررسی می‌شود.', 400);
   }
-  if (req.body.note !== undefined) owner.verification_note = req.body.note || null;
   await owner.save();
   await audit(req.admin, 'owner.update', 'cargo_owner', owner.id, req.body);
   success(res, { message: 'پرونده مشتری به‌روز شد.' });
+}));
+
+router.post('/customers/:id/kyc/review', requirePermission('owners.documents'), asyncHandler(async (req, res) => {
+  const owner = await CargoOwner.findByPk(req.params.id);
+  if (!owner) throw new AppError('مشتری پیدا نشد.', 404);
+  const result = ownerKyc.reviewDocument(owner.kyc, {
+    key: req.body.key,
+    decision: req.body.decision,
+    reason: req.body.note,
+  });
+  owner.kyc = result.kyc;
+  owner.changed('kyc', true);
+  owner.verification_status = result.verificationStatus;
+  owner.verification_note = result.verificationNote;
+  await owner.save();
+  if (result.notice && owner.user_id) {
+    await notificationService.notify(owner.user_id, result.notice);
+  }
+  await audit(req.admin, 'owner.kyc.review', 'cargo_owner', owner.id, {
+    key: req.body.key,
+    decision: req.body.decision,
+    note: result.kyc.documents[req.body.key]?.note || null,
+  });
+  success(res, {
+    message: result.notice ? 'دلیل رد برای صاحب کالا ارسال شد.' : 'مدرک تأیید شد.',
+    data: ownerKyc.present(owner.kyc),
+  });
 }));
 
 router.get('/complaints', requirePermission('complaints'), asyncHandler(async (req, res) => {

@@ -51,16 +51,37 @@ export async function api(path, options = {}) {
   return json.data;
 }
 
+function pdfMagic(bytes) {
+  return bytes.length >= 5 && String.fromCharCode(bytes[0], bytes[1], bytes[2], bytes[3], bytes[4]) === '%PDF-';
+}
+
 export async function download(path, filename) {
   const response = await api(path, { raw: true });
-  if (!response.ok) throw new Error('دانلود پرونده ناموفق بود.');
-  const type = response.headers.get('content-type') || '';
-  if (!type.includes('application/pdf')) throw new Error('پروندهٔ دریافتی PDF معتبر نیست.');
-  const blob = await response.blob();
+  if (!response.ok) {
+    let message = 'دانلود ناموفق بود.';
+    const text = await response.text().catch(() => '');
+    if (text.trim().startsWith('{')) {
+      try { message = JSON.parse(text).message || message; } catch { /* پاسخ خطا متن نیست */ }
+    }
+    throw new Error(message);
+  }
+  const type = (response.headers.get('content-type') || '').toLowerCase();
+  if (type.includes('text/html') || type.includes('application/json')) {
+    throw new Error('پاسخ دانلود فایل نیست.');
+  }
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  const wantPdf = /\.pdf$/i.test(filename || '');
+  if (wantPdf && (!type.includes('application/pdf') || !pdfMagic(bytes))) {
+    throw new Error('پروندهٔ دریافتی PDF معتبر نیست.');
+  }
+  const blob = new Blob([bytes], { type: wantPdf ? 'application/pdf' : (type || 'application/octet-stream') });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
   link.download = filename;
+  link.rel = 'noopener';
+  document.body.appendChild(link);
   link.click();
-  URL.revokeObjectURL(url);
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 2000);
 }

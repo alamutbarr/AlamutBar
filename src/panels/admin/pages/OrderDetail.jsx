@@ -87,7 +87,7 @@ export default function OrderDetail() {
           {can('orders.notes') && <button type="button" className="btn secondary" onClick={() => setDialog('note')}>یادداشت</button>}
           {can('orders.waybill') && <button type="button" className="btn secondary" onClick={() => setDialog('waybill')}>بارنامه و کد تحویل</button>}
           {can('orders.penalty') && <button type="button" className="btn secondary" onClick={() => setDialog('penalty')}>جریمه تأخیر</button>}
-          <button type="button" className="btn gold" onClick={() => download(`/orders/${id}/dossier`, `${order.trackingCode}.pdf`)}>دانلود پرونده</button>
+          <button type="button" className="btn gold" onClick={() => download(`/orders/${id}/dossier`, `${order.trackingCode}.pdf`).catch((err) => toast.error(err.message))}>دانلود پرونده</button>
           {can('drivers.queue') && (
             <div className="card" style={{ padding: 12 }}>
               <strong>صف آماده</strong>
