@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const operatorController = require('../controllers/operatorController');
-const authenticate = require('../middlewares/authMiddleware');
-const requireRole = require('../middlewares/roleMiddleware');
-const validate = require('../middlewares/validateMiddleware');
+const authenticate = require('../middleware/authMiddleware');
+const requireRole = require('../middleware/roleMiddleware');
+const validate = require('../middleware/validateMiddleware');
 const { proposePriceSchema, advanceStatusSchema } = require('../validations/shipmentValidation');
 
 // TODO: این مسیر موقت است و باید در پنل مستقل اپراتور جای بگیرد.

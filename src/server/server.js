@@ -12,7 +12,7 @@ if (!process.env.JWT_SECRET) {
 
 const { sequelize, dbConfig } = require('./config/database');
 const routes = require('./routes');
-const { notFoundHandler, errorHandler } = require('./middlewares/errorMiddleware');
+const { notFoundHandler, errorHandler } = require('./middleware/errorMiddleware');
 const seedVehicleTypes = require('./utils/seedVehicles');
 const seedLocations = require('./utils/seedLocations');
 const startReminderScheduler = require('./utils/scheduler');
@@ -64,6 +64,18 @@ const startServer = async () => {
     await ensureDatabase();
     await sequelize.authenticate();
     console.log(`به MySQL وصل شد (${dbConfig.name}، کاربر ${dbConfig.user}).`);
+
+    const [messageTables] = await sequelize.query("SHOW TABLES LIKE 'messages'");
+    if (messageTables.length) {
+      const [roleColumn] = await sequelize.query("SHOW COLUMNS FROM messages LIKE 'sender_role'");
+      if (roleColumn[0] && String(roleColumn[0].Type).toLowerCase().includes('enum')) {
+        await sequelize.query("ALTER TABLE messages MODIFY sender_role VARCHAR(20) NOT NULL");
+      }
+      const [channelColumn] = await sequelize.query("SHOW COLUMNS FROM messages LIKE 'channel'");
+      if (!channelColumn.length) {
+        await sequelize.query("ALTER TABLE messages ADD COLUMN channel VARCHAR(32) NOT NULL DEFAULT 'owner_operator'");
+      }
+    }
 
     await sequelize.sync({ alter: true });
     console.log('جدول‌های مشترک همگام شدند.');

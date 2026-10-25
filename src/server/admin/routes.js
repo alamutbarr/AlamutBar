@@ -5,7 +5,7 @@ const { success } = require('../utils/apiResponse');
 const AppError = require('../utils/AppError');
 const {
   Admin, Driver, CargoOwner, User, Shipment, Alert, Inspector, InspectionReport,
-  Complaint, AdminAuditLog, SystemSetting, City,
+  Complaint, AdminAuditLog, SystemSetting, City, DriverNotice,
 } = require('../models');
 const { requireAdmin, requirePermission } = require('./guard');
 const authService = require('./authService');
@@ -17,6 +17,8 @@ const { getSettings, listSettings, clearSettingsCache, SETTING_DEFAULTS } = requ
 const { mapSnapshot } = require('./monitor');
 const { WORKFLOW_STATUSES, WORKFLOW_LABELS, ACTIVE_TRIP } = require('./workflow');
 const { renderDossier } = require('./dossier');
+const { reviewDocument } = require('./documents');
+const chat = require('../chat/service');
 const { buildWorkbook } = require('./reports');
 const { normalizePhone } = require('./phone');
 const { logEvent } = require('./audit');
@@ -137,10 +139,11 @@ router.post('/orders/:id/penalty', requirePermission('orders.penalty'), asyncHan
 
 router.get('/orders/:id/dossier', requirePermission('orders.read'), asyncHandler(async (req, res) => {
   const order = await orderOps.getOrder(req.params.id);
-  const rendered = await renderDossier(order);
-  res.setHeader('Content-Disposition', `attachment; filename="alamut-${order.trackingCode}.${rendered.ext}"`);
-  res.setHeader('Content-Type', rendered.type);
-  res.send(rendered.body);
+  const body = await renderDossier(order);
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Length', body.length);
+  res.setHeader('Content-Disposition', `attachment; filename="alamut-${order.trackingCode}.pdf"`);
+  res.end(body);
 }));
 
 router.get('/drivers/ready', requirePermission('drivers.queue'), asyncHandler(async (req, res) => {
@@ -197,34 +200,62 @@ router.get('/drivers/:id', requirePermission('drivers.read'), asyncHandler(async
 router.post('/drivers/:id/documents/review', requirePermission('drivers.documents'), asyncHandler(async (req, res) => {
   const driver = await Driver.findByPk(req.params.id);
   if (!driver) throw new AppError('راننده پیدا نشد.', 404);
-  const group = req.body.group;
-  const documents = driver.documents || { personal: [], vehicle: [], insurance: [] };
-  const list = documents[group];
-  if (!list || !list[req.body.index]) throw new AppError('مدرک پیدا نشد.', 404);
-  const decision = req.body.decision === 'APPROVED' ? 'APPROVED' : 'REJECTED';
-  if (decision === 'REJECTED' && String(req.body.reason || '').trim().length < 3) {
-    throw new AppError('دلیل رد مدرک را بنویسید.', 400);
+  let result;
+  try {
+    result = reviewDocument(driver.documents, {
+      group: req.body.group,
+      index: Number(req.body.index),
+      decision: req.body.decision,
+      reason: req.body.reason,
+    });
+  } catch (error) {
+    throw new AppError(error.message, error.statusCode || 400);
   }
-  list[req.body.index].status = decision;
-  list[req.body.index].note = String(req.body.reason || '').trim();
-  documents[group] = list;
-  driver.documents = documents;
+  driver.documents = result.documents;
   driver.changed('documents', true);
-  const all = [...(documents.personal || []), ...(documents.vehicle || []), ...(documents.insurance || [])];
-  if (all.some((item) => item.status === 'REJECTED')) {
-    driver.verificationStatus = 'REJECTED';
-    driver.rejectionReason = list[req.body.index].note;
-    driver.availability = 'OFFLINE';
-  } else if (all.length && all.every((item) => item.status === 'APPROVED')) {
-    driver.verificationStatus = 'VERIFIED';
-    driver.rejectionReason = null;
-    if (driver.availability === 'OFFLINE') driver.availability = 'READY';
-  } else {
-    driver.verificationStatus = 'PENDING_VERIFICATION';
-  }
+  driver.verificationStatus = result.verificationStatus;
+  driver.rejectionReason = result.rejectionReason;
+  if (result.availability === 'OFFLINE') driver.availability = 'OFFLINE';
+  if (result.availability === 'READY_IF_OFFLINE' && driver.availability === 'OFFLINE') driver.availability = 'READY';
   await driver.save();
-  await audit(req.admin, 'driver.documents', 'driver', driver.id, { group, index: req.body.index, decision });
+  if (result.notice) {
+    await DriverNotice.create({
+      driverId: driver.id,
+      title: result.notice.title,
+      message: result.notice.message,
+    });
+  }
+  await audit(req.admin, 'driver.documents', 'driver', driver.id, {
+    group: req.body.group,
+    index: req.body.index,
+    decision: req.body.decision,
+  });
   success(res, { message: 'بررسی مدرک ثبت شد.', data: orderOps.presentDriver(driver) });
+}));
+
+router.get('/chats', requirePermission('dashboard'), asyncHandler(async (req, res) => {
+  success(res, { data: await chat.inbox() });
+}));
+
+router.get('/chats/:shipmentId', requirePermission('dashboard'), asyncHandler(async (req, res) => {
+  const channel = req.query.channel === 'driver_operator' ? 'driver_operator' : 'owner_operator';
+  const shipment = await Shipment.findByPk(req.params.shipmentId);
+  if (!shipment) throw new AppError('بار پیدا نشد.', 404);
+  success(res, { data: await chat.history(shipment.id, channel) });
+}));
+
+router.post('/chats/:shipmentId', requirePermission('dashboard'), asyncHandler(async (req, res) => {
+  const channel = req.body.channel === 'driver_operator' ? 'driver_operator' : 'owner_operator';
+  const shipment = await Shipment.findByPk(req.params.shipmentId);
+  if (!shipment) throw new AppError('بار پیدا نشد.', 404);
+  const message = await chat.postMessage({
+    shipment,
+    channel,
+    senderRole: 'operator',
+    senderId: req.admin.id,
+    body: req.body.body,
+  });
+  success(res, { message: 'پیام ارسال شد.', data: message });
 }));
 
 router.patch('/drivers/:id/availability', requirePermission('drivers.queue'), asyncHandler(async (req, res) => {

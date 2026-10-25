@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const locationController = require('../controllers/locationController');
-const authenticate = require('../middlewares/authMiddleware');
+const authenticate = require('../middleware/authMiddleware');
 
 router.use(authenticate);
 router.get('/cities', locationController.getCities);

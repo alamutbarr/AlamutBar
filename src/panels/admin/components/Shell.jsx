@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { Bell, ClipboardList, LayoutGrid, LogOut, Map, Moon, Settings, Shield, Sun, Truck, Users } from 'lucide-react';
+import { Bell, ClipboardList, LayoutGrid, LogOut, Map, MessageCircle, Moon, Settings, Shield, Sun, Truck, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import BrandMark from '../../owner/components/common/BrandMark';
 import { api, getAccess } from '../api';
@@ -12,6 +12,7 @@ const LINKS = [
   { to: '/admin/map', label: 'نقشه', icon: Map, perm: 'map', mobile: true },
   { to: '/admin/alerts', label: 'هشدارها', icon: Bell, perm: 'alerts.read', mobile: true },
   { to: '/admin/drivers', label: 'رانندگان', icon: Truck, perm: 'drivers.read' },
+  { to: '/admin/chats', label: 'گفتگوها', icon: MessageCircle, perm: 'dashboard' },
   { to: '/admin/inspections', label: 'بازرسی', icon: Shield, perm: 'inspections' },
   { to: '/admin/customers', label: 'مشتریان', icon: Users, perm: 'owners.read' },
   { to: '/admin/complaints', label: 'تیکت‌ها', icon: Bell, perm: 'complaints' },

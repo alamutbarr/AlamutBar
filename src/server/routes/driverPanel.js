@@ -1,13 +1,70 @@
+const fs = require('fs');
+const path = require('path');
 const express = require('express');
+const multer = require('multer');
 const { Op } = require('sequelize');
 const { authMiddleware } = require('../middleware/auth');
-const { Shipment, Driver, City, VehicleType, Zone } = require('../models');
+const { Shipment, Driver, City, VehicleType, Zone, DriverNotice } = require('../models');
+const { upsertDocument } = require('../admin/documents');
 const { canRevealExactDestination } = require('../mobile/missionPolicy');
 const { applyLegacyDriverStatus } = require('../mobile/driverActions');
 const { filterNearbyMissions, filterMissionsByRoute } = require('../services/missionSearch');
 const { resolveDriverProvince } = require('../services/geocoding');
 
 const router = express.Router();
+
+const uploadDir = path.join(__dirname, '..', '..', 'uploads');
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+const SLOT_META = {
+  'driverLicense:front': { group: 'personal', title: 'روی گواهینامه' },
+  'driverLicense:back': { group: 'personal', title: 'پشت گواهینامه' },
+  'selfie:selfie': { group: 'personal', title: 'عکس شخصی با کارت' },
+  'nationalCard:front': { group: 'personal', title: 'روی کارت ملی' },
+  'nationalCard:back': { group: 'personal', title: 'پشت کارت ملی' },
+  'vehicleCard:front': { group: 'vehicle', title: 'روی کارت خودرو' },
+  'vehicleCard:back': { group: 'vehicle', title: 'پشت کارت خودرو' },
+};
+
+const documentUpload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, uploadDir),
+    filename: (req, file, cb) => {
+      const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+      cb(null, `doc-${unique}${path.extname(file.originalname) || '.jpg'}`);
+    },
+  }),
+  limits: { fileSize: 8 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)) {
+      cb(new Error('فقط تصویر JPG، PNG یا WEBP مجاز است.'));
+      return;
+    }
+    cb(null, true);
+  },
+});
+
+function flatDocuments(raw) {
+  const groups = raw && typeof raw === 'object' ? raw : {};
+  return ['personal', 'vehicle', 'insurance'].flatMap((group) => (
+    Array.isArray(groups[group]) ? groups[group].map((item) => ({ ...item, group })) : []
+  ));
+}
+
+async function driverNotices(driverId) {
+  const rows = await DriverNotice.findAll({
+    where: { driverId },
+    order: [['createdAt', 'DESC']],
+    limit: 20,
+  });
+  return rows.map((row) => ({
+    id: row.id,
+    title: row.title,
+    message: row.message,
+    isRead: row.isRead,
+    createdAt: row.createdAt,
+  }));
+}
 
 const includes = [
   { model: City, as: 'originCity' },
@@ -17,7 +74,7 @@ const includes = [
   { model: VehicleType, as: 'vehicleType' },
 ];
 
-function toPanelDriver(row) {
+function toPanelDriver(row, extras = {}) {
   const d = row.toJSON();
   const name = [d.firstName, d.lastName].filter(Boolean).join(' ').trim();
   return {
@@ -30,7 +87,11 @@ function toPanelDriver(row) {
     plate: d.plate || '',
     tractorType: d.tractorType || '',
     trailerType: d.trailerType || '',
-    verifiedStatus: 'pending',
+    verifiedStatus: d.verificationStatus === 'VERIFIED' ? 'verified' : d.verificationStatus === 'REJECTED' ? 'rejected' : 'pending',
+    verificationStatus: d.verificationStatus,
+    rejectionReason: d.rejectionReason || '',
+    documents: extras.documents || flatDocuments(d.documents),
+    notices: extras.notices || [],
     rating: 5,
     totalMissions: 0,
     joinedDate: d.createdAt ? new Date(d.createdAt).toLocaleDateString('fa-IR') : '',
@@ -135,7 +196,57 @@ async function openShipments(driverId) {
 router.get('/profile', authMiddleware, async (req, res) => {
   const driver = await Driver.findByPk(req.user.id);
   if (!driver) return res.status(401).json({ message: 'کاربر یافت نشد' });
-  return res.json({ driver: toPanelDriver(driver) });
+  const notices = await driverNotices(driver.id);
+  return res.json({ driver: toPanelDriver(driver, { notices }) });
+});
+
+router.post('/documents', authMiddleware, (req, res, next) => {
+  documentUpload.array('files', 12)(req, res, (error) => {
+    if (error) return res.status(400).json({ message: error.message || 'آپلود مدرک ناموفق بود.' });
+    return next();
+  });
+}, async (req, res) => {
+  try {
+    const driver = await Driver.findByPk(req.user.id);
+    if (!driver) return res.status(401).json({ message: 'کاربر یافت نشد' });
+    const files = req.files || [];
+    if (!files.length) return res.status(400).json({ message: 'حداقل یک مدرک را انتخاب و تأیید کنید.' });
+    const slots = Array.isArray(req.body.slots) ? req.body.slots : (req.body.slots ? [req.body.slots] : []);
+    if (slots.length !== files.length) return res.status(400).json({ message: 'هر فایل باید به یک مدرک مشخص وصل باشد.' });
+    let documents = driver.documents;
+    for (let index = 0; index < files.length; index += 1) {
+      const meta = SLOT_META[slots[index]];
+      if (!meta) return res.status(400).json({ message: 'نوع مدرک نامعتبر است.' });
+      documents = upsertDocument(documents, {
+        group: meta.group,
+        key: slots[index],
+        title: meta.title,
+        url: `/uploads/${files[index].filename}`,
+      });
+    }
+    driver.documents = documents;
+    driver.changed('documents', true);
+    if (driver.verificationStatus === 'REJECTED') {
+      const stillRejected = flatDocuments(documents).some((item) => item.status === 'REJECTED');
+      if (!stillRejected) {
+        driver.verificationStatus = 'PENDING_VERIFICATION';
+        driver.rejectionReason = null;
+      }
+    }
+    await driver.save();
+    const notices = await driverNotices(driver.id);
+    return res.json({
+      message: 'مدارک ارسال شد و در صف بررسی است.',
+      driver: toPanelDriver(driver, { notices }),
+    });
+  } catch (error) {
+    return res.status(error.statusCode || 400).json({ message: error.message || 'آپلود مدرک ناموفق بود.' });
+  }
+});
+
+router.post('/notices/read', authMiddleware, async (req, res) => {
+  await DriverNotice.update({ isRead: true }, { where: { driverId: req.user.id, isRead: false } });
+  return res.json({ ok: true });
 });
 
 router.get('/missions', authMiddleware, async (req, res) => {

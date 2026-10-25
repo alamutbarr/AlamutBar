@@ -4,10 +4,17 @@ const {
   Inspector, InspectionReport, OrderEvent, SystemSetting, Complaint, AdminAuditLog,
 } = require('../models');
 const { legacyPatch } = require('./workflow');
-const { hashPassword, checkPassword } = require('./authService');
+const { hashPassword } = require('./authService');
 const { parseRoles } = require('./permissions');
 
 const SEED_PASSWORD = 'Alamut@1234';
+
+function resolveSeedPassword() {
+  const fromEnv = String(process.env.ADMIN_SEED_PASSWORD || '').trim();
+  if (fromEnv) return fromEnv;
+  if (process.env.NODE_ENV === 'production') return null;
+  return SEED_PASSWORD;
+}
 
 const ADMINS = [
   { phone: '09120000000', username: 'admin', fullName: 'مدیر سامانه', roles: ['SUPER_ADMIN'] },
@@ -44,23 +51,40 @@ function docs(status = 'PENDING') {
 }
 
 async function ensureAdmins() {
-  const passwordHash = await hashPassword(SEED_PASSWORD);
+  const password = resolveSeedPassword();
+  const passwordHash = password ? await hashPassword(password) : null;
   for (const item of ADMINS) {
+    const existing = await Admin.findOne({ where: { phone: item.phone } });
+    if (!existing && !passwordHash) {
+      throw new Error('ADMIN_SEED_PASSWORD is required to create operators in production.');
+    }
     const [admin] = await Admin.findOrCreate({
       where: { phone: item.phone },
       defaults: { ...item, passwordHash, isActive: true },
     });
-    const sameRoles = JSON.stringify(parseRoles(admin.roles)) === JSON.stringify(item.roles);
-    const samePassword = await checkPassword(SEED_PASSWORD, admin.passwordHash);
-    if (admin.fullName !== item.fullName || !sameRoles || admin.username !== item.username || !samePassword || !admin.isActive) {
+    let dirty = false;
+    if (admin.fullName !== item.fullName) {
       admin.fullName = item.fullName;
-      admin.username = item.username;
-      admin.passwordHash = samePassword ? admin.passwordHash : passwordHash;
-      admin.roles = item.roles;
-      admin.isActive = true;
-      admin.changed('roles', true);
-      await admin.save();
+      dirty = true;
     }
+    if (admin.username !== item.username) {
+      admin.username = item.username;
+      dirty = true;
+    }
+    if (JSON.stringify(parseRoles(admin.roles)) !== JSON.stringify(item.roles)) {
+      admin.roles = item.roles;
+      admin.changed('roles', true);
+      dirty = true;
+    }
+    if (!admin.isActive) {
+      admin.isActive = true;
+      dirty = true;
+    }
+    if (!admin.passwordHash && passwordHash) {
+      admin.passwordHash = passwordHash;
+      dirty = true;
+    }
+    if (dirty) await admin.save();
   }
 }
 
@@ -318,4 +342,4 @@ async function backfillWorkflow() {
   }
 }
 
-module.exports = { ensureAdmins, ensureDemo, backfillWorkflow, ADMINS, SEED_PASSWORD };
+module.exports = { ensureAdmins, ensureDemo, backfillWorkflow, ADMINS, SEED_PASSWORD, resolveSeedPassword };

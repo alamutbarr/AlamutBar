@@ -10,6 +10,7 @@ import MapPage from './pages/MapPage';
 import Alerts from './pages/Alerts';
 import Drivers from './pages/Drivers';
 import DriverDetail from './pages/DriverDetail';
+import Chats from './pages/Chats';
 import OpsPages from './pages/OpsPages';
 import './admin.css';
 
@@ -34,6 +35,7 @@ export default function AdminApp() {
           <Route path="alerts" element={<Alerts />} />
           <Route path="drivers" element={<Drivers />} />
           <Route path="drivers/:id" element={<DriverDetail />} />
+          <Route path="chats" element={<Chats />} />
           <Route path="inspections" element={<OpsPages page="inspections" />} />
           <Route path="customers" element={<OpsPages page="customers" />} />
           <Route path="complaints" element={<OpsPages page="complaints" />} />

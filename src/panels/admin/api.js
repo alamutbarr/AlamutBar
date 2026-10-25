@@ -54,6 +54,8 @@ export async function api(path, options = {}) {
 export async function download(path, filename) {
   const response = await api(path, { raw: true });
   if (!response.ok) throw new Error('دانلود پرونده ناموفق بود.');
+  const type = response.headers.get('content-type') || '';
+  if (!type.includes('application/pdf')) throw new Error('پروندهٔ دریافتی PDF معتبر نیست.');
   const blob = await response.blob();
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');

@@ -1,19 +1,23 @@
 const jwt = require('jsonwebtoken');
 const { WebSocketServer } = require('ws');
-const { Shipment, Message } = require('./models');
-const { roleOf, present } = require('./routes/chatRoutes');
+const { Shipment } = require('./models');
+const chat = require('./chat/service');
 
 const rooms = new Map();
 
-function room(shipmentId) {
-  const key = String(shipmentId);
+function roomKey(shipmentId, channel) {
+  return `${shipmentId}:${channel}`;
+}
+
+function room(shipmentId, channel) {
+  const key = roomKey(shipmentId, channel);
   if (!rooms.has(key)) rooms.set(key, new Set());
   return rooms.get(key);
 }
 
-function broadcast(shipmentId, payload) {
+function broadcast(shipmentId, channel, payload) {
   const data = JSON.stringify(payload);
-  for (const client of room(shipmentId)) {
+  for (const client of room(shipmentId, channel)) {
     if (client.readyState === 1) client.send(data);
   }
 }
@@ -39,45 +43,49 @@ function attachChat() {
       } catch {
         return;
       }
-
+      const channel = packet.channel === 'driver_operator' ? 'driver_operator' : 'owner_operator';
       if (packet.type === 'join') {
         const shipment = await Shipment.findByPk(packet.shipmentId);
-        if (!shipment || !roleOf(user, shipment)) {
+        const party = shipment && chat.partyOf(user, shipment, channel);
+        if (!party) {
           socket.send(JSON.stringify({ type: 'error', error: 'به این گفتگو دسترسی ندارید.' }));
           return;
         }
-        if (socket.shipmentId) room(socket.shipmentId).delete(socket);
+        if (socket.roomKey) room(socket.shipmentId, socket.channel).delete(socket);
         socket.shipmentId = String(shipment.id);
-        room(shipment.id).add(socket);
-        const history = await Message.findAll({
-          where: { shipment_id: shipment.id },
-          order: [['createdAt', 'ASC']],
-        });
-        socket.send(JSON.stringify({ type: 'history', messages: history.map(present) }));
+        socket.channel = channel;
+        socket.roomKey = roomKey(shipment.id, channel);
+        socket.party = party;
+        room(shipment.id, channel).add(socket);
+        const messages = await chat.history(shipment.id, channel);
+        socket.send(JSON.stringify({ type: 'history', channel, messages }));
         return;
       }
 
       if (packet.type === 'message') {
-        const text = String(packet.body || '').trim();
-        if (!text || text.length > 2000) return;
         const shipment = await Shipment.findByPk(packet.shipmentId);
-        const senderRole = shipment && roleOf(user, shipment);
-        if (!senderRole) {
+        const party = shipment && chat.partyOf(user, shipment, channel);
+        if (!party) {
           socket.send(JSON.stringify({ type: 'error', error: 'به این گفتگو دسترسی ندارید.' }));
           return;
         }
-        const saved = await Message.create({
-          shipment_id: shipment.id,
-          sender_role: senderRole,
-          sender_id: user.id,
-          body: text,
-        });
-        broadcast(shipment.id, { type: 'message', message: present(saved) });
+        try {
+          const message = await chat.postMessage({
+            shipment,
+            channel,
+            senderRole: party,
+            senderId: user.id,
+            body: packet.body,
+          });
+          broadcast(shipment.id, channel, { type: 'message', message });
+        } catch (error) {
+          socket.send(JSON.stringify({ type: 'error', error: error.message }));
+        }
       }
     });
 
     socket.on('close', () => {
-      if (socket.shipmentId) room(socket.shipmentId).delete(socket);
+      if (socket.shipmentId && socket.channel) room(socket.shipmentId, socket.channel).delete(socket);
     });
   });
   return wss;

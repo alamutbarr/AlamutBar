@@ -2,13 +2,13 @@ import { Routes, Route, Navigate, useNavigate, useLocation } from "react-router-
 import { useAuth } from "./contexts/AuthContext";
 import { useEffect, useState } from "react";
 import { api } from "./services/api";
-import { DriverLogin } from "@/driver/pages/DriverLogin";
-import { DriverDashboard } from "@/driver/pages/DriverDashboard";
-import { DriverMissions } from "@/driver/pages/DriverMissions";
-import { DriverMissionDetail } from "@/driver/pages/DriverMissionDetail";
-import { DriverProfile } from "@/driver/pages/DriverProfile";
-import { DriverLayout } from "@/driver/layouts/DriverLayout";
-import { isVerificationComplete } from "@/driver/verification";
+import { DriverLogin } from "@/pages/DriverLogin";
+import { DriverDashboard } from "@/pages/DriverDashboard";
+import { DriverMissions } from "@/pages/DriverMissions";
+import { DriverMissionDetail } from "@/pages/DriverMissionDetail";
+import { DriverProfile } from "@/pages/DriverProfile";
+import { DriverLayout } from "@/layouts/DriverLayout";
+import { serverVerificationComplete } from "@/verification";
 
 function getProfileError(error) {
   if (error?.message === "پاسخ بک‌اند شامل اطلاعات راننده نیست.") return error.message;
@@ -170,7 +170,7 @@ export default function App() {
   // گرفتن بار (قبول مأموریت) مستلزم احراز هویت است؛ اگر کامل نباشد،
   // کاربر به بخش مدارک پروفایل هدایت می‌شود و اعلان اجباری‌بودن نمایش می‌گیرد.
   const handleAccept = (mission) => {
-    if (!isVerificationComplete(driver.id)) {
+    if (!serverVerificationComplete(driver.documents)) {
       navigate("/driver/profile", { state: { verificationRequired: true } });
       return;
     }
@@ -198,6 +198,7 @@ export default function App() {
                 setSelectedMission(mission);
                 navigate("/driver/mission-detail");
               }}
+              onDriverUpdate={setDriver}
             />
           }
         />
@@ -233,7 +234,7 @@ export default function App() {
             />
           ) : <Navigate to="/driver/missions" replace />}
         />
-        <Route path="profile" element={<DriverProfile driver={driver} onLogout={logout} />} />
+        <Route path="profile" element={<DriverProfile driver={driver} onLogout={logout} onDriverUpdate={setDriver} />} />
         <Route path="*" element={<Navigate to="/driver/dashboard" replace />} />
       </Routes>
     </DriverLayout>

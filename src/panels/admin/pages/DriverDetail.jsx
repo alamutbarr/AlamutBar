@@ -17,6 +17,7 @@ export default function DriverDetail() {
   const navigate = useNavigate();
   const { can } = useAdmin();
   const [driver, setDriver] = useState(null);
+  const [rejecting, setRejecting] = useState(null);
   const [reason, setReason] = useState('');
 
   const load = () => api(`/drivers/${id}`).then(setDriver);
@@ -27,13 +28,14 @@ export default function DriverDetail() {
 
   if (!driver) return <SkeletonRows />;
 
-  async function review(group, index, decision) {
+  async function review(group, index, decision, note = '') {
     try {
       await api(`/drivers/${id}/documents/review`, {
         method: 'POST',
-        body: { group, index, decision, reason },
+        body: { group, index, decision, reason: note },
       });
-      toast.success(decision === 'APPROVED' ? 'مدرک تأیید شد' : 'مدرک رد شد');
+      toast.success(decision === 'APPROVED' ? 'مدرک تأیید شد' : 'دلیل رد برای راننده ارسال شد');
+      setRejecting(null);
       setReason('');
       load();
     } catch (error) {
@@ -82,27 +84,42 @@ export default function DriverDetail() {
           {GROUPS.map(([key, title]) => (
             <article key={key} className="card" style={{ padding: 16 }}>
               <h3 style={{ marginTop: 0 }}>{title}</h3>
-              {(driver.documents?.[key] || []).map((doc, index) => (
-                <div key={`${doc.key}-${index}`} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--line)' }}>
-                  <div>
-                    <strong>{doc.title}</strong>
-                    <div className="muted">{doc.status === 'APPROVED' ? 'تأیید' : doc.status === 'REJECTED' ? `رد: ${doc.note || ''}` : 'در انتظار'}</div>
-                    {doc.url && <a href={doc.url} target="_blank" rel="noreferrer">مشاهده تصویر</a>}
-                  </div>
-                  {can('drivers.documents') && doc.status === 'PENDING' && (
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      <button type="button" className="btn" onClick={() => review(key, index, 'APPROVED')}>تأیید</button>
-                      <button type="button" className="btn secondary" onClick={() => review(key, index, 'REJECTED')}>رد</button>
+              {(driver.documents?.[key] || []).map((doc, index) => {
+                const open = rejecting === `${key}:${index}`;
+                return (
+                  <div key={`${doc.key}-${index}`} style={{ display: 'grid', gap: 8, padding: '10px 0', borderBottom: '1px solid var(--line)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center' }}>
+                      <div>
+                        <strong>{doc.title}</strong>
+                        <div className="muted">{doc.status === 'APPROVED' ? 'تأیید' : doc.status === 'REJECTED' ? `رد شد: ${doc.note || ''}` : 'در انتظار بررسی'}</div>
+                      </div>
+                      {can('drivers.documents') && doc.status === 'PENDING' && (
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button type="button" className="btn" onClick={() => review(key, index, 'APPROVED')}>تأیید</button>
+                          <button type="button" className="btn secondary" onClick={() => { setRejecting(open ? null : `${key}:${index}`); setReason(''); }}>رد</button>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              ))}
+                    {doc.url && (
+                      <div>
+                        <a href={doc.url} target="_blank" rel="noreferrer">
+                          <img src={doc.url} alt={doc.title} style={{ maxWidth: 220, maxHeight: 140, objectFit: 'contain', borderRadius: 8, background: '#f7f6f0' }} />
+                        </a>
+                        <div><a href={doc.url} download>دانلود</a></div>
+                      </div>
+                    )}
+                    {open && (
+                      <div style={{ display: 'grid', gap: 8 }}>
+                        <textarea className="area" value={reason} onChange={(event) => setReason(event.target.value)} placeholder="دلیل رد مدرک (حداقل سه نویسه)" />
+                        <button type="button" className="btn" onClick={() => review(key, index, 'REJECTED', reason)}>ارسال دلیل رد</button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
               {!(driver.documents?.[key] || []).length && <p className="muted">مدرکی بارگذاری نشده.</p>}
             </article>
           ))}
-          {can('drivers.documents') && (
-            <textarea className="area" value={reason} onChange={(event) => setReason(event.target.value)} placeholder="دلیل رد مدرک (حداقل سه نویسه)" />
-          )}
         </div>
         <div style={{ display: 'grid', gap: 12, alignContent: 'start' }}>
           <article className="card" style={{ padding: 16 }}>

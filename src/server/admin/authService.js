@@ -3,11 +3,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { Admin } = require('../models');
 const AppError = require('../utils/AppError');
-const otpService = require('../services/otp.service');
 const { ROLES, ROLE_LABELS, listPermissions, parseRoles } = require('./permissions');
-const { normalizePhone } = require('./phone');
-
-const DEV_ADMIN_OTP = process.env.ADMIN_DEV_OTP || '12345';
 
 function hashToken(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
@@ -90,50 +86,6 @@ async function loginWithPassword(usernameInput, password) {
   return issueSession(admin);
 }
 
-async function requestOtp(phoneInput) {
-  const phone = normalizePhone(phoneInput);
-  const admin = await Admin.findOne({ where: { phone } });
-  if (!admin || !admin.isActive) {
-    throw new AppError('این شماره در فهرست اپراتورهای فعال نیست.', 404);
-  }
-  otpService.assertCanResend({ otp_last_sent_at: admin.otpLastSentAt });
-  const realSms = process.env.SMS_PROVIDER === 'kavenegar' && process.env.SMS_API_KEY;
-  const code = realSms ? otpService.generateOtp() : DEV_ADMIN_OTP;
-  const sms = await otpService.sendOtpSms(phone, code);
-  admin.otpCode = code;
-  admin.otpExpiresAt = otpService.getOtpExpiry();
-  admin.otpLastSentAt = new Date();
-  admin.otpAttempts = 0;
-  await admin.save();
-  return { phone, devOtpCode: sms.mocked ? code : undefined };
-}
-
-async function verifyOtp(phoneInput, code) {
-  const phone = normalizePhone(phoneInput);
-  const admin = await Admin.findOne({ where: { phone } });
-  if (!admin || !admin.isActive) {
-    throw new AppError('این شماره در فهرست اپراتورهای فعال نیست.', 404);
-  }
-  const probe = {
-    otp_code: admin.otpCode,
-    otp_expires_at: admin.otpExpiresAt,
-    otp_attempts: admin.otpAttempts,
-  };
-  try {
-    otpService.verifyOtpMatch(probe, String(code || '').trim());
-  } catch (error) {
-    if (error.isWrongOtp) {
-      admin.otpAttempts += 1;
-      await admin.save();
-    }
-    throw error;
-  }
-  admin.otpCode = null;
-  admin.otpExpiresAt = null;
-  admin.otpAttempts = 0;
-  return issueSession(admin);
-}
-
 async function refresh(refreshToken) {
   if (!refreshToken) throw new AppError('نشست تمدید نشد.', 401);
   let decoded;
@@ -169,14 +121,11 @@ function assertRoles(roles) {
 }
 
 module.exports = {
-  DEV_ADMIN_OTP,
   presentAdmin,
   normalizeUsername,
   hashPassword,
   checkPassword,
   loginWithPassword,
-  requestOtp,
-  verifyOtp,
   refresh,
   logout,
   assertRoles,

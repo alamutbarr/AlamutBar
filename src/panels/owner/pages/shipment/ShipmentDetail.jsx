@@ -79,8 +79,9 @@ export default function ShipmentDetail() {
       <ShipmentChat
         shipmentId={shipment.id}
         token={localStorage.getItem('token')}
-        enabled={Boolean(shipment.driver_id)}
+        enabled
         mine="owner"
+        channel="owner_operator"
       />
       <Link to="/owner/shipments" className="mb-4 inline-flex items-center gap-1 text-sm text-ink-300 hover:text-ink-700">
         <ArrowRight size={15} />
