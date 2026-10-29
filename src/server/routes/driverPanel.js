@@ -10,6 +10,7 @@ const { canRevealExactDestination } = require('../mobile/missionPolicy');
 const { applyLegacyDriverStatus } = require('../mobile/driverActions');
 const { filterNearbyMissions, filterMissionsByRoute } = require('../services/missionSearch');
 const { resolveDriverProvince } = require('../services/geocoding');
+const { latestInspections } = require('../inspector/summary');
 
 const router = express.Router();
 
@@ -100,6 +101,7 @@ function toPanelDriver(row, extras = {}) {
 }
 
 function driverFacingStatus(row) {
+  if (row.workflow_status === 'ON_HOLD') return 'OnHold';
   if (row.driver_status) return row.driver_status;
   if (row.status === 'cancelled') return 'Cancelled';
   if (row.status === 'completed' || row.status === 'delivered') return 'Completed';
@@ -109,7 +111,7 @@ function driverFacingStatus(row) {
   return 'Offered';
 }
 
-function toMissionDto(row) {
+function toMissionDto(row, inspection = null) {
   const d = row.toJSON ? row.toJSON() : row;
   const status = driverFacingStatus(d);
   const weight = d.weight_kg != null ? Number(d.weight_kg) : null;
@@ -161,6 +163,7 @@ function toMissionDto(row) {
     price: d.operator_price != null ? Number(d.operator_price) : (d.proposed_price != null ? Number(d.proposed_price) : undefined),
     photosUploaded: Array.isArray(d.photo_urls) ? d.photo_urls.length : 0,
     ownerId: d.owner_id,
+    inspection,
   };
 }
 
@@ -251,7 +254,8 @@ router.post('/notices/read', authMiddleware, async (req, res) => {
 
 router.get('/missions', authMiddleware, async (req, res) => {
   const rows = await openShipments(req.user.id);
-  return res.json({ missions: rows.map(toMissionDto) });
+  const inspections = await latestInspections(rows.map((row) => row.id));
+  return res.json({ missions: rows.map((row) => toMissionDto(row, inspections.get(row.id) || null)) });
 });
 
 router.post('/missions/:id/change-status', authMiddleware, async (req, res) => {
@@ -289,11 +293,12 @@ router.get('/missions/nearby', authMiddleware, async (req, res) => {
     destProvinceName: req.query.destProvince || undefined,
     driverProvince,
   });
+  const inspections = await latestInspections(matches.map(({ shipment }) => shipment.row.id));
   return res.json({
     driverProvince,
     bands: [50, 100, 200, 400, 800, 1600],
     missions: matches.map(({ shipment, distanceKm, bandKm }) => ({
-      ...toMissionDto(shipment.row),
+      ...toMissionDto(shipment.row, inspections.get(shipment.row.id) || null),
       distanceKm,
       bandKm,
     })),
@@ -309,7 +314,8 @@ router.get('/missions/search', authMiddleware, async (req, res) => {
   const matches = filterMissionsByRoute(rows.map(asSearchable), {
     originCityId, originProvinceId, destCityId, destProvinceId,
   });
-  return res.json({ missions: matches.map(({ shipment }) => toMissionDto(shipment.row)) });
+  const inspections = await latestInspections(matches.map(({ shipment }) => shipment.row.id));
+  return res.json({ missions: matches.map(({ shipment }) => toMissionDto(shipment.row, inspections.get(shipment.row.id) || null)) });
 });
 
 module.exports = router;

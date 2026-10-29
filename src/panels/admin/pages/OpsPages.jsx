@@ -35,7 +35,7 @@ function Inspections() {
   const { can } = useAdmin();
   const { data, error, reload } = useLoad(() => Promise.all([api('/inspectors'), api('/inspections')]), []);
   const [form, setForm] = useState({ fullName: '', phone: '', notes: '' });
-  const [note, setNote] = useState('');
+  const [notes, setNotes] = useState({});
   if (error) return <p className="muted">{error}</p>;
   if (!data) return <SkeletonRows />;
   const [inspectors, reports] = data;
@@ -51,17 +51,26 @@ function Inspections() {
                 <Badge tone={report.decision === 'STOPPED' ? 'crit' : report.decision === 'PENDING' ? 'warn' : 'ok'}>{DECISIONS[report.decision] || report.decision}</Badge>
               </div>
               <p className="muted">{report.inspectorName || 'بدون متصدی'} — خالص {report.weightNet ?? '—'} کیلو{report.recordedCargoValue ? ` — ارزش دقیق ${Number(report.recordedCargoValue).toLocaleString('fa-IR')}` : ''}</p>
-              {(report.discrepancies || []).length > 0 && <p>مغایرت: {report.discrepancies.map((item) => item.note || item).join('، ')}</p>}
+              {(report.discrepancies || []).length > 0 && <p>مغایرت: {report.discrepancies.map((item) => (typeof item === 'string' ? item : item.note || item.field || '')).filter(Boolean).join('، ')}</p>}
+              {(report.photos || []).length > 0 && (
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', margin: '8px 0' }}>
+                  {report.photos.map((photo) => (
+                    <a key={`${photo.kind}-${photo.url}`} href={photo.url} target="_blank" rel="noreferrer">
+                      <img src={photo.url} alt={photo.kind} style={{ width: 96, height: 72, objectFit: 'cover', borderRadius: 8, background: '#f7f6f0' }} />
+                    </a>
+                  ))}
+                </div>
+              )}
               {report.decision === 'PENDING' && (
                 <div style={{ display: 'grid', gap: 8 }}>
-                  <textarea className="area" value={note} onChange={(event) => setNote(event.target.value)} placeholder="توضیح تصمیم" />
+                  <textarea className="area" value={notes[report.id] || ''} onChange={(event) => setNotes((current) => ({ ...current, [report.id]: event.target.value }))} placeholder="توضیح تصمیم" />
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     {['APPROVED', 'CORRECTED', 'STOPPED'].map((decision) => (
                       <button key={decision} type="button" className={decision === 'STOPPED' ? 'btn secondary' : 'btn'} onClick={async () => {
                         try {
-                          await api(`/inspections/${report.id}/decision`, { method: 'POST', body: { decision, note } });
+                          await api(`/inspections/${report.id}/decision`, { method: 'POST', body: { decision, note: notes[report.id] || '' } });
                           toast.success('تصمیم ثبت شد');
-                          setNote('');
+                          setNotes((current) => ({ ...current, [report.id]: '' }));
                           reload();
                         } catch (err) { toast.error(err.message); }
                       }}>{DECISIONS[decision]}</button>

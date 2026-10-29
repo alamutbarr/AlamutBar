@@ -12,6 +12,7 @@ const statusColors = {
     Completed: 'bg-green-50 text-green-700 border-green-200',
     Declined: 'bg-rose-50 text-rose-700 border-rose-200',
     Cancelled: 'bg-rose-50 text-rose-700 border-rose-200',
+    OnHold: 'bg-rose-50 text-rose-800 border-rose-300',
 };
 export function DriverStatusBadge({ status, size = 'md', }) {
     const cls = statusColors[status] || 'bg-slate-100 text-slate-700 border-slate-200';

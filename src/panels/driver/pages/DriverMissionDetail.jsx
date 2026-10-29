@@ -51,6 +51,12 @@ export function DriverMissionDetail({ mission, onBack, onAccept, onDecline, onAc
         </div>
         <FlagBadges flag={mission.flag}/>
       </div>
+      {mission.inspection && (
+        <p className="mx-4 mt-3 rounded-md border border-[#d8e1dc] bg-white px-3 py-2 text-sm text-[#17383b] sm:mx-6 lg:mx-8">
+          بازرسی: {mission.inspection.decision === 'APPROVED' ? 'تأیید شد' : mission.inspection.decision === 'CORRECTED' ? 'اصلاح شد' : mission.inspection.decision === 'STOPPED' ? 'توقف' : 'در انتظار سرپرست'}
+          {mission.inspection.decisionNote ? ` — ${mission.inspection.decisionNote}` : ''}
+        </p>
+      )}
 
       <div className="space-y-4 px-4 py-5 sm:px-6 lg:px-8">
         <ShipmentChat

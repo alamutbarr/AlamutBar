@@ -4,6 +4,7 @@ const generateTrackingCode = require('../utils/generateTrackingCode');
 const vehicleMatchService = require('./vehicleMatch.service');
 const notificationService = require('./notification.service');
 const { assertPinInCity } = require('./cityBounds');
+const { attachInspectionSummaries } = require('../inspector/summary');
 
 const shipmentIncludes = [
   { model: VehicleType, as: 'vehicleType' },
@@ -110,11 +111,13 @@ async function getMyShipments(ownerId, { status } = {}) {
   const where = { owner_id: ownerId };
   if (status) where.status = status;
 
-  return Shipment.findAll({
+  const rows = await Shipment.findAll({
     where,
     include: shipmentIncludes,
     order: [['createdAt', 'DESC']],
   });
+  await attachInspectionSummaries(rows);
+  return rows;
 }
 
 async function getShipmentForOwner(ownerId, shipmentId) {
@@ -123,6 +126,7 @@ async function getShipmentForOwner(ownerId, shipmentId) {
     include: shipmentIncludes,
   });
   if (!shipment) throw new AppError('بار مورد نظر یافت نشد.', 404);
+  await attachInspectionSummaries(shipment);
   return shipment;
 }
 

@@ -23,17 +23,20 @@ export default function Visit() {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
 
-  function apply(next) {
+  function apply(next, options = {}) {
     setMission(next);
     const vehicleGap = (next.discrepancies || []).find((item) => item.field === 'vehicle');
-    setForm({
-      checklist: next.checklist,
-      weightEmpty: next.weights.empty ?? '',
-      weightFull: next.weights.full ?? '',
-      cargoValue: next.recordedCargoValue ?? next.cargo.declaredValue ?? '',
-      actualCargoType: next.actualCargoType || next.cargo.type || '',
-      actualVehicle: vehicleGap?.actual || '',
-      note: '',
+    setForm((current) => {
+      if (options.keepDraft && current) return current;
+      return {
+        checklist: next.checklist,
+        weightEmpty: next.weights.empty ?? '',
+        weightFull: next.weights.full ?? '',
+        cargoValue: next.recordedCargoValue ?? next.cargo.declaredValue ?? '',
+        actualCargoType: next.actualCargoType || next.cargo.type || '',
+        actualVehicle: vehicleGap?.actual || '',
+        note: '',
+      };
     });
   }
 
@@ -76,7 +79,7 @@ export default function Visit() {
     if (!file) return;
     setError('');
     try {
-      apply(await upload(`/missions/${id}/photos`, file, { kind }));
+      apply(await upload(`/missions/${id}/photos`, file, { kind }), { keepDraft: true });
     } catch (err) {
       setError(err.message);
     }

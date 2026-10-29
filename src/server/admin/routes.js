@@ -349,6 +349,7 @@ router.get('/inspections', requirePermission('inspections'), asyncHandler(async 
       recordedCargoValue: row.recordedCargoValue != null ? Number(row.recordedCargoValue) : null,
       decision: row.decision,
       decisionNote: row.decisionNote,
+      photos: (row.photos || []).map((photo) => ({ kind: photo.kind, url: photo.url })),
       createdAt: row.createdAt,
     })),
   });

@@ -49,7 +49,7 @@ export default function ShipmentHistory() {
               <li key={s.id} className="px-4 py-4">
                 <div className="mb-2 flex items-center justify-between gap-3">
                   <span className="tabular font-bold text-ink-900">{s.tracking_code}</span>
-                  <StatusBadge status={s.status} />
+                  <StatusBadge status={s.workflow_status === 'ON_HOLD' ? 'on_hold' : s.status} />
                 </div>
                 <p className="text-sm text-ink-700">
                   {s.originCity?.name || 'مبدأ'} ← {s.destCity?.name || 'مقصد'}
@@ -99,7 +99,7 @@ export default function ShipmentHistory() {
                     {new Intl.DateTimeFormat('fa-IR').format(new Date(s.loading_date))}
                   </td>
                   <td className="px-5 py-4">
-                    <StatusBadge status={s.status} />
+                    <StatusBadge status={s.workflow_status === 'ON_HOLD' ? 'on_hold' : s.status} />
                   </td>
                   <td className="px-5 py-4">
                     <button

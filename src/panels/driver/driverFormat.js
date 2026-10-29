@@ -11,6 +11,7 @@ export const missionStatusLabels = {
   Completed: 'تکمیل‌شده',
   Declined: 'رد‌شده',
   Cancelled: 'لغوشده',
+  OnHold: 'متوقف به‌خاطر بازرسی',
 };
 
 export const flagLabels = {
@@ -118,6 +119,7 @@ export function isMissionActive(m) {
     'InTransit',
     'NearDestination',
     'POD',
+    'OnHold',
   ].includes(m.status);
 }
 

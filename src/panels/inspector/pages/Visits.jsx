@@ -13,9 +13,13 @@ export default function Visits({ scope = 'open' }) {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    let alive = true;
+    setData(null);
+    setError('');
     api(`/missions?scope=${scope}`)
-      .then(setData)
-      .catch((err) => setError(err.message));
+      .then((value) => { if (alive) setData(value); })
+      .catch((err) => { if (alive) setError(err.message); });
+    return () => { alive = false; };
   }, [scope]);
 
   if (error) return <p className="inspector-muted">{error}</p>;

@@ -112,7 +112,7 @@ export default function Dashboard() {
                   <span className="tabular hidden text-sm text-ink-500 sm:block">
                     {formatToman(s.operator_price || s.proposed_price)} تومان
                   </span>
-                  <StatusBadge status={s.status} />
+                  <StatusBadge status={s.workflow_status === 'ON_HOLD' ? 'on_hold' : s.status} />
                 </div>
               </motion.li>
             ))}
