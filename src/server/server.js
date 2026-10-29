@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const http = require('http');
+const fs = require('fs');
 const path = require('path');
 const mysql = require('mysql2/promise');
 
@@ -24,13 +25,25 @@ const DRIVER_DATABASES = new Set(['alamut_bar', 'xbar_db']);
 
 const app = express();
 
-app.use(cors());
+app.use(cors({ exposedHeaders: ['Content-Disposition', 'Content-Length'] }));
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 app.get('/health', (_req, res) => {
   res.json({ ok: true, service: 'alamut' });
 });
 app.use('/api', routes);
+
+const distDir = path.join(__dirname, '..', '..', 'dist');
+const distIndex = path.join(distDir, 'index.html');
+if (fs.existsSync(distIndex)) {
+  app.use(express.static(distDir, { index: false }));
+  app.use((req, res, next) => {
+    if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+    if (req.path.startsWith('/api') || req.path.startsWith('/uploads') || req.path === '/health') return next();
+    res.sendFile(distIndex);
+  });
+}
+
 app.use(notFoundHandler);
 app.use(errorHandler);
 

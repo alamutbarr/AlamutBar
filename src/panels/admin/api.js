@@ -1,3 +1,5 @@
+import { failureMessage, savePlan } from './downloadGuard.mjs';
+
 const ACCESS = 'alamut_admin_access';
 const REFRESH = 'alamut_admin_refresh';
 
@@ -51,30 +53,20 @@ export async function api(path, options = {}) {
   return json.data;
 }
 
-function pdfMagic(bytes) {
-  return bytes.length >= 5 && String.fromCharCode(bytes[0], bytes[1], bytes[2], bytes[3], bytes[4]) === '%PDF-';
+async function chooseSaveHandle(filename) {
+  if (typeof window.showSaveFilePicker !== 'function' || navigator.webdriver) return null;
+  try {
+    return await window.showSaveFilePicker({
+      suggestedName: filename,
+      types: [{ description: 'PDF', accept: { 'application/pdf': ['.pdf'] } }],
+    });
+  } catch (error) {
+    if (error && error.name === 'AbortError') throw error;
+    return null;
+  }
 }
 
-export async function download(path, filename) {
-  const response = await api(path, { raw: true });
-  if (!response.ok) {
-    let message = 'دانلود ناموفق بود.';
-    const text = await response.text().catch(() => '');
-    if (text.trim().startsWith('{')) {
-      try { message = JSON.parse(text).message || message; } catch { /* پاسخ خطا متن نیست */ }
-    }
-    throw new Error(message);
-  }
-  const type = (response.headers.get('content-type') || '').toLowerCase();
-  if (type.includes('text/html') || type.includes('application/json')) {
-    throw new Error('پاسخ دانلود فایل نیست.');
-  }
-  const bytes = new Uint8Array(await response.arrayBuffer());
-  const wantPdf = /\.pdf$/i.test(filename || '');
-  if (wantPdf && (!type.includes('application/pdf') || !pdfMagic(bytes))) {
-    throw new Error('پروندهٔ دریافتی PDF معتبر نیست.');
-  }
-  const blob = new Blob([bytes], { type: wantPdf ? 'application/pdf' : (type || 'application/octet-stream') });
+function saveWithAnchor(blob, filename) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
@@ -83,5 +75,39 @@ export async function download(path, filename) {
   document.body.appendChild(link);
   link.click();
   link.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 2000);
+  window.setTimeout(() => URL.revokeObjectURL(url), 15000);
+}
+
+export async function download(path, filename) {
+  const wantPdf = /\.pdf$/i.test(filename || '');
+  const started = typeof performance !== 'undefined' ? performance.now() : Date.now();
+  let handle = null;
+  try {
+    handle = wantPdf ? await chooseSaveHandle(filename) : null;
+  } catch (error) {
+    if (error && error.name === 'AbortError') return { cancelled: true };
+    throw error;
+  }
+  const response = await api(path, { raw: true });
+  const type = response.headers.get('content-type') || '';
+  if (!response.ok) {
+    const text = await response.text().catch(() => '');
+    throw new Error(failureMessage({ ok: false, bodyText: text, contentType: type, wantPdf }) || 'دانلود ناموفق بود.');
+  }
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  const message = failureMessage({ ok: true, contentType: type, bytes, wantPdf });
+  if (message) throw new Error(message);
+  if (handle) {
+    const writable = await handle.createWritable();
+    await writable.write(bytes);
+    await writable.close();
+    return { saved: true };
+  }
+  const blob = new Blob([bytes], { type: wantPdf ? 'application/pdf' : (type || 'application/octet-stream') });
+  const elapsed = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - started;
+  if (savePlan({ hasHandle: false, elapsedMs: elapsed, wantPdf }) === 'manual') {
+    return { needsGesture: true, url: URL.createObjectURL(blob), filename };
+  }
+  saveWithAnchor(blob, filename);
+  return { saved: true };
 }

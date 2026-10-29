@@ -16,7 +16,30 @@ export default function OrderDetail() {
   const [reason, setReason] = useState('');
   const [extra, setExtra] = useState('');
   const [ready, setReady] = useState([]);
+  const [manualPdf, setManualPdf] = useState(null);
   const parentRef = useRef(null);
+
+  useEffect(() => () => {
+    if (manualPdf?.url) URL.revokeObjectURL(manualPdf.url);
+  }, [manualPdf]);
+
+  async function saveDossier() {
+    if (manualPdf?.url) URL.revokeObjectURL(manualPdf.url);
+    setManualPdf(null);
+    toast.message('در حال ساخت پرونده…');
+    try {
+      const result = await download(`/orders/${id}/dossier`, `${order.trackingCode}.pdf`);
+      if (result?.cancelled) return;
+      if (result?.needsGesture) {
+        setManualPdf({ url: result.url, filename: result.filename });
+        toast.error('ساخت پرونده طول کشید و مرورگر ذخیرهٔ خودکار را رد کرد. دکمهٔ «ذخیرهٔ پرونده» را بزنید.');
+        return;
+      }
+      toast.success('پرونده ذخیره شد');
+    } catch (error) {
+      toast.error(error.message);
+    }
+  }
 
   const load = () => api(`/orders/${id}`).then(setOrder);
   useEffect(() => { load().catch((error) => toast.error(error.message)); }, [id]);
@@ -87,7 +110,10 @@ export default function OrderDetail() {
           {can('orders.notes') && <button type="button" className="btn secondary" onClick={() => setDialog('note')}>یادداشت</button>}
           {can('orders.waybill') && <button type="button" className="btn secondary" onClick={() => setDialog('waybill')}>بارنامه و کد تحویل</button>}
           {can('orders.penalty') && <button type="button" className="btn secondary" onClick={() => setDialog('penalty')}>جریمه تأخیر</button>}
-          <button type="button" className="btn gold" onClick={() => download(`/orders/${id}/dossier`, `${order.trackingCode}.pdf`).catch((err) => toast.error(err.message))}>دانلود پرونده</button>
+          <button type="button" className="btn gold" onClick={saveDossier}>دانلود پرونده</button>
+          {manualPdf && (
+            <a className="btn gold" href={manualPdf.url} download={manualPdf.filename}>ذخیرهٔ پرونده</a>
+          )}
           {can('drivers.queue') && (
             <div className="card" style={{ padding: 12 }}>
               <strong>صف آماده</strong>
