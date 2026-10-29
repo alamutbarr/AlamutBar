@@ -145,7 +145,8 @@ function toMissionDto(row, inspection = null) {
       lengthCm: d.length_cm != null && d.length_cm !== '' ? Number(d.length_cm) : undefined,
       widthCm: d.width_cm != null && d.width_cm !== '' ? Number(d.width_cm) : undefined,
       heightCm: d.height_cm != null && d.height_cm !== '' ? Number(d.height_cm) : undefined,
-      sensitive: false,
+      sensitive: Boolean(d.requires_inspector),
+      pieceCount: d.piece_count != null ? Number(d.piece_count) : undefined,
     },
     loadingDate: d.loading_date ? String(d.loading_date).slice(0, 10) : undefined,
     timeWindow: {
@@ -256,6 +257,25 @@ router.get('/missions', authMiddleware, async (req, res) => {
   const rows = await openShipments(req.user.id);
   const inspections = await latestInspections(rows.map((row) => row.id));
   return res.json({ missions: rows.map((row) => toMissionDto(row, inspections.get(row.id) || null)) });
+});
+
+router.post('/missions/:id/photos', authMiddleware, (req, res, next) => {
+  documentUpload.single('file')(req, res, (error) => {
+    if (error) return res.status(400).json({ message: error.message || 'آپلود عکس ناموفق بود.' });
+    return next();
+  });
+}, async (req, res) => {
+  if (!req.file) return res.status(400).json({ message: 'عکس را انتخاب کنید.' });
+  const mission = await Shipment.findByPk(req.params.id);
+  if (!mission || String(mission.driver_id) !== String(req.user.id)) {
+    return res.status(403).json({ message: 'به این مأموریت دسترسی ندارید.' });
+  }
+  const photos = Array.isArray(mission.photo_urls) ? [...mission.photo_urls] : [];
+  photos.push(`/uploads/${req.file.filename}`);
+  mission.photo_urls = photos;
+  mission.changed('photo_urls', true);
+  await mission.save();
+  return res.json({ url: photos[photos.length - 1], count: photos.length });
 });
 
 router.post('/missions/:id/change-status', authMiddleware, async (req, res) => {

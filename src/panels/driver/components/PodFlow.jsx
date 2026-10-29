@@ -6,6 +6,7 @@ export function PodFlow({ mission, onComplete, }) {
     const [photos, setPhotos] = useState([]);
     const [exceptionReason, setExceptionReason] = useState('');
     const [error, setError] = useState('');
+    const [uploading, setUploading] = useState(false);
     const fileRef = useRef(null);
     const canStart = mission.status === 'NearDestination' || mission.status === 'POD';
     const handleRequestOtp = () => {
@@ -16,16 +17,46 @@ export function PodFlow({ mission, onComplete, }) {
     };
     const handlePhotoSelect = (e) => {
         const files = Array.from(e.target.files || []);
-        const urls = files.map((f) => URL.createObjectURL(f));
-        setPhotos((prev) => [...prev, ...urls].slice(0, 5));
+        const next = files.map((file) => ({ file, url: URL.createObjectURL(file), uploaded: false }));
+        setPhotos((prev) => [...prev, ...next].slice(0, 5));
     };
-    const handleProceedToOtp = () => {
+    const uploadPhotos = async () => {
+        const token = localStorage.getItem('driver_token');
+        let count = 0;
+        for (const item of photos) {
+            if (item.uploaded) {
+                count += 1;
+                continue;
+            }
+            const body = new FormData();
+            body.append('file', item.file);
+            const response = await fetch(`/api/driver/missions/${mission.id}/photos`, {
+                method: 'POST',
+                headers: token ? { Authorization: `Bearer ${token}` } : {},
+                body,
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(payload.message || payload.error || 'آپلود عکس ناموفق بود.');
+            item.uploaded = true;
+            count = payload.count || count + 1;
+        }
+        return count;
+    };
+    const handleProceedToOtp = async () => {
         if (photos.length < 3) {
             setError('حداقل ۳ عکس از پلمب/بار الزامی است');
             return;
         }
         setError('');
-        setStep('enter_otp');
+        setUploading(true);
+        try {
+            await uploadPhotos();
+            setStep('enter_otp');
+        } catch (uploadError) {
+            setError(uploadError.message);
+        } finally {
+            setUploading(false);
+        }
     };
     const handleVerifyOtp = () => {
         if (otp.length !== 4) {
@@ -39,19 +70,27 @@ export function PodFlow({ mission, onComplete, }) {
     const handleOtpNotReceived = () => {
         setStep('otp_not_received');
     };
-    const handleDeliverWithoutOtp = () => {
+    const handleDeliverWithoutOtp = async () => {
         if (!exceptionReason.trim()) {
             setError('ذکر دلیل تحویل بدون OTP الزامی است');
             return;
         }
         setError('');
-        setStep('done');
-        onComplete({
-            otp: '',
-            otpVerified: false,
-            photosUploaded: photos.length,
-            exceptionReason: exceptionReason.trim(),
-        });
+        setUploading(true);
+        try {
+            const count = await uploadPhotos();
+            setStep('done');
+            onComplete({
+                otp: '',
+                otpVerified: false,
+                photosUploaded: count,
+                exceptionReason: exceptionReason.trim(),
+            });
+        } catch (uploadError) {
+            setError(uploadError.message);
+        } finally {
+            setUploading(false);
+        }
     };
     if (!canStart) {
         return (<div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-center">
@@ -106,8 +145,8 @@ export function PodFlow({ mission, onComplete, }) {
             </p>
             <input ref={fileRef} type="file" accept="image/*" capture="environment" multiple onChange={handlePhotoSelect} className="hidden"/>
             <div className="grid grid-cols-3 gap-2">
-              {photos.map((url, i) => (<div key={i} className="relative aspect-square rounded-xl overflow-hidden border border-slate-200">
-                  <img src={url} alt={`عکس ${i + 1}`} className="w-full h-full object-cover"/>
+              {photos.map((item, i) => (<div key={item.url} className="relative aspect-square rounded-xl overflow-hidden border border-slate-200">
+                  <img src={item.url} alt={`عکس ${i + 1}`} className="w-full h-full object-cover"/>
                   <span className="absolute top-1 right-1 rounded-full bg-black/50 px-1.5 py-0.5 text-[10px] text-white">
                     {new Intl.NumberFormat('fa-IR').format(i + 1)}
                   </span>
@@ -121,7 +160,7 @@ export function PodFlow({ mission, onComplete, }) {
               {new Intl.NumberFormat('fa-IR').format(photos.length)} عکس ثبت شده — حداقل ۳ مورد نیاز
             </p>
           </div>
-          <button onClick={handleProceedToOtp} disabled={photos.length < 3} className="w-full flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed active:scale-95">
+          <button onClick={handleProceedToOtp} disabled={photos.length < 3 || uploading} className="w-full flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed active:scale-95">
             <Upload className="w-4 h-4"/>
             ادامه — ورود کد تحویل
           </button>

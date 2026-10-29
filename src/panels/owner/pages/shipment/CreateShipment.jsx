@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { Check, ChevronRight, ChevronLeft } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { createShipment } from "../../api/shipment.api";
@@ -68,6 +69,8 @@ const emptyFormData = {
   cargo_type_other: "",
   packaging_type: "",
   weight_kg: "",
+  piece_count: "",
+  requires_inspector: false,
   length_cm: "",
   width_cm: "",
   height_cm: "",
@@ -88,13 +91,58 @@ const emptyFormData = {
   trackingCode: "",
 };
 
+function formFromShipment(shipment) {
+  if (!shipment) return emptyFormData;
+  const date = shipment.loading_date ? String(shipment.loading_date).slice(0, 10) : "";
+  return {
+    ...emptyFormData,
+    origin_city_id: shipment.origin_city_id || "",
+    origin_city_name: shipment.originCity?.name || "",
+    origin_zone_id: shipment.origin_zone_id || "",
+    origin_address: shipment.origin_address || "",
+    origin_lat: shipment.origin_lat ?? "",
+    origin_lng: shipment.origin_lng ?? "",
+    dest_city_id: shipment.dest_city_id || "",
+    dest_city_name: shipment.destCity?.name || "",
+    dest_zone_id: shipment.dest_zone_id || "",
+    dest_address: shipment.dest_address || "",
+    dest_lat: shipment.dest_lat ?? "",
+    dest_lng: shipment.dest_lng ?? "",
+    cargo_type: shipment.cargo_type || "",
+    cargo_type_other: shipment.cargo_type_other || "",
+    packaging_type: shipment.packaging_type || "",
+    weight_kg: shipment.weight_kg ?? "",
+    piece_count: shipment.piece_count ?? "",
+    length_cm: shipment.length_cm ?? "",
+    width_cm: shipment.width_cm ?? "",
+    height_cm: shipment.height_cm ?? "",
+    cargo_value: shipment.cargo_value ?? "",
+    notes: shipment.notes || "",
+    loading_date: date,
+    loading_time_from: shipment.loading_time_from || "",
+    loading_time_to: shipment.loading_time_to || "",
+    loading_time_ranges: Array.isArray(shipment.loading_time_ranges) ? shipment.loading_time_ranges : [],
+    urgency: shipment.urgency || "",
+    vehicle_type_id: shipment.vehicle_type_id || "",
+    vehicle_variants: Array.isArray(shipment.vehicle_variants) ? shipment.vehicle_variants : [],
+    loading_method: shipment.loading_method || "",
+    receiver_name: shipment.receiver_name || "",
+    receiver_phone: shipment.receiver_phone || "",
+    receiver_national_id: shipment.receiver_national_id || "",
+    receiver_postal_code: shipment.receiver_postal_code || "",
+    proposed_price: shipment.proposed_price ?? "",
+    requires_inspector: Boolean(shipment.requires_inspector),
+  };
+}
+
 export default function CreateShipment() {
+  const repeat = useLocation().state?.repeat;
   const [currentStep, setCurrentStep] = useState(1);
-  const [maxStepReached, setMaxStepReached] = useState(1);
+  const [maxStepReached, setMaxStepReached] = useState(repeat ? TOTAL_VISIBLE_STEPS : 1);
   const [direction, setDirection] = useState(1);
   const [stepError, setStepError] = useState("");
   const toast = useToast();
-  const [formData, setFormData] = useState(emptyFormData);
+  const [formData, setFormData] = useState(() => formFromShipment(repeat));
 
   const updateFormData = (key, value) =>
     setFormData((prev) => ({ ...prev, [key]: value }));
@@ -219,6 +267,7 @@ export default function CreateShipment() {
       if (payload[k] === "") payload[k] = null;
     });
     [
+      "piece_count",
       "length_cm",
       "width_cm",
       "height_cm",
@@ -245,9 +294,15 @@ export default function CreateShipment() {
 
   return (
     <div className="mx-auto w-full max-w-4xl">
+      {!isFinal && repeat && (
+        <p className="mb-4 rounded-lg border border-[#d7b56d] bg-[#f7f6f0] px-3 py-2 text-sm text-[#17383b]">
+          مشخصات از حمل {repeat.tracking_code} آمده است. وزن، تعداد، زمان و مقصد را پیش از ثبت عوض کنید. اگر تاریخ بارگیری گذشته باشد، در مرحلهٔ زمان یک تاریخ تازه بگذارید.
+        </p>
+      )}
+
       {!isFinal && (
         <div className="mb-4 flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-ink-900">ثبت بار جدید</h1>
+          <h1 className="text-2xl font-bold text-ink-900">{repeat ? "تکرار حمل" : "ثبت بار جدید"}</h1>
           <p className="text-sm text-ink-300">
             مرحلهٔ <bdi dir="ltr" className="tabular">{currentStep.toLocaleString("fa-IR")}</bdi>
             {" "}از{" "}

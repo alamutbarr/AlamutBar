@@ -89,6 +89,8 @@ function toMission(row, driverId) {
       weightKg: weight,
       value: data.cargo_value != null ? Number(data.cargo_value) : null,
       packaging: data.packaging_type,
+      pieceCount: data.piece_count != null ? Number(data.piece_count) : null,
+      sensitive: Boolean(data.requires_inspector),
     },
     loadingDate: data.loading_date,
     loadingWindow: { from: data.loading_time_from, to: data.loading_time_to },

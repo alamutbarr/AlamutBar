@@ -106,6 +106,16 @@ export default function Step6_Insurance({ data, onChange }) {
           <Info size={14} className="text-amber-600 shrink-0" />
           <span>حداقل ارزش محموله: ۱۰ میلیون تومان</span>
         </div>
+
+        <label className="flex items-start gap-2 rounded-lg border border-ink-100 bg-[#f7f6f0] px-3 py-3 text-sm text-[#17383b]">
+          <input
+            type="checkbox"
+            className="mt-1"
+            checked={Boolean(data.requires_inspector)}
+            onChange={(event) => onChange("requires_inspector", event.target.checked)}
+          />
+          <span>این بار حساس است و متصدی باید در محل بارگیری حاضر شود.</span>
+        </label>
       </div>
     </div>
   );

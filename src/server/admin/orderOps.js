@@ -111,6 +111,7 @@ function presentOrder(row, extra = {}) {
     cargo: {
       type: data.cargo_type === 'other' ? (data.cargo_type_other || 'سایر') : data.cargo_type,
       weightKg: num(data.weight_kg),
+      pieceCount: data.piece_count != null ? Number(data.piece_count) : null,
       value: num(data.cargo_value),
       packaging: data.packaging_type,
       lengthCm: data.length_cm,

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowRight, XCircle, Star, PackageCheck } from 'lucide-react';
+import { ArrowRight, XCircle, Star, PackageCheck, Copy } from 'lucide-react';
 import { getShipmentById, respondToPrice, cancelShipment, confirmDelivery } from '../../api/shipment.api';
 import StatusBadge from '../../components/common/StatusBadge';
 import Button from '../../components/common/Button';
@@ -96,7 +96,12 @@ export default function ShipmentDetail() {
               {shipment.originCity?.name} ← {shipment.destCity?.name}
             </p>
           </div>
-          <StatusBadge status={shipment.workflow_status === 'ON_HOLD' ? 'on_hold' : shipment.status} />
+          <div className="flex flex-col items-end gap-2">
+            <StatusBadge status={shipment.workflow_status === 'ON_HOLD' ? 'on_hold' : shipment.status} />
+            <Button as={Link} to="/owner/create-shipment" state={{ repeat: shipment }} variant="ghost" size="sm" icon={Copy}>
+              تکرار این حمل
+            </Button>
+          </div>
         </div>
 
         <dl className="grid grid-cols-1 gap-y-3 text-sm sm:grid-cols-2">

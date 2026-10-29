@@ -51,6 +51,7 @@ const Shipment = sequelize.define(
     cargo_type_other: { type: DataTypes.STRING(100), allowNull: true },
     packaging_type: { type: DataTypes.STRING(50), allowNull: true },
     weight_kg: { type: DataTypes.DECIMAL(10, 2), allowNull: false },
+    piece_count: { type: DataTypes.INTEGER, allowNull: true },
     length_cm: { type: DataTypes.INTEGER, allowNull: true },
     width_cm: { type: DataTypes.INTEGER, allowNull: true },
     height_cm: { type: DataTypes.INTEGER, allowNull: true },

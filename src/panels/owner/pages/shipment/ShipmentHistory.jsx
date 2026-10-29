@@ -58,13 +58,22 @@ export default function ShipmentHistory() {
                   {s.weight_kg} کیلوگرم · {formatToman(s.operator_price || s.proposed_price)} ·{' '}
                   {new Intl.DateTimeFormat('fa-IR').format(new Date(s.loading_date))}
                 </p>
-                <button
-                  type="button"
-                  onClick={() => setOpenId(s.id)}
-                  className="mt-3 rounded-md bg-[#087f8c] px-3 py-1.5 text-xs font-semibold text-[#f7f6f0]"
-                >
-                  جزئیات
-                </button>
+                <div className="mt-3 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setOpenId(s.id)}
+                    className="rounded-md bg-[#087f8c] px-3 py-1.5 text-xs font-semibold text-[#f7f6f0]"
+                  >
+                    جزئیات
+                  </button>
+                  <Link
+                    to="/owner/create-shipment"
+                    state={{ repeat: s }}
+                    className="rounded-md border border-[#d7b56d] px-3 py-1.5 text-xs font-semibold text-[#17383b]"
+                  >
+                    تکرار این حمل
+                  </Link>
+                </div>
               </li>
             ))}
           </ul>
@@ -102,13 +111,22 @@ export default function ShipmentHistory() {
                     <StatusBadge status={s.workflow_status === 'ON_HOLD' ? 'on_hold' : s.status} />
                   </td>
                   <td className="px-5 py-4">
-                    <button
-                      type="button"
-                      onClick={() => setOpenId(s.id)}
-                      className="rounded-md bg-[#087f8c] px-3 py-1.5 text-xs font-semibold text-[#f7f6f0]"
-                    >
-                      جزئیات
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setOpenId(s.id)}
+                        className="rounded-md bg-[#087f8c] px-3 py-1.5 text-xs font-semibold text-[#f7f6f0]"
+                      >
+                        جزئیات
+                      </button>
+                      <Link
+                        to="/owner/create-shipment"
+                        state={{ repeat: s }}
+                        className="rounded-md border border-[#d7b56d] px-3 py-1.5 text-xs font-semibold text-[#17383b]"
+                      >
+                        تکرار
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               ))}

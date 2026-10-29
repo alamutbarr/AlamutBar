@@ -17,6 +17,7 @@ export default function OrderDetail() {
   const [extra, setExtra] = useState('');
   const [ready, setReady] = useState([]);
   const [manualPdf, setManualPdf] = useState(null);
+  const [inspectors, setInspectors] = useState([]);
   const parentRef = useRef(null);
 
   useEffect(() => () => {
@@ -62,6 +63,8 @@ export default function OrderDetail() {
       if (dialog === 'waybill') await api(`/orders/${id}/waybill`, { method: 'PATCH', body: { waybillNumber: extra } });
       if (dialog === 'penalty') await api(`/orders/${id}/penalty`, { method: 'POST', body: { delayMinutes: Number(extra), forceMajeure: false, reason } });
       if (dialog === 'assign') await api(`/orders/${id}/assign-driver`, { method: 'POST', body: { driverId: Number(extra), reason } });
+      if (dialog === 'replace') await api(`/orders/${id}/replace-driver`, { method: 'POST', body: { driverId: Number(extra) || undefined, reason } });
+      if (dialog === 'inspector') await api(`/orders/${id}/inspector`, { method: 'POST', body: { inspectorId: Number(extra) } });
       toast.success('ثبت شد');
       setDialog(null);
       setReason('');
@@ -86,7 +89,8 @@ export default function OrderDetail() {
           </article>
           <article className="card" style={{ padding: 16 }}>
             <h2 style={{ marginTop: 0 }}>بار و طرف‌ها</h2>
-            <p>{order.cargo.type}، {order.cargo.weightKg?.toLocaleString('fa-IR')} کیلوگرم، ارزش {money(order.cargo.value)}</p>
+            <p>{order.cargo.type}، {order.cargo.weightKg?.toLocaleString('fa-IR')} کیلوگرم{order.cargo.pieceCount ? `، ${order.cargo.pieceCount.toLocaleString('fa-IR')} بسته` : ''}، ارزش {money(order.cargo.value)}</p>
+            {order.requiresInspector && <p>این بار حساس است و متصدی در محل لازم است.</p>}
             <p>مبدأ: {order.loading.city} — {order.loading.address}</p>
             <p>مقصد: {order.unloading.city} — {order.unloading.address}</p>
             <p>صاحب کالا: {order.owner?.companyName || order.owner?.firstName} — {order.owner?.phone}</p>
@@ -106,6 +110,8 @@ export default function OrderDetail() {
           {can('orders.update') && <button type="button" className="btn" onClick={() => setDialog('status')}>تغییر وضعیت</button>}
           {can('orders.price') && <button type="button" className="btn secondary" onClick={() => setDialog('price')}>اصلاح قیمت</button>}
           {can('orders.assign') && <button type="button" className="btn secondary" onClick={() => setDialog('assign')}>تخصیص از صف آماده</button>}
+          {can('orders.assign') && <button type="button" className="btn secondary" onClick={() => setDialog('replace')}>جایگزینی راننده</button>}
+          {can('inspections') && <button type="button" className="btn secondary" onClick={() => { setDialog('inspector'); api('/inspectors').then(setInspectors).catch((error) => toast.error(error.message)); }}>تخصیص متصدی</button>}
           {can('orders.notes') && <button type="button" className="btn secondary" onClick={() => setDialog('call')}>ثبت تماس</button>}
           {can('orders.notes') && <button type="button" className="btn secondary" onClick={() => setDialog('note')}>یادداشت</button>}
           {can('orders.waybill') && <button type="button" className="btn secondary" onClick={() => setDialog('waybill')}>بارنامه و کد تحویل</button>}
@@ -137,10 +143,22 @@ export default function OrderDetail() {
             {Object.entries(WORKFLOW_LABELS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
           </select>
         )}
-        {(dialog === 'price' || dialog === 'penalty' || dialog === 'waybill' || dialog === 'assign') && (
-          <input className="field" style={{ marginTop: 8 }} placeholder={dialog === 'waybill' ? 'شماره بارنامه' : dialog === 'assign' ? 'شناسه راننده' : 'مقدار'} value={extra} onChange={(event) => setExtra(event.target.value)} />
+        {(dialog === 'price' || dialog === 'penalty' || dialog === 'waybill') && (
+          <input className="field" style={{ marginTop: 8 }} placeholder={dialog === 'waybill' ? 'شماره بارنامه' : 'مقدار'} value={extra} onChange={(event) => setExtra(event.target.value)} />
         )}
-        {dialog !== 'waybill' && <textarea className="area" style={{ marginTop: 8 }} placeholder="دلیل" value={reason} onChange={(event) => setReason(event.target.value)} />}
+        {(dialog === 'assign' || dialog === 'replace') && (
+          <select className="select" style={{ marginTop: 8 }} value={extra} onChange={(event) => setExtra(event.target.value)}>
+            <option value="">{dialog === 'replace' ? 'رانندهٔ جایگزین از صف آماده' : 'رانندهٔ آماده'}</option>
+            {ready.map((driver) => <option key={driver.id} value={driver.id}>{driver.fullName}</option>)}
+          </select>
+        )}
+        {dialog === 'inspector' && (
+          <select className="select" style={{ marginTop: 8 }} value={extra} onChange={(event) => setExtra(event.target.value)}>
+            <option value="">متصدی</option>
+            {inspectors.filter((person) => person.isActive !== false).map((person) => <option key={person.id} value={person.id}>{person.fullName}</option>)}
+          </select>
+        )}
+        {dialog !== 'waybill' && dialog !== 'inspector' && <textarea className="area" style={{ marginTop: 8 }} placeholder="دلیل" value={reason} onChange={(event) => setReason(event.target.value)} />}
         <button type="button" className="btn" style={{ marginTop: 8 }} onClick={submit}>تأیید</button>
       </Modal>
     </Page>
