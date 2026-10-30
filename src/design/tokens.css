@@ -234,6 +234,45 @@ a.glass-card:hover {
   background: var(--alamut-mist);
 }
 
+.chip-rail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  max-height: 7.5rem;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-bottom: 0.15rem;
+  scrollbar-width: thin;
+  scrollbar-color: #087f8c #e6eeea;
+}
+
+.chip-rail::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.chip-rail::-webkit-scrollbar-thumb {
+  background: #087f8c;
+  border-radius: 999px;
+}
+
+.option-rail {
+  max-height: min(22rem, 48vh);
+  overflow-y: auto;
+  padding-left: 0.2rem;
+  scrollbar-width: thin;
+  scrollbar-color: #087f8c #e6eeea;
+}
+
+.option-rail::-webkit-scrollbar {
+  width: 6px;
+}
+
+.option-rail::-webkit-scrollbar-thumb {
+  background: #087f8c;
+  border-radius: 999px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .auth-field,
   .auth-segment-btn,

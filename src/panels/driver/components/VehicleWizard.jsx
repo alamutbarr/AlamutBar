@@ -169,7 +169,7 @@ export function VehicleWizard({
         <div className="relative mb-3 h-1.5 overflow-hidden rounded-md bg-[#e6eeea]">
           <div className="absolute inset-y-0 right-0 rounded-md bg-[#d7b56d]" style={{ width: `${fillPercent}%` }} />
         </div>
-        <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="chip-rail">
           {steps.map((step, index) => {
             const done = index < currentIndex && Boolean(valueOf(step) || step.id === 'summary');
             const active = index === currentIndex;
@@ -214,7 +214,7 @@ export function VehicleWizard({
           {!options.length && (
             <p className="text-sm text-[#526d70]">اول نوع کشنده را انتخاب کنید.</p>
           )}
-          <div className="grid gap-2">
+          <div className="option-rail grid gap-2">
             {options.map((option) => {
               const active = selected === option.value;
               return (

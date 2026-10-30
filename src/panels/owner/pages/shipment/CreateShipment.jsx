@@ -407,7 +407,7 @@ function RouteProgress({ current, maxReached, onStepClick }) {
 
       <div
         ref={scrollerRef}
-        className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="chip-rail"
       >
         {STEPS.slice(0, TOTAL_VISIBLE_STEPS).map((step, idx) => {
           const num = idx + 1;
