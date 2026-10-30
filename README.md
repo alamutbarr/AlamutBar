@@ -4,15 +4,37 @@
 
 ## راه‌اندازی
 
-1. MySQL یا MariaDB را روی `127.0.0.1:3306` روشن کنید و یک کاربر با دسترسی ساخت دیتابیس داشته باشید. در این محیط توسعه کاربر `root` با رمز خالی کافی است.
-2. از روی `.env.example` فایل `.env` بسازید. جدول‌ها با `sequelize.sync({ alter: true })` در بالا آمدن سرور ساخته و به‌روز می‌شوند. مهاجرت جداگانه‌ای نیست. اگر جدول سفارش خالی باشد، همان بالا آمدن اول دادهٔ نمونهٔ عملیات، راننده، متصدی و یک تیکت ساخته می‌شود. پرچم `demo_seeded` به‌تنهایی جلوی این کار را نمی‌گیرد.
+1. MySQL یا MariaDB را روی `127.0.0.1:3306` روشن کنید و یک کاربر با دسترسی ساخت دیتابیس داشته باشید. در این محیط توسعه کاربر `root` با رمز خالی کافی است. اگر زمپ دارید، Apache لازم نیست؛ فقط MySQL را Start کنید.
+2. از روی `.env.example` فایل `.env` بسازید. جدول‌های نبوده با `sequelize.sync()` ساخته می‌شوند. `alter: true` دیگر پیش‌فرض نیست، چون روی MySQL زمپ با پیام `MySQL shutdown unexpectedly` سرویس را خراب می‌کرد. اگر یک‌بار به ALTER نیاز دارید `DB_SYNC_ALTER=true` بگذارید و بعد خاموشش کنید. اگر جدول سفارش خالی باشد، همان بالا آمدن اول دادهٔ نمونهٔ عملیات، راننده، متصدی و یک تیکت ساخته می‌شود. پرچم `demo_seeded` به‌تنهایی جلوی این کار را نمی‌گیرد.
 3. وابستگی‌ها را نصب کنید و هر دو فرایند را با هم اجرا کنید.
 
 ```bash
 cp .env.example .env
 npm install
+npm run db:doctor
 npm run dev
 ```
+
+اگر کنترل‌پنل زمپ نوشت `MySQL shutdown unexpectedly`، خود سرویس MySQL بالا نیامده و `npm run dev` هم به آن وصل نمی‌شود. Apache برای این پروژه لازم نیست.
+
+```powershell
+npm run db:doctor
+powershell -ExecutionPolicy Bypass -File scripts/fix-xampp-mysql.ps1
+```
+
+اسکریپت اول فقط تشخیص می‌دهد: پورت ۳۳۰۶، سرویس MySQL ویندوز، و انتهای لاگ زمپ. اگر پوشه `mysql\data` خراب باشد:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/fix-xampp-mysql.ps1 -Repair
+```
+
+اگر پورت ۳۳۰۶ در اشغال سرویس دیگر است:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/fix-xampp-mysql.ps1 -UsePort 3307
+```
+
+بعد در `.env` مقدار `DB_HOST=127.0.0.1` بماند (نه `localhost`) و MySQL را از زمپ Start کنید. دوباره `npm run db:doctor` و بعد `npm run dev`.
 
 در توسعه، سایت روی `http://localhost:4179` و API روی `http://localhost:5088` بالا می‌آید. Vite مسیرهای `/api`، `/uploads` و `/ws` را به API می‌فرستد. تست‌های بدون دیتابیس: `npm test`.
 
@@ -28,6 +50,7 @@ npm run dev
 | `DB_NAME` | `alamut` | نام دیتابیس. مقدارهای قدیمی پنل‌ها را عوض نکنید |
 | `DB_USER` | `root` | کاربر دیتابیس |
 | `DB_PASS` | خالی | رمز دیتابیس. `DB_PASSWORD` هم پذیرفته می‌شود |
+| `DB_SYNC_ALTER` | خاموش | اگر `true` باشد یک‌بار `sequelize.sync({ alter: true })` اجرا می‌شود. روی زمپ روشن نگذارید |
 | `JWT_SECRET` | مقدار توسعه در `.env.example` | امضای توکن |
 | `INSPECTOR_DEV_OTP` | `12345` | کد ثابت متصدی وقتی پیامک واقعی نیست |
 | `SMS_PROVIDER` | خالی | اگر `kavenegar` باشد و `SMS_API_KEY` تنظیم شده باشد، کد ثابت کنار می‌رود |

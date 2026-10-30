@@ -14,7 +14,7 @@ const OrderEvent = sequelize.define('OrderEvent', {
   tableName: 'order_events',
   underscored: true,
   updatedAt: false,
-  indexes: [{ fields: ['shipment_id', 'created_at'] }],
+  indexes: [{ name: 'order_events_shipment_id_created_at', fields: ['shipment_id', 'created_at'] }],
 });
 
 module.exports = OrderEvent;

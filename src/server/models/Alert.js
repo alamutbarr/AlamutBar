@@ -14,7 +14,7 @@ const Alert = sequelize.define('Alert', {
 }, {
   tableName: 'alerts',
   underscored: true,
-  indexes: [{ fields: ['shipment_id', 'is_resolved'] }],
+  indexes: [{ name: 'alerts_shipment_id_is_resolved', fields: ['shipment_id', 'is_resolved'] }],
 });
 
 module.exports = Alert;
