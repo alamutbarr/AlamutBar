@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
   setIdType, uploadDocument, reviewDocument, overallStatus, present,
+  shipmentGateMessage, KYC_SHIPMENT_MISSING, KYC_SHIPMENT_PENDING, KYC_SHIPMENT_REJECTED,
 } = require('./ownerKyc');
 
 function pack(idType) {
@@ -62,6 +63,27 @@ test('re-upload clears the rejection and verification needs every required docum
     present(pack('shenasnameh')).documents.find((doc) => doc.key === 'shenasnameh:front').title,
     'صفحه اول شناسنامه',
   );
+});
+
+test('shipment create stays blocked until identity is approved', () => {
+  assert.equal(shipmentGateMessage(null), KYC_SHIPMENT_MISSING);
+  assert.equal(shipmentGateMessage(null, 'VERIFIED'), null);
+  assert.equal(shipmentGateMessage(setIdType(null, 'national_card')), KYC_SHIPMENT_MISSING);
+  const uploaded = pack('shenasnameh');
+  assert.equal(overallStatus(uploaded), 'PENDING');
+  assert.equal(shipmentGateMessage(uploaded), KYC_SHIPMENT_PENDING);
+  const rejected = reviewDocument(uploaded, {
+    key: 'selfie',
+    decision: 'REJECTED',
+    reason: 'تصویر تار است',
+  });
+  assert.equal(shipmentGateMessage(rejected.kyc), KYC_SHIPMENT_REJECTED);
+  let approved = uploaded;
+  for (const key of ['selfie', 'holding', 'shenasnameh:front']) {
+    approved = reviewDocument(approved, { key, decision: 'APPROVED' }).kyc;
+  }
+  assert.equal(overallStatus(approved), 'VERIFIED');
+  assert.equal(shipmentGateMessage(approved), null);
 });
 
 test('switching the identity document invalidates the previous set', () => {

@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Check, ChevronRight, ChevronLeft } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { createShipment } from "../../api/shipment.api";
+import { getProfile } from "../../api/auth.api";
 import Button from "../../components/common/Button";
+import { useAuth } from "../../hooks/useAuth";
 import { useToast } from "../../hooks/useToast";
 import { getErrorMessage } from "../../utils/errorMessage";
+import { ownerKycShipmentIssue } from "../../utils/ownerKycGate";
 
 import Step1_Origin from "../../components/shipment-steps/Step1_Origin";
 import Step2_Destination from "../../components/shipment-steps/Step2_Destination";
@@ -137,12 +140,28 @@ function formFromShipment(shipment) {
 
 export default function CreateShipment() {
   const repeat = useLocation().state?.repeat;
+  const { user, updateUser } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [maxStepReached, setMaxStepReached] = useState(repeat ? TOTAL_VISIBLE_STEPS : 1);
   const [direction, setDirection] = useState(1);
   const [stepError, setStepError] = useState("");
   const toast = useToast();
   const [formData, setFormData] = useState(() => formFromShipment(repeat));
+  const kycIssue = ownerKycShipmentIssue(user);
+
+  useEffect(() => {
+    let cancelled = false;
+    getProfile()
+      .then((fresh) => {
+        if (!cancelled) updateUser(fresh);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+    // فقط یک‌بار از سرور وضعیت احراز را تازه می‌کنیم
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const updateFormData = (key, value) =>
     setFormData((prev) => ({ ...prev, [key]: value }));
@@ -244,6 +263,12 @@ export default function CreateShipment() {
   };
 
   const handleSubmit = async () => {
+    const identityIssue = ownerKycShipmentIssue(user);
+    if (identityIssue) {
+      setStepError(identityIssue);
+      toast.error(identityIssue);
+      return;
+    }
     // چک نهایی سرتاسری قبل از ارسال - اگر جایی ناقص مانده، مستقیم کاربر را همان‌جا می‌بریم
     const firstInvalid = findFirstInvalidStep();
     if (firstInvalid) {
@@ -288,6 +313,23 @@ export default function CreateShipment() {
 
   const ActiveStep = STEPS[currentStep - 1].Component;
   const isFinal = currentStep === STEPS.length;
+
+  if (kycIssue) {
+    return (
+      <div className="mx-auto w-full max-w-4xl">
+        <h1 className="text-2xl font-bold text-ink-900">{repeat ? "تکرار حمل" : "ثبت بار جدید"}</h1>
+        <div className="mt-6 rounded-xl border border-red-200 bg-red-50 px-5 py-5 text-right shadow-panel">
+          <p className="text-sm font-bold text-red-700">{kycIssue}</p>
+          <p className="mt-2 text-sm text-red-600">
+            ابتدا به پروفایل بروید و احراز هویت را کامل کنید؛ بعد می‌توانید بار ثبت کنید.
+          </p>
+          <Button as={Link} to="/owner/profile" variant="accent" className="mt-4">
+            رفتن به احراز هویت
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto w-full max-w-4xl">

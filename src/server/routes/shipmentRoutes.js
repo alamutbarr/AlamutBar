@@ -3,6 +3,7 @@ const router = express.Router();
 const shipmentController = require('../controllers/shipmentController');
 const authenticate = require('../middleware/authMiddleware');
 const requireRole = require('../middleware/roleMiddleware');
+const requireOwnerKyc = require('../middleware/ownerKycMiddleware');
 const validate = require('../middleware/validateMiddleware');
 const {
   createShipmentSchema,
@@ -13,7 +14,7 @@ const {
 
 router.use(authenticate, requireRole('cargo_owner'));
 
-router.post('/', validate(createShipmentSchema), shipmentController.create);
+router.post('/', requireOwnerKyc, validate(createShipmentSchema), shipmentController.create);
 router.get('/', shipmentController.getMine);
 router.get('/:id', shipmentController.getOne);
 router.patch('/:id', validate(updateShipmentSchema), shipmentController.update);

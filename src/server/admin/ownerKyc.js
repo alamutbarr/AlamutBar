@@ -56,6 +56,30 @@ function overallStatus(raw) {
   return 'PENDING';
 }
 
+const KYC_SHIPMENT_MISSING =
+  'برای ثبت بار ابتدا باید احراز هویت را در پروفایل انجام دهید. شناسنامه یا کارت ملی کافی است و نیازی به بارگذاری هر دو نیست.';
+const KYC_SHIPMENT_PENDING =
+  'مدارک هویت هنوز تأیید نشده است. پس از تأیید احراز هویت می‌توانید بار ثبت کنید.';
+const KYC_SHIPMENT_REJECTED =
+  'مدارک هویت رد شده است. ابتدا در پروفایل مدارک را اصلاح کنید تا بتوانید بار ثبت کنید.';
+
+function shipmentGateMessage(raw, verificationStatus) {
+  const fromDocs = overallStatus(raw);
+  const status = verificationStatus === 'VERIFIED' || fromDocs === 'VERIFIED'
+    ? 'VERIFIED'
+    : verificationStatus === 'REJECTED' || fromDocs === 'REJECTED'
+      ? 'REJECTED'
+      : fromDocs;
+  if (status === 'VERIFIED') return null;
+  if (status === 'REJECTED') return KYC_SHIPMENT_REJECTED;
+  const state = normalize(raw);
+  if (!state.idType) return KYC_SHIPMENT_MISSING;
+  const docs = requiredKeys(state.idType).map((key) => state.documents[key]);
+  const uploaded = docs.every((doc) => doc.url && doc.status !== 'MISSING');
+  if (uploaded) return KYC_SHIPMENT_PENDING;
+  return KYC_SHIPMENT_MISSING;
+}
+
 function syncStatus(raw) {
   const kyc = normalize(raw);
   const verificationStatus = overallStatus(kyc);
@@ -126,9 +150,13 @@ function present(raw) {
 module.exports = {
   SLOTS,
   ID_TYPES,
+  KYC_SHIPMENT_MISSING,
+  KYC_SHIPMENT_PENDING,
+  KYC_SHIPMENT_REJECTED,
   normalize,
   requiredKeys,
   overallStatus,
+  shipmentGateMessage,
   syncStatus,
   setIdType,
   uploadDocument,
