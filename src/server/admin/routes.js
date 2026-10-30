@@ -24,6 +24,7 @@ const chat = require('../chat/service');
 const { buildWorkbook } = require('./reports');
 const { normalizePhone } = require('./phone');
 const { logEvent } = require('./audit');
+const { jsonList, photoList } = require('../utils/jsonList');
 
 const router = express.Router();
 
@@ -345,11 +346,11 @@ router.get('/inspections', requirePermission('inspections'), asyncHandler(async 
       workflowStatus: row.Shipment?.workflow_status,
       inspectorName: row.inspector?.fullName,
       weightNet: row.weightNet != null ? Number(row.weightNet) : null,
-      discrepancies: row.discrepancies || [],
+      discrepancies: jsonList(row.discrepancies),
       recordedCargoValue: row.recordedCargoValue != null ? Number(row.recordedCargoValue) : null,
       decision: row.decision,
       decisionNote: row.decisionNote,
-      photos: (row.photos || []).map((photo) => ({ kind: photo.kind, url: photo.url })),
+      photos: photoList(row.photos).filter((photo) => photo.url),
       createdAt: row.createdAt,
     })),
   });
@@ -400,12 +401,12 @@ router.post('/orders/:id/inspection', requirePermission('inspections'), asyncHan
     shipmentId: shipment.id,
     inspectorId: req.body.inspectorId || shipment.assigned_inspector_id,
     assignedByAdminId: req.admin.id,
-    checklist: req.body.checklist || [],
-    photos: req.body.photos || [],
+    checklist: jsonList(req.body.checklist),
+    photos: photoList(req.body.photos),
     weightEmpty: empty,
     weightFull: full,
     weightNet: net,
-    discrepancies: req.body.discrepancies || [],
+    discrepancies: jsonList(req.body.discrepancies),
     decision: 'PENDING',
   });
   await logEvent(shipment.id, {

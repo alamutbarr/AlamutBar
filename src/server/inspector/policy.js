@@ -1,6 +1,9 @@
+const { jsonList, photoList } = require('../utils/jsonList');
+
 const UPCOMING = ['DRIVER_ACCEPTED', 'EN_ROUTE_TO_LOADING', 'AT_LOADING_INSPECTION', 'ON_HOLD'];
 const LATE = ['WAYBILL_ISSUED', 'IN_TRANSIT', 'AT_DESTINATION_UNLOADING'];
 const CLOSED = ['CANCELLED', 'COMPLETED', 'DRIVER_REPLACED'];
+
 const TEHRAN_OFFSET_MS = 3.5 * 60 * 60 * 1000;
 
 const ITEM_LABELS = {
@@ -53,7 +56,7 @@ function requiredItems(settings = {}) {
 }
 
 function mergeChecklist(template, saved = []) {
-  const byKey = new Map(saved.map((item) => [item.key, item]));
+  const byKey = new Map(jsonList(saved).map((item) => [item.key, item]));
   return template.map((item) => ({
     key: item.key,
     label: item.label,
@@ -133,7 +136,7 @@ function photoKindFor(item) {
 }
 
 function completeness({ required, photos = [], weightEmpty, weightFull, cargoValue }) {
-  const kinds = new Set(photos.map((photo) => photo.kind));
+  const kinds = new Set(photoList(photos).map((photo) => photo.kind));
   const missing = [];
   for (const item of required) {
     const kind = photoKindFor(item);
@@ -168,8 +171,8 @@ function visitDeadline(loadingDate, loadingTimeTo, graceMinutes = 30) {
 
 function reportCountsAsVisit(report) {
   if (!report) return false;
-  const photos = report.photos || [];
-  const checklist = report.checklist || [];
+  const photos = photoList(report.photos);
+  const checklist = jsonList(report.checklist);
   return photos.length > 0
     || checklist.some((item) => item.checked)
     || report.weightEmpty != null

@@ -13,6 +13,7 @@ const { logEvent } = require('../admin/audit');
 const { WORKFLOW_LABELS } = require('../admin/workflow');
 const authService = require('./authService');
 const policy = require('./policy');
+const { jsonList, photoList } = require('../utils/jsonList');
 
 const router = express.Router();
 
@@ -66,7 +67,7 @@ function presentMission(shipment, inspector, settings) {
   const template = policy.checklistTemplate(settings);
   const required = policy.requiredItems(settings);
   const checklist = policy.mergeChecklist(template, report?.checklist || []);
-  const photos = report?.photos || [];
+  const photos = photoList(report?.photos);
   const cargoValue = report?.recordedCargoValue != null ? num(report.recordedCargoValue) : null;
   const status = policy.completeness({
     required,
@@ -75,7 +76,7 @@ function presentMission(shipment, inspector, settings) {
     weightFull: num(report?.weightFull),
     cargoValue,
   });
-  const discrepancies = report?.discrepancies || [];
+  const discrepancies = jsonList(report?.discrepancies);
   return {
     id: shipment.id,
     trackingCode: shipment.tracking_code,
@@ -274,7 +275,7 @@ router.post('/missions/:id/photos', asyncHandler(async (req, res, next) => {
   const shipment = await loadVisible(req.params.id, req.inspector, settings);
   await claim(shipment, req.inspector);
   const report = await openReport(shipment, req.inspector);
-  const photos = Array.isArray(report.photos) ? report.photos : [];
+  const photos = photoList(report.photos);
   photos.push({ kind, url: `/uploads/${req.file.filename}`, takenAt: new Date().toISOString() });
   report.photos = photos;
   report.changed('photos', true);
@@ -323,7 +324,7 @@ router.post('/missions/:id/report', asyncHandler(async (req, res) => {
   });
   const status = policy.completeness({
     required: policy.requiredItems(settings),
-    photos: report.photos || [],
+    photos: photoList(report.photos),
     weightEmpty: empty,
     weightFull: full,
     cargoValue,

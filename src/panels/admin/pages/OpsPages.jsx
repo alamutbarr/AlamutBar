@@ -14,6 +14,10 @@ const ROLES = [
 ];
 
 const DECISIONS = { PENDING: 'در انتظار', APPROVED: 'تأیید', CORRECTED: 'اصلاح شد', STOPPED: 'توقف' };
+
+function listOf(value) {
+  return Array.isArray(value) ? value : [];
+}
 const KYC_STATUS = { MISSING: 'ارسال نشده', PENDING: 'در انتظار بررسی', APPROVED: 'تأیید شد', REJECTED: 'رد شد' };
 const COMPLAINT = { pending: 'باز', reviewed: 'بررسی شد', resolved: 'حل شد', rejected: 'رد شد' };
 
@@ -72,10 +76,10 @@ function Inspections() {
                 <Badge tone={report.decision === 'STOPPED' ? 'crit' : report.decision === 'PENDING' ? 'warn' : 'ok'}>{DECISIONS[report.decision] || report.decision}</Badge>
               </div>
               <p className="muted">{report.inspectorName || 'بدون متصدی'} — خالص {report.weightNet ?? '—'} کیلو{report.recordedCargoValue ? ` — ارزش دقیق ${Number(report.recordedCargoValue).toLocaleString('fa-IR')}` : ''}</p>
-              {(report.discrepancies || []).length > 0 && <p>مغایرت: {report.discrepancies.map((item) => (typeof item === 'string' ? item : item.note || item.field || '')).filter(Boolean).join('، ')}</p>}
-              {(report.photos || []).length > 0 && (
+              {listOf(report.discrepancies).length > 0 && <p>مغایرت: {listOf(report.discrepancies).map((item) => (typeof item === 'string' ? item : item.note || item.field || '')).filter(Boolean).join('، ')}</p>}
+              {listOf(report.photos).length > 0 && (
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', margin: '8px 0' }}>
-                  {report.photos.map((photo) => (
+                  {listOf(report.photos).map((photo) => (
                     <a key={`${photo.kind}-${photo.url}`} href={photo.url} target="_blank" rel="noreferrer">
                       <img src={photo.url} alt={photo.kind} style={{ width: 96, height: 72, objectFit: 'cover', borderRadius: 8, background: '#f7f6f0' }} />
                     </a>

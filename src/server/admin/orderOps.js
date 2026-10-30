@@ -11,6 +11,7 @@ const { getSettings } = require('./settingsStore');
 const { needsInspector } = require('../inspector/policy');
 const { publish } = require('./realtime');
 const { parseRoles } = require('./permissions');
+const { jsonList, photoList } = require('../utils/jsonList');
 
 const includes = [
   { model: City, as: 'originCity' },
@@ -331,12 +332,12 @@ function presentInspection(report) {
   return {
     id: row.id,
     inspector: row.inspector ? { id: row.inspector.id, fullName: row.inspector.fullName, phone: row.inspector.phone } : null,
-    checklist: row.checklist || [],
-    photos: row.photos || [],
+    checklist: jsonList(row.checklist),
+    photos: photoList(row.photos).filter((photo) => photo.url),
     weightEmpty: num(row.weightEmpty),
     weightFull: num(row.weightFull),
     weightNet: num(row.weightNet),
-    discrepancies: row.discrepancies || [],
+    discrepancies: jsonList(row.discrepancies),
     decision: row.decision,
     decisionNote: row.decisionNote,
     createdAt: row.createdAt,
