@@ -12,7 +12,7 @@ const DriverLocation = sequelize.define('DriverLocation', {
   tableName: 'driver_locations',
   underscored: true,
   updatedAt: false,
-  indexes: [{ fields: ['driver_id', 'recorded_at'] }],
+  indexes: [{ name: 'driver_locations_driver_id_recorded_at', fields: ['driver_id', 'recorded_at'] }],
 });
 
 module.exports = DriverLocation;

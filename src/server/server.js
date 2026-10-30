@@ -20,6 +20,10 @@ const startReminderScheduler = require('./utils/scheduler');
 const { attachChat } = require('./websocket');
 const { attachAdminSocket } = require('./admin/realtime');
 const { bootstrapAdmin } = require('./admin/bootstrap');
+const { formatMysqlStartupError, printMysqlStartupError } = require('./db/mysqlErrors');
+const { syncSchema } = require('./db/syncSchema');
+const { applySchemaPatches } = require('./db/schemaPatches');
+require('./models');
 
 const DRIVER_DATABASES = new Set(['alamut_bar', 'xbar_db']);
 
@@ -78,20 +82,11 @@ const startServer = async () => {
     await sequelize.authenticate();
     console.log(`به MySQL وصل شد (${dbConfig.name}، کاربر ${dbConfig.user}).`);
 
-    const [messageTables] = await sequelize.query("SHOW TABLES LIKE 'messages'");
-    if (messageTables.length) {
-      const [roleColumn] = await sequelize.query("SHOW COLUMNS FROM messages LIKE 'sender_role'");
-      if (roleColumn[0] && String(roleColumn[0].Type).toLowerCase().includes('enum')) {
-        await sequelize.query("ALTER TABLE messages MODIFY sender_role VARCHAR(20) NOT NULL");
-      }
-      const [channelColumn] = await sequelize.query("SHOW COLUMNS FROM messages LIKE 'channel'");
-      if (!channelColumn.length) {
-        await sequelize.query("ALTER TABLE messages ADD COLUMN channel VARCHAR(32) NOT NULL DEFAULT 'owner_operator'");
-      }
-    }
-
-    await sequelize.sync({ alter: true });
-    console.log('جدول‌های مشترک همگام شدند.');
+    await applySchemaPatches(sequelize);
+    const { alter } = await syncSchema(sequelize);
+    console.log(alter
+      ? 'جدول‌های مشترک با ALTER همگام شدند. DB_SYNC_ALTER را بعد از این اجرا خاموش کنید.'
+      : 'جدول‌های مشترک همگام شدند (بدون ALTER روی هر راه‌اندازی).');
 
     await seedVehicleTypes();
     await seedLocations();
@@ -124,14 +119,7 @@ const startServer = async () => {
 
     startReminderScheduler();
   } catch (error) {
-    const errno = error?.original?.errno || error?.parent?.errno || error?.errno;
-    if (errno === 1045 || error?.code === 'ER_ACCESS_DENIED_ERROR') {
-      console.error(
-        `MySQL ورود کاربر «${dbConfig.user || '(خالی)'}» روی ${dbConfig.host}:${dbConfig.port} را رد کرد. DB_USER و DB_PASS را در .env بگذارید.`,
-      );
-    } else {
-      console.error('راه‌اندازی دیتابیس ناموفق بود:', error.message || error);
-    }
+    printMysqlStartupError(formatMysqlStartupError({ error, dbConfig }));
     process.exit(1);
   }
 };
