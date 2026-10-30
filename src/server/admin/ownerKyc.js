@@ -3,10 +3,10 @@ const ID_TYPES = ['shenasnameh', 'national_card'];
 const SLOTS = {
   selfie: { title: 'سلفی', always: true },
   holding: { title: 'سلفی به‌همراه مدرک شناسایی', always: true },
-  'shenasnameh:front': { title: 'روی شناسنامه', idType: 'shenasnameh' },
-  'shenasnameh:back': { title: 'پشت شناسنامه', idType: 'shenasnameh' },
-  'national_card:front': { title: 'روی کارت ملی', idType: 'national_card' },
-  'national_card:back': { title: 'پشت کارت ملی', idType: 'national_card' },
+  'shenasnameh:front': { title: 'صفحه اول شناسنامه', idType: 'shenasnameh' },
+  'shenasnameh:back': { title: 'پشت شناسنامه', idType: 'shenasnameh', retired: true },
+  'national_card:front': { title: 'کارت ملی', idType: 'national_card' },
+  'national_card:back': { title: 'پشت کارت ملی', idType: 'national_card', retired: true },
 };
 
 function fail(message, statusCode) {
@@ -42,8 +42,8 @@ function normalize(raw) {
 
 function requiredKeys(idType) {
   const keys = ['selfie', 'holding'];
-  if (idType === 'shenasnameh') keys.push('shenasnameh:front', 'shenasnameh:back');
-  if (idType === 'national_card') keys.push('national_card:front', 'national_card:back');
+  if (idType === 'shenasnameh') keys.push('shenasnameh:front');
+  if (idType === 'national_card') keys.push('national_card:front');
   return keys;
 }
 
@@ -117,9 +117,9 @@ function present(raw) {
     documents: Object.entries(SLOTS).map(([key, slot]) => ({
       key,
       title: slot.title,
-      required: Boolean(slot.always || slot.idType === state.idType),
+      required: Boolean(slot.always || (slot.idType === state.idType && !slot.retired)),
       ...state.documents[key],
-    })).filter((doc) => doc.required || doc.url || required.has(doc.key)),
+    })).filter((doc) => !SLOTS[doc.key].retired && (doc.required || doc.url || required.has(doc.key))),
   };
 }
 

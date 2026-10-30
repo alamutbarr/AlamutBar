@@ -69,7 +69,7 @@ export default function OwnerKyc({ profile, onChange }) {
         <div>
           <h2 className="text-lg font-bold text-ink-900">احراز هویت</h2>
           <p className="mt-1 text-sm text-ink-300">
-            سلفی، مدرک شناسایی (شناسنامه یا کارت ملی) و سلفی به‌همراه همان مدرک. هر کدام جدا بررسی می‌شود.
+            سلفی، یک عکس از مدرک شناسایی (صفحه اول شناسنامه یا کارت ملی) و سلفی به‌همراه همان مدرک. هر کدام جدا بررسی می‌شود.
           </p>
         </div>
         <span className="rounded-md bg-[#17383b] px-3 py-1 text-xs font-bold text-[#f7f6f0]">

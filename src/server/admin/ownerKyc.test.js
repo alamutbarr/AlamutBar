@@ -7,7 +7,7 @@ const {
 function pack(idType) {
   let state = setIdType(null, idType);
   const prefix = idType === 'shenasnameh' ? 'shenasnameh' : 'national_card';
-  const slots = ['selfie', 'holding', `${prefix}:front`, `${prefix}:back`];
+  const slots = ['selfie', 'holding', `${prefix}:front`];
   for (const key of slots) state = uploadDocument(state, { key, url: `/uploads/${key}.jpg` });
   return state;
 }
@@ -28,7 +28,7 @@ test('each document is reviewed on its own and one rejection blocks verification
   assert.match(rejected.notice.message, /سلفی: تصویر تار است/);
 
   let approved = rejected.kyc;
-  for (const key of ['holding', 'shenasnameh:front', 'shenasnameh:back']) {
+  for (const key of ['holding', 'shenasnameh:front']) {
     approved = reviewDocument(approved, { key, decision: 'APPROVED' }).kyc;
   }
   assert.equal(overallStatus(approved), 'REJECTED');
@@ -36,18 +36,18 @@ test('each document is reviewed on its own and one rejection blocks verification
 
 test('re-upload clears the rejection and verification needs every required document', () => {
   const rejected = reviewDocument(pack('national_card'), {
-    key: 'national_card:back',
+    key: 'national_card:front',
     decision: 'REJECTED',
-    reason: 'پشت کارت خوانا نیست',
+    reason: 'کارت خوانا نیست',
   });
-  const again = uploadDocument(rejected.kyc, { key: 'national_card:back', url: '/uploads/back-2.jpg' });
-  assert.equal(again.documents['national_card:back'].status, 'PENDING');
-  assert.equal(again.documents['national_card:back'].note, null);
-  assert.equal(again.documents['national_card:back'].url, '/uploads/back-2.jpg');
+  const again = uploadDocument(rejected.kyc, { key: 'national_card:front', url: '/uploads/front-2.jpg' });
+  assert.equal(again.documents['national_card:front'].status, 'PENDING');
+  assert.equal(again.documents['national_card:front'].note, null);
+  assert.equal(again.documents['national_card:front'].url, '/uploads/front-2.jpg');
   assert.equal(overallStatus(again), 'PENDING');
 
   let state = again;
-  for (const key of ['selfie', 'holding', 'national_card:front', 'national_card:back']) {
+  for (const key of ['selfie', 'holding', 'national_card:front']) {
     const result = reviewDocument(state, { key, decision: 'APPROVED' });
     assert.equal(result.notice, null);
     state = result.kyc;
@@ -55,12 +55,18 @@ test('re-upload clears the rejection and verification needs every required docum
   assert.equal(overallStatus(state), 'VERIFIED');
   const view = present(state);
   assert.equal(view.verificationStatus, 'VERIFIED');
-  assert.equal(view.documents.filter((doc) => doc.required && doc.status === 'APPROVED').length, 4);
+  assert.equal(view.documents.filter((doc) => doc.required && doc.status === 'APPROVED').length, 3);
+  assert.equal(view.documents.some((doc) => doc.key.endsWith(':back')), false);
+  assert.equal(view.documents.find((doc) => doc.key === 'shenasnameh:front')?.title, undefined);
+  assert.equal(
+    present(pack('shenasnameh')).documents.find((doc) => doc.key === 'shenasnameh:front').title,
+    'صفحه اول شناسنامه',
+  );
 });
 
 test('switching the identity document invalidates the previous set', () => {
   let state = pack('shenasnameh');
-  for (const key of ['selfie', 'holding', 'shenasnameh:front', 'shenasnameh:back']) {
+  for (const key of ['selfie', 'holding', 'shenasnameh:front']) {
     state = reviewDocument(state, { key, decision: 'APPROVED' }).kyc;
   }
   assert.equal(overallStatus(state), 'VERIFIED');
