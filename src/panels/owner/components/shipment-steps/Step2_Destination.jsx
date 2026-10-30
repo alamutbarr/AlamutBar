@@ -93,7 +93,7 @@ export default function Step2_Destination({ data, onChange }) {
     <div className="space-y-5">
       <StepHeader
         title="مقصد تخلیه"
-        description="روی نقشه محل دقیق رو مشخص کن؛ آدرس دقیق مقصد فقط بعد از صدور بارنامه به راننده نشان داده می‌شود."
+        description="شهر مقصد را انتخاب کنید. محل دقیق روی نقشه اختیاری است؛ اگر ثبت شود، آدرس دقیق فقط بعد از صدور بارنامه به راننده نشان داده می‌شود."
       />
 
       <div className="relative z-20 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -144,13 +144,16 @@ export default function Step2_Destination({ data, onChange }) {
         </p>
       )}
 
-      <LocationPicker
-        lat={data.dest_lat}
-        lng={data.dest_lng}
-        focus={selectedCity?.lat != null ? { lat: Number(selectedCity.lat), lng: Number(selectedCity.lng) } : null}
-        onPick={handlePick}
-        placeholder="جست‌وجوی آدرس مقصد..."
-      />
+      <div>
+        <p className="mb-2 text-sm font-bold text-[#17383b]">محل دقیق روی نقشه <span className="font-medium text-[#526d70]">(اختیاری)</span></p>
+        <LocationPicker
+          lat={data.dest_lat}
+          lng={data.dest_lng}
+          focus={selectedCity?.lat != null ? { lat: Number(selectedCity.lat), lng: Number(selectedCity.lng) } : null}
+          onPick={handlePick}
+          placeholder="جست‌وجوی آدرس مقصد..."
+        />
+      </div>
       {pinError && <p className="text-sm text-red-600">{pinError}</p>}
       {data.dest_lat !== "" && data.dest_lat != null && (
         <p className="text-xs text-[#526d70]" data-pin="destination">
@@ -162,7 +165,7 @@ export default function Step2_Destination({ data, onChange }) {
       <Input
         as="textarea"
         rows={2}
-        label="آدرس دقیق مقصد"
+        label="آدرس دقیق مقصد (اختیاری)"
         icon={Flag}
         value={data.dest_address || ""}
         onChange={(e) => onChange("dest_address", e.target.value)}

@@ -41,7 +41,7 @@ const TOTAL_VISIBLE_STEPS = STEPS.length - 1; // بدون احتساب صفحه 
 
 const REQUIRED_FIELDS_BY_STEP = {
   1: ["origin_city_id", "origin_address", "origin_lat", "origin_lng"],
-  2: ["dest_city_id", "dest_lat", "dest_lng"],
+  2: ["dest_city_id"],
   3: ["cargo_type", "weight_kg"],
   4: ["cargo_value"],
   6: ["loading_date", "loading_time_from", "loading_time_to", "urgency"],
@@ -223,10 +223,7 @@ export default function CreateShipment() {
         !formData.dest_zone_id
       ) {
         setStepError("برای شهر تهران، محدوده مقصد الزامی است.");
-      } else if (
-        (currentStep === 1 && !formData.origin_lat) ||
-        (currentStep === 2 && !formData.dest_lat)
-      ) {
+      } else if (currentStep === 1 && !formData.origin_lat) {
         setStepError("محل را روی نقشه، داخل شهر انتخاب‌شده، مشخص کنید.");
       } else {
         setStepError("لطفاً فیلدهای الزامی این مرحله را تکمیل کنید.");
