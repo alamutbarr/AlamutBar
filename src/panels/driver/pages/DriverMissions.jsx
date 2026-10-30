@@ -1,9 +1,10 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { MissionCard } from '@/components/MissionCard';
 import { EmptyState } from '@/components/EmptyState';
 import { ListSkeleton } from '@/components/ListSkeleton';
 import { MissionSearchEntry, MODES } from '@/missionSearch/MissionSearchEntry';
-import { isOffered, isMissionActive, isHistory } from '@/driverFormat';
+import { isOffered, isMissionActive, isHistory, missionTabFromQuery } from '@/driverFormat';
 import { Package, CheckCircle2, History, Inbox } from 'lucide-react';
 const tabs = [
     { key: 'offered', label: 'پیشنهادها', icon: Package },
@@ -11,12 +12,14 @@ const tabs = [
     { key: 'history', label: 'سوابق', icon: History },
 ];
 export function DriverMissions({ missions, loading, onMissionClick, }) {
-    const [tab, setTab] = useState('offered');
+    const [searchParams, setSearchParams] = useSearchParams();
+    const tab = missionTabFromQuery(searchParams.get('tab'));
     const [searchMode, setSearchMode] = useState(MODES.NONE);
     const handleTabChange = (key) => {
-        setTab(key);
+        const next = missionTabFromQuery(key);
         // با جابه‌جایی بین تب‌ها، حالت جست‌وجوی مکانی را ریست می‌کنیم
         setSearchMode(MODES.NONE);
+        setSearchParams({ tab: next }, { replace: true });
     };
     const filtered = missions.filter((m) => {
         if (tab === 'offered')

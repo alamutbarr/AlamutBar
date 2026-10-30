@@ -18,8 +18,21 @@ export function DriverLayout({ current, onNavigate, onLogout, driverName, childr
         return () => window.removeEventListener('keydown', onKeyDown);
     }, [confirmLogout]);
 
-    return (<div className="panel-canvas isolate relative min-h-screen lg:grid lg:grid-cols-[16rem_minmax(0,1fr)]" dir="rtl">
-      <aside className="brand-rail hidden lg:sticky lg:top-0 lg:flex lg:h-screen w-full flex-col">
+    useEffect(() => {
+        const html = document.documentElement;
+        const body = document.body;
+        const prevHtml = html.style.overflow;
+        const prevBody = body.style.overflow;
+        html.style.overflow = 'hidden';
+        body.style.overflow = 'hidden';
+        return () => {
+            html.style.overflow = prevHtml;
+            body.style.overflow = prevBody;
+        };
+    }, []);
+
+    return (<div className="panel-canvas flex h-dvh max-h-dvh overflow-hidden" dir="rtl">
+      <aside className="brand-rail hidden h-full w-64 shrink-0 flex-col overflow-hidden lg:flex">
         <div className="px-5 pb-2 pt-6">
           <div className="flex items-center gap-3 text-[#f7f6f0]">
             <span className="block h-9 w-9 shrink-0" aria-hidden="true">
@@ -57,8 +70,8 @@ export function DriverLayout({ current, onNavigate, onLogout, driverName, childr
         </div>
       </aside>
 
-      <div className="min-w-0 w-full">
-        <header className="lg:hidden sticky top-0 z-30 flex items-center justify-between bg-[#10282b] px-4 py-3 text-[#f7f6f0]">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <header className="lg:hidden z-30 flex items-center justify-between bg-[#10282b] px-4 py-3 text-[#f7f6f0]">
           <div className="flex items-center gap-2">
             <span className="block h-8 w-8 text-[#f7f6f0]" aria-hidden="true">
               <svg viewBox="0 0 40 40" fill="none" className="h-full w-full stroke-current" strokeWidth="1.6" strokeLinejoin="bevel">
@@ -76,7 +89,7 @@ export function DriverLayout({ current, onNavigate, onLogout, driverName, childr
           </button>
         </header>
 
-        <main className="pb-[calc(4.75rem+env(safe-area-inset-bottom))] lg:pb-6">{children}</main>
+        <main className="min-w-0 flex-1 overflow-y-auto pb-[calc(4.75rem+env(safe-area-inset-bottom))] lg:pb-6">{children}</main>
       </div>
 
       <nav className="panel-dock lg:hidden fixed inset-x-3 bottom-3 z-30 grid grid-cols-3 p-1 pb-[max(0.4rem,env(safe-area-inset-bottom))]">

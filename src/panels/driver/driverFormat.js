@@ -131,6 +131,12 @@ export function isHistory(m) {
   return m.status === 'Completed' || m.status === 'Cancelled' || m.status === 'Declined';
 }
 
+export const MISSION_TABS = ['offered', 'active', 'history'];
+
+export function missionTabFromQuery(value) {
+  return MISSION_TABS.includes(value) ? value : 'offered';
+}
+
 export const statusOrder = [
   'Accepted',
   'EnRouteToPickup',

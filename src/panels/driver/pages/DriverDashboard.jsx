@@ -82,6 +82,7 @@ export function DriverDashboard({
             )
           }
           color="blue"
+          onClick={() => onNavigate("missions?tab=active")}
         />
         <StatCard
           index={1}
@@ -89,6 +90,7 @@ export function DriverDashboard({
           label="پیشنهادها"
           value={new Intl.NumberFormat("fa-IR").format(offeredMissions.length)}
           color="amber"
+          onClick={() => onNavigate("missions?tab=offered")}
         />
         <StatCard
           index={2}
@@ -96,6 +98,7 @@ export function DriverDashboard({
           label="تکمیل‌شده"
           value={new Intl.NumberFormat("fa-IR").format(completedCount)}
           color="green"
+          onClick={() => onNavigate("missions?tab=history")}
         />
         <StatCard
           index={3}
@@ -116,7 +119,7 @@ export function DriverDashboard({
               مأموریت‌های فعال
             </h3>
             <button
-              onClick={() => onNavigate("missions")}
+              onClick={() => onNavigate("missions?tab=active")}
               className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
             >
               همه
@@ -137,7 +140,7 @@ export function DriverDashboard({
           <div className="flex items-center justify-between">
             <h3 className="text-base font-bold text-slate-800">پیشنهادها</h3>
             <button
-              onClick={() => onNavigate("missions")}
+              onClick={() => onNavigate("missions?tab=offered")}
               className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
             >
               همه
@@ -177,7 +180,7 @@ export function DriverDashboard({
   );
 }
 
-function StatCard({ icon, label, value, color, index = 0 }) {
+function StatCard({ icon, label, value, color, index = 0, onClick }) {
   const colors = {
     blue: "bg-blue-50 text-blue-600",
     amber: "bg-amber-50 text-amber-600",
@@ -185,9 +188,12 @@ function StatCard({ icon, label, value, color, index = 0 }) {
     violet: "bg-violet-50 text-violet-600",
     rose: "bg-rose-50 text-rose-600",
   };
+  const Card = onClick ? "button" : "div";
   return (
-    <div
-      className="glass-card anim-text flex flex-col justify-between rounded-2xl p-4"
+    <Card
+      type={onClick ? "button" : undefined}
+      onClick={onClick}
+      className={`glass-card anim-text flex w-full flex-col justify-between rounded-2xl p-4 text-right ${onClick ? "cursor-pointer transition hover:border-[#087f8c]" : ""}`}
       style={{ animationDelay: `${Math.min(index, 6) * 70}ms` }}
     >
       <div
@@ -199,6 +205,6 @@ function StatCard({ icon, label, value, color, index = 0 }) {
         {value}
       </div>
       <p className="text-xs text-slate-500 mt-0.5">{label}</p>
-    </div>
+    </Card>
   );
 }
