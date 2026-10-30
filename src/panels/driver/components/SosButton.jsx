@@ -37,39 +37,44 @@ export function SosButton({ variant = "default" }) {
       {open &&
         createPortal(
           <div
-            className="fixed inset-0 z-[80] flex items-center justify-center bg-[#10282b]/70 backdrop-blur-md"
+            className="fixed inset-0 z-[80] flex items-center justify-center bg-[#10282b]/55 p-4 backdrop-blur-sm"
             onClick={() => setOpen(false)}
             role="dialog"
             aria-modal="true"
-            aria-labelledby="operator-call-number"
+            aria-labelledby="operator-call-title"
           >
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              className="absolute left-5 top-5 rounded-full p-2 text-[#f7f6f0]/80 transition hover:bg-white/10 hover:text-[#f7f6f0]"
-              aria-label="بستن"
-            >
-              <X className="h-6 w-6" />
-            </button>
-            <a
-              href={`tel:${OPERATOR_TEL}`}
+            <div
+              className="w-full max-w-sm rounded-2xl border border-[#d8e1dc] bg-[#f7f6f0] p-6 text-center shadow-2xl"
               onClick={(event) => event.stopPropagation()}
-              className="flex flex-col items-center gap-4 px-6 text-center text-[#f7f6f0]"
             >
-              <span className="flex h-16 w-16 items-center justify-center rounded-full bg-white/10">
-                <Phone className="h-8 w-8" />
-              </span>
-              <span
-                id="operator-call-number"
-                className="text-4xl font-extrabold tracking-wide tabular-nums sm:text-5xl"
+              <div className="mb-4 flex items-start justify-between">
+                <h3
+                  id="operator-call-title"
+                  className="text-base font-bold text-[#17383b]"
+                >
+                  تماس با اپراتور
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className="rounded-lg p-1.5 text-[#526d70] transition hover:bg-white"
+                  aria-label="بستن"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <p className="mb-5 text-sm leading-6 text-[#526d70]">
+                در صورت بروز مشکل یا نیاز به راهنمایی، با این شماره تماس بگیرید.
+              </p>
+              <a
+                href={`tel:${OPERATOR_TEL}`}
+                className="flex items-center justify-center gap-2 rounded-xl bg-[#087f8c] px-4 py-3 text-xl font-extrabold tracking-wide text-[#f7f6f0] transition hover:bg-[#159a9c]"
                 dir="ltr"
               >
+                <Phone className="h-5 w-5" />
                 {OPERATOR_DISPLAY}
-              </span>
-              <span className="text-sm font-medium text-[#f7f6f0]/80">
-                تماس با اپراتور
-              </span>
-            </a>
+              </a>
+            </div>
           </div>,
           document.body
         )}
