@@ -539,9 +539,9 @@ export function DriverLogin() {
                 </div>
               </div>
 
-              <div className="space-y-4 mb-6">
+              <div className="space-y-4 mb-6 overflow-visible">
                 {/* پلاک */}
-                <div>
+                <div className="relative z-20 overflow-visible">
                   <label className="block text-xs font-bold text-slate-600 mb-2">
                     شماره پلاک خودرو
                   </label>
