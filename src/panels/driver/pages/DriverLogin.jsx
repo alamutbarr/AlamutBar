@@ -43,7 +43,7 @@ function OtpCells({ value, onChange }) {
           autoComplete={index === 0 ? "one-time-code" : "off"}
           aria-label={`رقم ${index + 1} از کد تأیید`}
           maxLength={1}
-          className="h-16 w-full rounded-md border border-[#d8e1dc] bg-white text-center text-[1.7rem] font-bold tabular-nums text-[#17383b] outline-none transition focus:border-[#087f8c] focus:ring-2 focus:ring-[#087f8c]/30"
+          className="auth-field h-16 w-full rounded-md text-center text-[1.7rem] font-bold tabular-nums text-[#17383b]"
           onChange={(event) => {
             const incoming = event.target.value.replace(/\D/g, "");
             if (!incoming) {
@@ -296,30 +296,34 @@ export function DriverLogin() {
             </div>
           </div>
         </aside>
-        <div className="flex items-start justify-center overflow-y-auto px-6 py-12">
-          <div className="w-full max-w-lg">
+        <div className="auth-stage">
+          <div className="auth-stage-card">
           {step === "phone" && (
             <form className="animate-in fade-in zoom-in-95 duration-300" onSubmit={(e) => { e.preventDefault(); handleSendOtp(); }}>
               <h1 className="text-2xl font-bold text-[#17383b]">خوش اومدی</h1>
               <p className="mt-1.5 mb-8 text-sm text-[#7d9394]">شماره موبایل را وارد کن تا کد تأیید بیاید.</p>
-              <div className="flex bg-[#eef2f0] p-1 rounded-md mb-6">
+              <div className="auth-segment" role="tablist" aria-label="ورود یا ثبت‌نام">
                 <button
                   type="button"
+                  role="tab"
+                  aria-selected={mode === "login"}
                   onClick={() => {
                     setMode("login");
                     setError("");
                   }}
-                  className={`flex-1 py-2.5 rounded-lg font-bold text-sm transition-all ${mode === "login" ? "bg-white shadow text-blue-600" : "text-slate-500"}`}
+                  className={`auth-segment-btn ${mode === "login" ? "is-active" : ""}`}
                 >
                   ورود
                 </button>
                 <button
                   type="button"
+                  role="tab"
+                  aria-selected={mode === "register"}
                   onClick={() => {
                     setMode("register");
                     setError("");
                   }}
-                  className={`flex-1 py-2.5 rounded-lg font-bold text-sm transition-all ${mode === "register" ? "bg-white shadow text-blue-600" : "text-slate-500"}`}
+                  className={`auth-segment-btn ${mode === "register" ? "is-active" : ""}`}
                 >
                   ثبت‌نام
                 </button>
@@ -337,7 +341,7 @@ export function DriverLogin() {
                   placeholder="شماره موبایل (مثال: 0912...)"
                   dir="ltr"
                   maxLength={11}
-                  className="w-full rounded-md border border-[#d8e1dc] bg-white py-3.5 pr-12 pl-4 focus:border-blue-500 focus:outline-none"
+                  className="auth-field w-full rounded-md py-3.5 pr-12 pl-4"
                 />
               </div>
 
@@ -447,7 +451,7 @@ export function DriverLogin() {
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
                     placeholder="نام خود را وارد کنید"
-                    className="w-full rounded-md border border-[#d8e1dc] bg-white py-3 pr-12 pl-4 focus:border-blue-500 focus:outline-none"
+                    className="auth-field w-full rounded-md py-3 pr-12 pl-4"
                   />
                 </div>
                 <div className="relative">
@@ -457,7 +461,7 @@ export function DriverLogin() {
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
                     placeholder="نام خانوادگی خود را وارد کنید"
-                    className="w-full rounded-md border border-[#d8e1dc] bg-white py-3 pr-12 pl-4 focus:border-blue-500 focus:outline-none"
+                    className="auth-field w-full rounded-md py-3 pr-12 pl-4"
                   />
                 </div>
                 <div className="relative">
@@ -472,7 +476,7 @@ export function DriverLogin() {
                       setError("");
                     }}
                     placeholder="کد ملی (۱۰ رقم)"
-                    className="w-full rounded-md border border-[#d8e1dc] bg-white py-3 pr-12 pl-4 focus:border-blue-500 focus:outline-none"
+                    className="auth-field w-full rounded-md py-3 pr-12 pl-4"
                   />
                 </div>
                 <div className="relative">
@@ -487,7 +491,7 @@ export function DriverLogin() {
                       setError("");
                     }}
                     placeholder="شماره گواهینامه (۱۰ رقم)"
-                    className="w-full rounded-md border border-[#d8e1dc] bg-white py-3 pr-12 pl-4 focus:border-blue-500 focus:outline-none"
+                    className="auth-field w-full rounded-md py-3 pr-12 pl-4"
                   />
                 </div>
               </div>
@@ -567,7 +571,7 @@ export function DriverLogin() {
                         setError("");
                       }}
                       placeholder="مثال: ۴۱۲۱۳۹۴"
-                      className="w-full rounded-md border border-[#d8e1dc] bg-white py-3 pr-12 pl-4 focus:border-blue-500 focus:outline-none"
+                      className="auth-field w-full rounded-md py-3 pr-12 pl-4"
                     />
                   </div>
                   <p className="mt-2 text-[11px] text-amber-600 flex items-center gap-1 bg-amber-50 p-2 rounded-lg border border-amber-100 leading-relaxed">

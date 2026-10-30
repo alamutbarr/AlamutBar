@@ -57,12 +57,12 @@ export default function AuthShell({ title, subtitle, children }) {
       </div>
 
       {/* فرم */}
-      <div className="flex items-center justify-center px-6 py-12">
+      <div className="auth-stage">
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, ease: 'easeOut' }}
-          className="w-full max-w-sm"
+          className="auth-stage-card auth-stage-card--owner"
         >
           <h1 className="text-2xl font-bold text-ink-900">{title}</h1>
           <p className="mt-1.5 mb-8 text-sm text-ink-300">{subtitle}</p>

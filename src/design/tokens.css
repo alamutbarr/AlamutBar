@@ -116,7 +116,131 @@ a.glass-card:hover {
   outline-offset: 2px;
 }
 
+/* ورود راننده و صاحب‌کالا: فرم وسط، فوکوس مشخص، شیشهٔ کم‌رنگ روی پالت موجود */
+.auth-stage {
+  display: flex;
+  align-items: safe center;
+  justify-content: center;
+  overflow-y: auto;
+  height: 100%;
+  min-height: 100%;
+  padding: 2.5rem 1.5rem;
+}
+
+.auth-stage-card {
+  width: min(32rem, 100%);
+  padding: 1.75rem 1.5rem 1.5rem;
+  border-radius: 1.25rem;
+  background: rgba(255, 252, 247, 0.58);
+  border: 1px solid rgba(216, 225, 220, 0.88);
+  box-shadow: 0 18px 40px -28px rgba(23, 56, 59, 0.3);
+  backdrop-filter: blur(12px) saturate(135%);
+  -webkit-backdrop-filter: blur(12px) saturate(135%);
+}
+
+.auth-stage-card--owner {
+  width: min(24rem, 100%);
+}
+
+.auth-field {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid var(--alamut-line);
+  color: var(--alamut-ink);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+
+.auth-field:hover {
+  border-color: var(--alamut-secondary);
+}
+
+.auth-field:focus,
+.auth-field:focus-visible {
+  outline: none;
+  border-color: var(--alamut-primary);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 0 0 3px rgba(8, 127, 140, 0.22);
+}
+
+.auth-field--error,
+.auth-field--error:hover {
+  border-color: #e7b6b0;
+}
+
+.auth-field--error:focus,
+.auth-field--error:focus-visible {
+  border-color: var(--alamut-crit);
+  box-shadow: 0 0 0 3px rgba(180, 35, 24, 0.16);
+}
+
+.auth-segment {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 1.5rem;
+  border-radius: 0.75rem;
+  background: rgba(225, 243, 240, 0.5);
+  border: 1px solid rgba(216, 225, 220, 0.85);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.auth-segment-btn {
+  flex: 1;
+  padding: 0.65rem 0.75rem;
+  border: 0;
+  border-radius: 0.55rem;
+  background: transparent;
+  color: #526d70;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+
+.auth-segment-btn:hover {
+  color: var(--alamut-ink);
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.auth-segment-btn.is-active {
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--alamut-primary);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9), 0 8px 18px -12px rgba(8, 127, 140, 0.55);
+}
+
+.auth-segment-btn:focus-visible {
+  outline: 2px solid var(--alamut-primary);
+  outline-offset: 1px;
+}
+
+.auth-plate {
+  border-color: var(--alamut-line);
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.auth-plate:focus-within {
+  border-color: var(--alamut-primary);
+  box-shadow: 0 0 0 3px rgba(8, 127, 140, 0.22);
+}
+
+.auth-plate input:focus,
+.auth-plate input:focus-visible {
+  outline: none;
+  background: var(--alamut-mist);
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .auth-field,
+  .auth-segment-btn,
+  .auth-plate {
+    transition: none;
+  }
+
   *,
   *::before,
   *::after {

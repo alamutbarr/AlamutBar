@@ -48,7 +48,7 @@ export function IranianPlateInput({ value, onChange }) {
   return (
     // حذف overflow-hidden برای جلوگیری از بریده شدن منوی کشویی و اعمال relative
     <div
-      className="flex w-full items-center justify-between rounded-xl border-2 border-slate-300 bg-white h-14 relative"
+      className="auth-plate flex w-full items-center justify-between rounded-xl border-2 h-14 relative"
       dir="ltr"
     >
       {/* پرچم ایران - سمت چپ (انحنای گوشه‌ها به صورت دستی اعمال شد) */}
