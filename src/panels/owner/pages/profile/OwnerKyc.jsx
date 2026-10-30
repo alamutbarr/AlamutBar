@@ -102,6 +102,7 @@ export default function OwnerKyc({ profile, onChange }) {
         <div>
           <h2 className="text-lg font-bold text-ink-900">احراز هویت</h2>
           <p className="mt-1 text-sm text-ink-300">
+            انجام یکی از دو مدرک کافی است: یا صفحهٔ اول شناسنامه یا کارت ملی. نیازی به بارگذاری هر دو نیست.
             برای هر بخش یک عکس بفرستید. پیش‌نمایش کوچک همان‌جا دیده می‌شود. سقف حجم هر عکس {KYC_MAX_LABEL} است.
           </p>
         </div>
@@ -133,7 +134,7 @@ export default function OwnerKyc({ profile, onChange }) {
 
       {!kyc.idType && (
         <p className="mb-3 text-xs text-[#526d70]">
-          نوع مدرک را انتخاب کنید تا بخش عکس صفحه اول شناسنامه یا کارت ملی باز شود.
+          یکی از دو گزینه را انتخاب کنید. بارگذاری شناسنامه و کارت ملی با هم لازم نیست.
         </p>
       )}
 
