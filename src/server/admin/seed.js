@@ -5,7 +5,6 @@ const {
 } = require('../models');
 const { legacyPatch } = require('./workflow');
 const { hashPassword } = require('./authService');
-const { parseRoles } = require('./permissions');
 
 const SEED_PASSWORD = 'Alamut@1234';
 
@@ -51,40 +50,14 @@ function docs(status = 'PENDING') {
 }
 
 async function ensureAdmins() {
+  if (await Admin.count() > 0) return;
   const password = resolveSeedPassword();
   const passwordHash = password ? await hashPassword(password) : null;
+  if (!passwordHash) {
+    throw new Error('ADMIN_SEED_PASSWORD is required to create operators in production.');
+  }
   for (const item of ADMINS) {
-    const existing = await Admin.findOne({ where: { phone: item.phone } });
-    if (!existing && !passwordHash) {
-      throw new Error('ADMIN_SEED_PASSWORD is required to create operators in production.');
-    }
-    const [admin] = await Admin.findOrCreate({
-      where: { phone: item.phone },
-      defaults: { ...item, passwordHash, isActive: true },
-    });
-    let dirty = false;
-    if (admin.fullName !== item.fullName) {
-      admin.fullName = item.fullName;
-      dirty = true;
-    }
-    if (admin.username !== item.username) {
-      admin.username = item.username;
-      dirty = true;
-    }
-    if (JSON.stringify(parseRoles(admin.roles)) !== JSON.stringify(item.roles)) {
-      admin.roles = item.roles;
-      admin.changed('roles', true);
-      dirty = true;
-    }
-    if (!admin.isActive) {
-      admin.isActive = true;
-      dirty = true;
-    }
-    if (!admin.passwordHash && passwordHash) {
-      admin.passwordHash = passwordHash;
-      dirty = true;
-    }
-    if (dirty) await admin.save();
+    await Admin.create({ ...item, passwordHash, isActive: true });
   }
 }
 

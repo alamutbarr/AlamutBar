@@ -48,26 +48,90 @@ function buildHtml(order) {
   </body></html>`;
 }
 
-async function renderDossier(order) {
-  const html = buildHtml(order);
-  const puppeteer = require('puppeteer-core');
-  const browser = await puppeteer.launch({
-    executablePath: process.env.CHROME_PATH || '/usr/local/bin/google-chrome',
-    headless: true,
-    args: ['--no-sandbox', '--disable-dev-shm-usage'],
+const FONT_PATH = path.join(__dirname, 'fonts', 'Vazirmatn-Regular.ttf');
+
+function shown(value) {
+  if (value == null || value === '') return '—';
+  return String(value);
+}
+
+function writeLine(doc, text) {
+  doc.fillColor('#17383b').fontSize(11).text(text, {
+    align: 'right',
+    width: doc.page.width - 72,
   });
-  try {
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'load' });
-    const pdf = await page.pdf({
-      format: 'A4',
-      printBackground: true,
-      margin: { top: '12mm', bottom: '12mm', left: '12mm', right: '12mm' },
+}
+
+function writeSection(doc, title) {
+  doc.moveDown(0.7);
+  doc.fillColor('#17383b').fontSize(14).text(title, {
+    align: 'right',
+    width: doc.page.width - 72,
+  });
+  const y = doc.y + 2;
+  doc.save();
+  doc.moveTo(36, y).lineTo(doc.page.width - 36, y).lineWidth(1.5).strokeColor('#d7b56d').stroke();
+  doc.restore();
+  doc.moveDown(0.45);
+}
+
+function renderDossier(order) {
+  const PDFDocument = require('pdfkit');
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({
+      size: 'A4',
+      margin: 36,
+      info: { Title: `alamut-${order.trackingCode || 'dossier'}`, Author: 'alamut.bar' },
     });
-    return Buffer.from(pdf);
-  } finally {
-    await browser.close();
-  }
+    const chunks = [];
+    doc.on('data', (chunk) => chunks.push(chunk));
+    doc.on('error', reject);
+    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    try {
+      doc.registerFont('Vazir', FONT_PATH);
+      const width = doc.page.width;
+      doc.rect(0, 0, width, 88).fill('#10282b');
+      doc.fillColor('#f7f6f0').font('Vazir').fontSize(18).text('پرونده پایان مأموریت الموت', 36, 24, {
+        align: 'right',
+        width: width - 72,
+      });
+      doc.fillColor('#d7b56d').fontSize(12).text(`${shown(order.trackingCode)} — ${shown(order.workflowLabel)}`, 36, 52, {
+        align: 'right',
+        width: width - 72,
+      });
+      doc.y = 108;
+      doc.x = 36;
+      const ownerName = order.owner?.companyName || `${order.owner?.firstName || ''} ${order.owner?.lastName || ''}`.trim();
+      writeSection(doc, 'بار');
+      writeLine(doc, `${shown(order.cargo?.type)} — ${shown(order.cargo?.weightKg)} کیلوگرم`);
+      writeLine(doc, `ارزش: ${money(order.cargo?.value)}`);
+      writeLine(doc, `${shown(order.loading?.city)} به ${shown(order.unloading?.city)}`);
+      writeSection(doc, 'مبالغ');
+      writeLine(doc, `تخمینی: ${money(order.estimatedPrice)}`);
+      writeLine(doc, `نهایی: ${money(order.finalPrice)}`);
+      writeLine(doc, `جریمه: ${money(order.penaltyAmount)}`);
+      writeLine(doc, `بارنامه: ${shown(order.waybillNumber)}`);
+      writeSection(doc, 'طرف‌ها');
+      writeLine(doc, `صاحب کالا: ${shown(ownerName)} — ${shown(order.owner?.phone)}`);
+      writeLine(doc, `راننده: ${shown(order.driver?.fullName)} — ${shown(order.driver?.phone)} — ${shown(order.driver?.plate)}`);
+      for (const item of order.inspections || []) {
+        writeSection(doc, 'بازرسی');
+        writeLine(doc, `متصدی: ${shown(item.inspector?.fullName)}`);
+        writeLine(doc, `خالی ${shown(item.weightEmpty)} / پر ${shown(item.weightFull)} / خالص ${shown(item.weightNet)} کیلوگرم`);
+        writeLine(doc, `تصمیم: ${shown(item.decision)} — ${shown(item.decisionNote)}`);
+      }
+      writeSection(doc, 'تایم‌لاین');
+      const events = order.events || [];
+      if (!events.length) writeLine(doc, 'رویدادی ثبت نشده است.');
+      events.forEach((event) => {
+        const when = event.at ? new Date(event.at).toLocaleString('fa-IR') : '';
+        writeLine(doc, `${shown(event.actor)} — ${shown(event.description)}${when ? ` — ${when}` : ''}`);
+      });
+      doc.end();
+    } catch (error) {
+      reject(error);
+    }
+  });
 }
 
 function sendPdf(res, body, filename) {

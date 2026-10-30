@@ -5,7 +5,7 @@ const { success } = require('../utils/apiResponse');
 const AppError = require('../utils/AppError');
 const {
   Admin, Driver, CargoOwner, User, Shipment, Alert, Inspector, InspectionReport,
-  Complaint, AdminAuditLog, SystemSetting, City, DriverNotice,
+  Complaint, AdminAuditLog, SystemSetting, City, DriverNotice, OrderEvent,
 } = require('../models');
 const { requireAdmin, requirePermission } = require('./guard');
 const authService = require('./authService');
@@ -654,6 +654,24 @@ router.patch('/admins/:id', requirePermission('admins.manage'), asyncHandler(asy
   await admin.save();
   await audit(req.admin, 'admin.update', 'admin', admin.id, { roles: admin.roles, isActive: admin.isActive });
   success(res, { message: 'اپراتور به‌روز شد.', data: authService.presentAdmin(admin) });
+}));
+
+router.delete('/admins/:id', requirePermission('admins.manage'), asyncHandler(async (req, res) => {
+  const admin = await Admin.findByPk(req.params.id);
+  if (!admin) throw new AppError('اپراتور پیدا نشد.', 404);
+  if (Number(admin.id) === Number(req.admin.id)) {
+    throw new AppError('نمی‌توانید حساب خودتان را حذف کنید.', 400);
+  }
+  const others = await Admin.findAll({ where: { isActive: true, id: { [Op.ne]: admin.id } } });
+  const stillSuper = others.some((item) => parseRoles(item.roles).includes('SUPER_ADMIN'));
+  if (parseRoles(admin.roles).includes('SUPER_ADMIN') && !stillSuper) {
+    throw new AppError('حداقل یک مدیر سامانه فعال باید بماند.', 400);
+  }
+  await OrderEvent.update({ performedByAdminId: null }, { where: { performedByAdminId: admin.id } });
+  await AdminAuditLog.update({ performedBy: null }, { where: { performedBy: admin.id } });
+  await audit(req.admin, 'admin.delete', 'admin', admin.id, { username: admin.username, roles: parseRoles(admin.roles) });
+  await admin.destroy();
+  success(res, { message: 'اپراتور حذف شد.' });
 }));
 
 router.get('/audit', requirePermission('audit.read'), asyncHandler(async (req, res) => {

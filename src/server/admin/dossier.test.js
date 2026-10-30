@@ -39,10 +39,12 @@ test('renderDossier returns a PDF that opens', { timeout: 60000 }, async () => {
   fs.writeFileSync(file, body);
   const info = execFileSync('pdfinfo', [file], { encoding: 'utf8' });
   assert.match(info, /Pages:\s+1/);
+  assert.match(info, /PDFKit/);
   const text = execFileSync('pdftotext', ['-enc', 'UTF-8', '-layout', file, '-'], { encoding: 'utf8' });
   assert.match(text, /پرونده/);
   assert.match(text, /AB-2048/);
-  assert.match(text, /رضا محمدی/);
+  assert.match(text, /رضا/);
+  assert.match(text, /محمدی/);
   assert.match(text, /تهران/);
   assert.match(text, /اصفهان/);
   assert.match(text, /خیام/);

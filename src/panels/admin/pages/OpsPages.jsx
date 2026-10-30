@@ -331,15 +331,33 @@ function Settings() {
   );
 }
 
+function RoleChecks({ roles, onToggle }) {
+  return ROLES.map(([key, label]) => (
+    <label key={key} style={{ display: 'flex', gap: 8 }}>
+      <input type="checkbox" checked={roles.includes(key)} onChange={() => onToggle(key)} />
+      {label}
+    </label>
+  ));
+}
+
 function Admins() {
   const { user } = useAdmin();
   const { data, error, reload } = useLoad(() => api('/admins'), []);
   const [form, setForm] = useState({ fullName: '', username: '', password: '', phone: '', roles: ['DISPATCH_OPERATOR'] });
+  const [edit, setEdit] = useState(null);
+  const [pendingDelete, setPendingDelete] = useState(null);
   if (error) return <p className="muted">{error}</p>;
   if (!data) return <SkeletonRows />;
 
   function toggleRole(role) {
     setForm((current) => ({
+      ...current,
+      roles: current.roles.includes(role) ? current.roles.filter((item) => item !== role) : [...current.roles, role],
+    }));
+  }
+
+  function toggleEditRole(role) {
+    setEdit((current) => ({
       ...current,
       roles: current.roles.includes(role) ? current.roles.filter((item) => item !== role) : [...current.roles, role],
     }));
@@ -359,7 +377,8 @@ function Admins() {
                   <td>{admin.phone}</td>
                   <td>{(admin.roleLabels || []).join('، ')}</td>
                   <td>{admin.isActive ? 'فعال' : 'غیرفعال'}</td>
-                  <td>
+                  <td style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    <button type="button" className="btn secondary" onClick={() => { setPendingDelete(null); setEdit({ id: admin.id, fullName: admin.fullName, roles: [...(admin.roles || [])] }); }}>دسترسی</button>
                     {admin.id !== user?.id && (
                       <button type="button" className="btn secondary" onClick={async () => {
                         try {
@@ -368,34 +387,67 @@ function Admins() {
                         } catch (err) { toast.error(err.message); }
                       }}>{admin.isActive ? 'غیرفعال' : 'فعال'}</button>
                     )}
+                    {admin.id !== user?.id && pendingDelete !== admin.id && (
+                      <button type="button" className="btn secondary" onClick={() => setPendingDelete(admin.id)}>حذف</button>
+                    )}
+                    {pendingDelete === admin.id && (
+                      <>
+                        <button type="button" className="btn" onClick={async () => {
+                          try {
+                            await api(`/admins/${admin.id}`, { method: 'DELETE' });
+                            toast.success('اپراتور حذف شد');
+                            setPendingDelete(null);
+                            if (edit?.id === admin.id) setEdit(null);
+                            reload();
+                          } catch (err) { toast.error(err.message); }
+                        }}>حذف شود</button>
+                        <button type="button" className="btn secondary" onClick={() => setPendingDelete(null)}>انصراف</button>
+                      </>
+                    )}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-        <form className="card" style={{ padding: 14, display: 'grid', gap: 8, alignSelf: 'start' }} onSubmit={async (event) => {
-          event.preventDefault();
-          try {
-            await api('/admins', { method: 'POST', body: form });
-            toast.success('اپراتور ساخته شد');
-            setForm({ fullName: '', username: '', password: '', phone: '', roles: ['DISPATCH_OPERATOR'] });
-            reload();
-          } catch (err) { toast.error(err.message); }
-        }}>
-          <h3 style={{ margin: 0 }}>اپراتور جدید</h3>
-          <input className="field" placeholder="نام" value={form.fullName} onChange={(event) => setForm({ ...form, fullName: event.target.value })} />
-          <input className="field" placeholder="نام کاربری" autoComplete="off" value={form.username} onChange={(event) => setForm({ ...form, username: event.target.value })} />
-          <input className="field" type="password" placeholder="رمز عبور" autoComplete="new-password" value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} />
-          <input className="field" placeholder="موبایل" value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} />
-          {ROLES.map(([key, label]) => (
-            <label key={key} style={{ display: 'flex', gap: 8 }}>
-              <input type="checkbox" checked={form.roles.includes(key)} onChange={() => toggleRole(key)} />
-              {label}
-            </label>
-          ))}
-          <button type="submit" className="btn">ساخت حساب</button>
-        </form>
+        <div style={{ display: 'grid', gap: 12, alignContent: 'start' }}>
+          {edit && (
+            <form className="card" style={{ padding: 14, display: 'grid', gap: 8 }} onSubmit={async (event) => {
+              event.preventDefault();
+              if (!edit.roles.length) {
+                toast.error('حداقل یک نقش را انتخاب کنید.');
+                return;
+              }
+              try {
+                await api(`/admins/${edit.id}`, { method: 'PATCH', body: { roles: edit.roles } });
+                toast.success('دسترسی به‌روز شد');
+                setEdit(null);
+                reload();
+              } catch (err) { toast.error(err.message); }
+            }}>
+              <h3 style={{ margin: 0 }}>دسترسی {edit.fullName}</h3>
+              <RoleChecks roles={edit.roles} onToggle={toggleEditRole} />
+              <button type="submit" className="btn gold">ذخیرهٔ دسترسی</button>
+            </form>
+          )}
+          <form className="card" style={{ padding: 14, display: 'grid', gap: 8 }} onSubmit={async (event) => {
+            event.preventDefault();
+            try {
+              await api('/admins', { method: 'POST', body: form });
+              toast.success('اپراتور ساخته شد');
+              setForm({ fullName: '', username: '', password: '', phone: '', roles: ['DISPATCH_OPERATOR'] });
+              reload();
+            } catch (err) { toast.error(err.message); }
+          }}>
+            <h3 style={{ margin: 0 }}>اپراتور جدید</h3>
+            <input className="field" placeholder="نام" value={form.fullName} onChange={(event) => setForm({ ...form, fullName: event.target.value })} />
+            <input className="field" placeholder="نام کاربری" autoComplete="off" value={form.username} onChange={(event) => setForm({ ...form, username: event.target.value })} />
+            <input className="field" type="password" placeholder="رمز عبور" autoComplete="new-password" value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} />
+            <input className="field" placeholder="موبایل" value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} />
+            <RoleChecks roles={form.roles} onToggle={toggleRole} />
+            <button type="submit" className="btn">ساخت حساب</button>
+          </form>
+        </div>
       </div>
     </Page>
   );
