@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
 
 // حرف «ع» اولین گزینهٔ فهرست است و نماد «♿» نیز حفظ شده است
 const PLATE_LETTERS = [
@@ -22,18 +23,47 @@ const PLATE_LETTERS = [
 
 export function IranianPlateInput({ value, onChange }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState(null);
   const dropdownRef = useRef(null);
+  const menuRef = useRef(null);
+  const letterBtnRef = useRef(null);
+
+  const updateMenuPos = () => {
+    const el = letterBtnRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    setMenuPos({
+      top: r.bottom + 4,
+      left: r.left + r.width / 2,
+    });
+  };
+
+  useLayoutEffect(() => {
+    if (!isOpen) {
+      setMenuPos(null);
+      return;
+    }
+    updateMenuPos();
+    const onReposition = () => updateMenuPos();
+    window.addEventListener("resize", onReposition);
+    window.addEventListener("scroll", onReposition, true);
+    return () => {
+      window.removeEventListener("resize", onReposition);
+      window.removeEventListener("scroll", onReposition, true);
+    };
+  }, [isOpen]);
 
   // بستن منو در صورت کلیک در بیرون از آن
   useEffect(() => {
+    if (!isOpen) return;
     const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsOpen(false);
-      }
+      const inTrigger = dropdownRef.current?.contains(event.target);
+      const inMenu = menuRef.current?.contains(event.target);
+      if (!inTrigger && !inMenu) setIsOpen(false);
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  }, [isOpen]);
 
   const handleChange = (part, val) => {
     if (part !== "letter" && !/^\d*$/.test(val)) return;
@@ -48,7 +78,9 @@ export function IranianPlateInput({ value, onChange }) {
   return (
     // حذف overflow-hidden برای جلوگیری از بریده شدن منوی کشویی و اعمال relative
     <div
-      className="flex w-full items-center justify-between rounded-xl border-2 border-slate-300 bg-white h-14 relative"
+      className={`auth-plate flex w-full items-center justify-between rounded-xl border-2 h-14 relative overflow-visible ${
+        isOpen ? "z-40" : "z-0"
+      }`}
       dir="ltr"
     >
       {/* پرچم ایران - سمت چپ (انحنای گوشه‌ها به صورت دستی اعمال شد) */}
@@ -80,38 +112,51 @@ export function IranianPlateInput({ value, onChange }) {
       >
         <button
           type="button"
+          ref={letterBtnRef}
           onClick={() => setIsOpen(!isOpen)}
           className="w-full h-full flex items-center justify-center text-xl font-bold focus:outline-none text-slate-800"
+          aria-haspopup="listbox"
+          aria-expanded={isOpen}
         >
           {value?.letter || "-"}
         </button>
 
-        {isOpen && (
-          <div
-            className="absolute top-full mt-1 w-16 bg-white border border-slate-200 rounded-lg shadow-xl z-50 max-h-48 overflow-y-auto left-1/2 -translate-x-1/2"
-            dir="rtl"
-          >
-            {PLATE_LETTERS.map((l) => (
-              <button
-                key={l}
-                type="button"
-                title={l === "♿" ? "پلاک معلولین" : l}
-                aria-label={l === "♿" ? "پلاک معلولین" : `حرف ${l}`}
-                onClick={(e) => {
-                  e.preventDefault();
-                  selectLetter(l);
-                }}
-                className={`w-full text-center py-2 text-lg font-bold hover:bg-blue-50 transition-colors ${
-                  value?.letter === l
-                    ? "bg-blue-100 text-blue-700"
-                    : "text-slate-700"
-                }`}
-              >
-                {l}
-              </button>
-            ))}
-          </div>
-        )}
+        {isOpen &&
+          menuPos &&
+          createPortal(
+            <div
+              ref={menuRef}
+              className="fixed w-16 bg-white border border-slate-200 rounded-lg shadow-xl z-[200] max-h-48 overflow-y-auto"
+              style={{
+                top: menuPos.top,
+                left: menuPos.left,
+                transform: "translateX(-50%)",
+              }}
+              dir="rtl"
+              role="listbox"
+            >
+              {PLATE_LETTERS.map((l) => (
+                <button
+                  key={l}
+                  type="button"
+                  title={l === "♿" ? "پلاک معلولین" : l}
+                  aria-label={l === "♿" ? "پلاک معلولین" : `حرف ${l}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    selectLetter(l);
+                  }}
+                  className={`w-full text-center py-2 text-lg font-bold hover:bg-blue-50 transition-colors ${
+                    value?.letter === l
+                      ? "bg-blue-100 text-blue-700"
+                      : "text-slate-700"
+                  }`}
+                >
+                  {l}
+                </button>
+              ))}
+            </div>,
+            document.body,
+          )}
       </div>
 
       {/* سه رقم */}

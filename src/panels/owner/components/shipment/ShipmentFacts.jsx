@@ -48,6 +48,8 @@ export default function ShipmentFacts({ shipment }) {
         <Fact label="نوع کالا" value={cargoTypeLabel(shipment)} />
         <Fact label="بسته‌بندی" value={shipment.packaging_type || "ثبت نشده"} />
         <Fact label="وزن" value={shipment.weight_kg ? `${formatFaNumber(shipment.weight_kg)} کیلوگرم` : "—"} />
+        <Fact label="تعداد" value={shipment.piece_count ? formatFaNumber(shipment.piece_count) : "ثبت نشده"} />
+        <Fact label="بار حساس" value={shipment.requires_inspector ? "متصدی در محل لازم است" : "خیر"} />
         <Fact label="ابعاد" value={dimensionsLabel(shipment)} />
         <Fact label="ارزش کالا" value={cargoValue ? `${cargoValue} (${formatFaNumber(shipment.cargo_value)} ریال)` : "—"} />
         <Fact label="توضیحات" value={shipment.notes || "ثبت نشده"} />

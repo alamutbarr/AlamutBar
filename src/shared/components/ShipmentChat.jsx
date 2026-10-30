@@ -5,7 +5,9 @@ function socketUrl(token) {
   return `${proto}://${window.location.host}/ws?token=${encodeURIComponent(token)}`;
 }
 
-export default function ShipmentChat({ shipmentId, token, enabled, mine }) {
+const ROLE_LABEL = { owner: 'صاحب کالا', driver: 'راننده', operator: 'اپراتور' };
+
+export default function ShipmentChat({ shipmentId, token, enabled, mine, channel = 'owner_operator', title = 'گفتگو با اپراتور' }) {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
   const [notice, setNotice] = useState('');
@@ -22,7 +24,7 @@ export default function ShipmentChat({ shipmentId, token, enabled, mine }) {
     socket.onopen = () => {
       if (closed) return;
       setLive(true);
-      socket.send(JSON.stringify({ type: 'join', shipmentId }));
+      socket.send(JSON.stringify({ type: 'join', shipmentId, channel }));
     };
     socket.onmessage = (event) => {
       const packet = JSON.parse(event.data);
@@ -42,7 +44,7 @@ export default function ShipmentChat({ shipmentId, token, enabled, mine }) {
       closed = true;
       socket.close();
     };
-  }, [enabled, token, shipmentId]);
+  }, [enabled, token, shipmentId, channel]);
 
   useEffect(() => {
     const list = listRef.current;
@@ -52,7 +54,7 @@ export default function ShipmentChat({ shipmentId, token, enabled, mine }) {
   if (!enabled) {
     return (
       <section className="mt-4 rounded-2xl border border-[#d8e1dc] bg-white p-4 text-sm leading-7 text-[#526d70]">
-        گفتگو بعد از قبول بار، بین صاحب کالا و همان راننده باز می‌شود.
+        گفتگو با اپراتور بعد از قبول بار باز می‌شود.
       </section>
     );
   }
@@ -62,14 +64,14 @@ export default function ShipmentChat({ shipmentId, token, enabled, mine }) {
     const body = text.trim();
     const socket = socketRef.current;
     if (!body || !socket || socket.readyState !== WebSocket.OPEN) return;
-    socket.send(JSON.stringify({ type: 'message', shipmentId, body }));
+    socket.send(JSON.stringify({ type: 'message', shipmentId, channel, body }));
     setText('');
   };
 
   return (
     <section className="mt-4 overflow-hidden rounded-2xl border border-[#d8e1dc] bg-white">
       <header className="flex items-center justify-between border-b border-[#d8e1dc] px-4 py-3">
-        <h2 className="text-sm font-bold text-[#17383b]">گفتگوی بار</h2>
+        <h2 className="text-sm font-bold text-[#17383b]">{title}</h2>
         <span className="text-xs text-[#526d70]">{live ? 'آنلاین' : 'در حال اتصال'}</span>
       </header>
       <div ref={listRef} className="flex h-72 flex-col gap-2 overflow-y-auto bg-[#f7f6f0] px-3 py-3">
@@ -80,7 +82,7 @@ export default function ShipmentChat({ shipmentId, token, enabled, mine }) {
           const own = message.senderRole === mine;
           return (
             <div key={message.id} className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-7 ${own ? 'self-start bg-[#17383b] text-[#f7f6f0]' : 'self-end border border-[#d8e1dc] bg-white text-[#17383b]'}`}>
-              <p className="mb-1 text-[11px] opacity-70">{message.senderRole === 'owner' ? 'صاحب کالا' : 'راننده'}</p>
+              <p className="mb-1 text-[11px] opacity-70">{ROLE_LABEL[message.senderRole] || 'پیام'}</p>
               <p>{message.body}</p>
             </div>
           );

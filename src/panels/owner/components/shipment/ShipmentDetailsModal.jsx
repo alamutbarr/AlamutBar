@@ -45,6 +45,10 @@ export default function ShipmentDetailsModal({ shipmentId, open, onClose, onSave
       setError("برای شهر تهران، محدوده مبدأ الزامی است.");
       return;
     }
+    if (String(form.dest_city_name || "").trim() === "تهران" && !form.dest_zone_id) {
+      setError("برای شهر تهران، محدوده مقصد الزامی است.");
+      return;
+    }
     if (!form.loading_time_ranges?.length) {
       setError("حداقل یک بازهٔ بارگیری را انتخاب کنید.");
       return;
@@ -100,8 +104,14 @@ export default function ShipmentDetailsModal({ shipmentId, open, onClose, onSave
         <div className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="tabular text-base font-bold text-[#17383b]">{shipment.tracking_code}</p>
-            <StatusBadge status={shipment.status} />
+            <StatusBadge status={shipment.workflow_status === 'ON_HOLD' ? 'on_hold' : shipment.status} />
           </div>
+          {shipment.inspection && (
+            <p className="rounded-lg bg-[#f7f6f0] px-3 py-2 text-xs text-[#17383b]">
+              بازرسی: {shipment.inspection.decision === 'APPROVED' ? 'تأیید شد' : shipment.inspection.decision === 'CORRECTED' ? 'اصلاح شد' : shipment.inspection.decision === 'STOPPED' ? 'توقف' : 'در انتظار سرپرست'}
+              {shipment.inspection.decisionNote ? ` — ${shipment.inspection.decisionNote}` : ''}
+            </p>
+          )}
           {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
           {!editable && !editing && (
             <p className="rounded-lg bg-[#f7f6f0] px-3 py-2 text-xs text-[#526d70]">

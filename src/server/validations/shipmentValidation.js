@@ -97,6 +97,8 @@ const createShipmentSchema = Joi.object({
       }),
     }),
   packaging_type: Joi.string().max(100).allow("", null).label("نوع بسته‌بندی"),
+  piece_count: Joi.number().integer().min(1).max(100000).optional().allow(null).label("تعداد"),
+  requires_inspector: Joi.boolean().optional().label("بار حساس"),
   weight_kg: Joi.number()
     .positive()
     .max(40000)

@@ -1,10 +1,14 @@
 import { useEffect, useRef, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { Check, ChevronRight, ChevronLeft } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { createShipment } from "../../api/shipment.api";
+import { getProfile } from "../../api/auth.api";
 import Button from "../../components/common/Button";
+import { useAuth } from "../../hooks/useAuth";
 import { useToast } from "../../hooks/useToast";
 import { getErrorMessage } from "../../utils/errorMessage";
+import { ownerKycShipmentIssue } from "../../utils/ownerKycGate";
 
 import Step1_Origin from "../../components/shipment-steps/Step1_Origin";
 import Step2_Destination from "../../components/shipment-steps/Step2_Destination";
@@ -30,7 +34,7 @@ const STEPS = [
   { title: "عکس و توضیح", Component: Step7_PhotosNotes },
   { title: "زمان", Component: Step8_DateUrgency },
   { title: "خودرو", Component: Step9_Vehicle },
-  { title: "بارگیری/تخلیه", Component: Step10_HandlingMethods },
+  { title: "بارگیری", Component: Step10_HandlingMethods },
   { title: "گیرنده", Component: Step11_Contact },
   { title: "تأیید", Component: Step12_Confirm },
   { title: "پایان", Component: Step13_Done },
@@ -59,6 +63,7 @@ const emptyFormData = {
   origin_lat: "",
   origin_lng: "",
   dest_city_id: "",
+  dest_city_name: "",
   dest_zone_id: "",
   dest_address: "",
   dest_lat: "",
@@ -67,6 +72,8 @@ const emptyFormData = {
   cargo_type_other: "",
   packaging_type: "",
   weight_kg: "",
+  piece_count: "",
+  requires_inspector: false,
   length_cm: "",
   width_cm: "",
   height_cm: "",
@@ -87,13 +94,74 @@ const emptyFormData = {
   trackingCode: "",
 };
 
+function formFromShipment(shipment) {
+  if (!shipment) return emptyFormData;
+  const date = shipment.loading_date ? String(shipment.loading_date).slice(0, 10) : "";
+  return {
+    ...emptyFormData,
+    origin_city_id: shipment.origin_city_id || "",
+    origin_city_name: shipment.originCity?.name || "",
+    origin_zone_id: shipment.origin_zone_id || "",
+    origin_address: shipment.origin_address || "",
+    origin_lat: shipment.origin_lat ?? "",
+    origin_lng: shipment.origin_lng ?? "",
+    dest_city_id: shipment.dest_city_id || "",
+    dest_city_name: shipment.destCity?.name || "",
+    dest_zone_id: shipment.dest_zone_id || "",
+    dest_address: shipment.dest_address || "",
+    dest_lat: shipment.dest_lat ?? "",
+    dest_lng: shipment.dest_lng ?? "",
+    cargo_type: shipment.cargo_type || "",
+    cargo_type_other: shipment.cargo_type_other || "",
+    packaging_type: shipment.packaging_type || "",
+    weight_kg: shipment.weight_kg ?? "",
+    piece_count: shipment.piece_count ?? "",
+    length_cm: shipment.length_cm ?? "",
+    width_cm: shipment.width_cm ?? "",
+    height_cm: shipment.height_cm ?? "",
+    cargo_value: shipment.cargo_value ?? "",
+    notes: shipment.notes || "",
+    loading_date: date,
+    loading_time_from: shipment.loading_time_from || "",
+    loading_time_to: shipment.loading_time_to || "",
+    loading_time_ranges: Array.isArray(shipment.loading_time_ranges) ? shipment.loading_time_ranges : [],
+    urgency: shipment.urgency || "",
+    vehicle_type_id: shipment.vehicle_type_id || "",
+    vehicle_variants: Array.isArray(shipment.vehicle_variants) ? shipment.vehicle_variants : [],
+    loading_method: shipment.loading_method || "",
+    receiver_name: shipment.receiver_name || "",
+    receiver_phone: shipment.receiver_phone || "",
+    receiver_national_id: shipment.receiver_national_id || "",
+    receiver_postal_code: shipment.receiver_postal_code || "",
+    proposed_price: shipment.proposed_price ?? "",
+    requires_inspector: Boolean(shipment.requires_inspector),
+  };
+}
+
 export default function CreateShipment() {
+  const repeat = useLocation().state?.repeat;
+  const { user, updateUser } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
-  const [maxStepReached, setMaxStepReached] = useState(1);
+  const [maxStepReached, setMaxStepReached] = useState(repeat ? TOTAL_VISIBLE_STEPS : 1);
   const [direction, setDirection] = useState(1);
   const [stepError, setStepError] = useState("");
   const toast = useToast();
-  const [formData, setFormData] = useState(emptyFormData);
+  const [formData, setFormData] = useState(() => formFromShipment(repeat));
+  const kycIssue = ownerKycShipmentIssue(user);
+
+  useEffect(() => {
+    let cancelled = false;
+    getProfile()
+      .then((fresh) => {
+        if (!cancelled) updateUser(fresh);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+    // فقط یک‌بار از سرور وضعیت احراز را تازه می‌کنیم
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const updateFormData = (key, value) =>
     setFormData((prev) => ({ ...prev, [key]: value }));
@@ -114,6 +182,13 @@ export default function CreateShipment() {
       stepNum === 1 &&
       String(formData.origin_city_name || "").trim() === "تهران" &&
       !formData.origin_zone_id
+    ) {
+      return false;
+    }
+    if (
+      stepNum === 2 &&
+      String(formData.dest_city_name || "").trim() === "تهران" &&
+      !formData.dest_zone_id
     ) {
       return false;
     }
@@ -161,6 +236,14 @@ export default function CreateShipment() {
         !formData.origin_zone_id
       ) {
         setStepError("برای شهر تهران، محدوده مبدأ الزامی است.");
+      } else if (
+        currentStep === 2 &&
+        String(formData.dest_city_name || "").trim() === "تهران" &&
+        !formData.dest_zone_id
+      ) {
+        setStepError("برای شهر تهران، محدوده مقصد الزامی است.");
+      } else if (currentStep === 1 && !formData.origin_lat) {
+        setStepError("محل را روی نقشه، داخل شهر انتخاب‌شده، مشخص کنید.");
       } else {
         setStepError("لطفاً فیلدهای الزامی این مرحله را تکمیل کنید.");
       }
@@ -180,6 +263,12 @@ export default function CreateShipment() {
   };
 
   const handleSubmit = async () => {
+    const identityIssue = ownerKycShipmentIssue(user);
+    if (identityIssue) {
+      setStepError(identityIssue);
+      toast.error(identityIssue);
+      return;
+    }
     // چک نهایی سرتاسری قبل از ارسال - اگر جایی ناقص مانده، مستقیم کاربر را همان‌جا می‌بریم
     const firstInvalid = findFirstInvalidStep();
     if (firstInvalid) {
@@ -195,10 +284,12 @@ export default function CreateShipment() {
     delete payload.trackingCode;
     if (payload.cargo_type !== "other") delete payload.cargo_type_other;
     delete payload.origin_city_name;
+    delete payload.dest_city_name;
     ["origin_zone_id", "dest_zone_id"].forEach((k) => {
       if (payload[k] === "") payload[k] = null;
     });
     [
+      "piece_count",
       "length_cm",
       "width_cm",
       "height_cm",
@@ -223,11 +314,34 @@ export default function CreateShipment() {
   const ActiveStep = STEPS[currentStep - 1].Component;
   const isFinal = currentStep === STEPS.length;
 
+  if (kycIssue) {
+    return (
+      <div className="mx-auto w-full max-w-4xl">
+        <h1 className="text-2xl font-bold text-ink-900">{repeat ? "تکرار حمل" : "ثبت بار جدید"}</h1>
+        <div className="mt-6 rounded-xl border border-red-200 bg-red-50 px-5 py-5 text-right shadow-panel">
+          <p className="text-sm font-bold text-red-700">{kycIssue}</p>
+          <p className="mt-2 text-sm text-red-600">
+            ابتدا به پروفایل بروید و احراز هویت را کامل کنید؛ بعد می‌توانید بار ثبت کنید.
+          </p>
+          <Button as={Link} to="/owner/profile" variant="accent" className="mt-4">
+            رفتن به احراز هویت
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto w-full max-w-4xl">
+      {!isFinal && repeat && (
+        <p className="mb-4 rounded-lg border border-[#d7b56d] bg-[#f7f6f0] px-3 py-2 text-sm text-[#17383b]">
+          مشخصات از حمل {repeat.tracking_code} آمده است. وزن، تعداد، زمان و مقصد را پیش از ثبت عوض کنید. اگر تاریخ بارگیری گذشته باشد، در مرحلهٔ زمان یک تاریخ تازه بگذارید.
+        </p>
+      )}
+
       {!isFinal && (
         <div className="mb-4 flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-ink-900">ثبت بار جدید</h1>
+          <h1 className="text-2xl font-bold text-ink-900">{repeat ? "تکرار حمل" : "ثبت بار جدید"}</h1>
           <p className="text-sm text-ink-300">
             مرحلهٔ <bdi dir="ltr" className="tabular">{currentStep.toLocaleString("fa-IR")}</bdi>
             {" "}از{" "}
@@ -335,7 +449,7 @@ function RouteProgress({ current, maxReached, onStepClick }) {
 
       <div
         ref={scrollerRef}
-        className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="chip-rail"
       >
         {STEPS.slice(0, TOTAL_VISIBLE_STEPS).map((step, idx) => {
           const num = idx + 1;
@@ -354,7 +468,7 @@ function RouteProgress({ current, maxReached, onStepClick }) {
                   ? `برو به «${step.title}»`
                   : "هنوز به این مرحله نرسیده‌اید"
               }
-              className={`flex shrink-0 items-center gap-2 rounded-full border px-2.5 py-1.5 text-xs transition ${
+              className={`flex shrink-0 items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs transition ${
                 active
                   ? "border-[#087f8c] bg-[#087f8c] text-[#f7f6f0]"
                   : done

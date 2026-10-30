@@ -50,6 +50,7 @@ const updateProfileSchema = Joi.object({
     .max(255)
     .allow("", null)
     .label("عکس پروفایل"),
+  postal_code: Joi.string().pattern(/^\d{10}$/).label("کد پستی"),
 }).messages(commonMessages);
 
 module.exports = { requestOtpSchema, verifyOtpSchema, updateProfileSchema };

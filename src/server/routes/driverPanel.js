@@ -1,11 +1,71 @@
+const fs = require('fs');
+const path = require('path');
 const express = require('express');
+const multer = require('multer');
 const { Op } = require('sequelize');
 const { authMiddleware } = require('../middleware/auth');
-const { Shipment, Driver, City, VehicleType, Zone } = require('../models');
+const { Shipment, Driver, City, VehicleType, Zone, DriverNotice } = require('../models');
+const { upsertDocument } = require('../admin/documents');
+const { canRevealExactDestination } = require('../mobile/missionPolicy');
+const { applyLegacyDriverStatus } = require('../mobile/driverActions');
 const { filterNearbyMissions, filterMissionsByRoute } = require('../services/missionSearch');
 const { resolveDriverProvince } = require('../services/geocoding');
+const { latestInspections } = require('../inspector/summary');
 
 const router = express.Router();
+
+const uploadDir = path.join(__dirname, '..', '..', 'uploads');
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+const SLOT_META = {
+  'driverLicense:front': { group: 'personal', title: 'روی گواهینامه' },
+  'driverLicense:back': { group: 'personal', title: 'پشت گواهینامه' },
+  'selfie:selfie': { group: 'personal', title: 'عکس شخصی با کارت' },
+  'nationalCard:front': { group: 'personal', title: 'روی کارت ملی' },
+  'nationalCard:back': { group: 'personal', title: 'پشت کارت ملی' },
+  'vehicleCard:front': { group: 'vehicle', title: 'روی کارت خودرو' },
+  'vehicleCard:back': { group: 'vehicle', title: 'پشت کارت خودرو' },
+};
+
+const documentUpload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, uploadDir),
+    filename: (req, file, cb) => {
+      const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+      cb(null, `doc-${unique}${path.extname(file.originalname) || '.jpg'}`);
+    },
+  }),
+  limits: { fileSize: 8 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)) {
+      cb(new Error('فقط تصویر JPG، PNG یا WEBP مجاز است.'));
+      return;
+    }
+    cb(null, true);
+  },
+});
+
+function flatDocuments(raw) {
+  const groups = raw && typeof raw === 'object' ? raw : {};
+  return ['personal', 'vehicle', 'insurance'].flatMap((group) => (
+    Array.isArray(groups[group]) ? groups[group].map((item) => ({ ...item, group })) : []
+  ));
+}
+
+async function driverNotices(driverId) {
+  const rows = await DriverNotice.findAll({
+    where: { driverId },
+    order: [['createdAt', 'DESC']],
+    limit: 20,
+  });
+  return rows.map((row) => ({
+    id: row.id,
+    title: row.title,
+    message: row.message,
+    isRead: row.isRead,
+    createdAt: row.createdAt,
+  }));
+}
 
 const includes = [
   { model: City, as: 'originCity' },
@@ -15,7 +75,7 @@ const includes = [
   { model: VehicleType, as: 'vehicleType' },
 ];
 
-function toPanelDriver(row) {
+function toPanelDriver(row, extras = {}) {
   const d = row.toJSON();
   const name = [d.firstName, d.lastName].filter(Boolean).join(' ').trim();
   return {
@@ -28,7 +88,11 @@ function toPanelDriver(row) {
     plate: d.plate || '',
     tractorType: d.tractorType || '',
     trailerType: d.trailerType || '',
-    verifiedStatus: 'pending',
+    verifiedStatus: d.verificationStatus === 'VERIFIED' ? 'verified' : d.verificationStatus === 'REJECTED' ? 'rejected' : 'pending',
+    verificationStatus: d.verificationStatus,
+    rejectionReason: d.rejectionReason || '',
+    documents: extras.documents || flatDocuments(d.documents),
+    notices: extras.notices || [],
     rating: 5,
     totalMissions: 0,
     joinedDate: d.createdAt ? new Date(d.createdAt).toLocaleDateString('fa-IR') : '',
@@ -37,6 +101,7 @@ function toPanelDriver(row) {
 }
 
 function driverFacingStatus(row) {
+  if (row.workflow_status === 'ON_HOLD') return 'OnHold';
   if (row.driver_status) return row.driver_status;
   if (row.status === 'cancelled') return 'Cancelled';
   if (row.status === 'completed' || row.status === 'delivered') return 'Completed';
@@ -46,7 +111,7 @@ function driverFacingStatus(row) {
   return 'Offered';
 }
 
-function toMissionDto(row) {
+function toMissionDto(row, inspection = null) {
   const d = row.toJSON ? row.toJSON() : row;
   const status = driverFacingStatus(d);
   const weight = d.weight_kg != null ? Number(d.weight_kg) : null;
@@ -60,10 +125,18 @@ function toMissionDto(row) {
       : undefined,
     destCity: d.destCity?.name,
     destArea: [d.destZone?.name, d.destCity?.province].filter(Boolean).join(' · '),
-    destExact: status !== 'Offered' && d.dest_address
+    destExact: canRevealExactDestination({
+      driverStatus: status,
+      legacyStatus: d.status,
+      workflowStatus: d.workflow_status,
+    }) && d.dest_address
       ? { lat: d.dest_lat != null ? Number(d.dest_lat) : undefined, lng: d.dest_lng != null ? Number(d.dest_lng) : undefined, address: d.dest_address }
       : undefined,
-    visibleDestinationExact: status !== 'Offered',
+    visibleDestinationExact: canRevealExactDestination({
+      driverStatus: status,
+      legacyStatus: d.status,
+      workflowStatus: d.workflow_status,
+    }),
     cargo: {
       type: d.cargo_type === 'other' ? (d.cargo_type_other || 'سایر') : d.cargo_type,
       weightTons: weight != null ? weight / 1000 : undefined,
@@ -72,7 +145,8 @@ function toMissionDto(row) {
       lengthCm: d.length_cm != null && d.length_cm !== '' ? Number(d.length_cm) : undefined,
       widthCm: d.width_cm != null && d.width_cm !== '' ? Number(d.width_cm) : undefined,
       heightCm: d.height_cm != null && d.height_cm !== '' ? Number(d.height_cm) : undefined,
-      sensitive: false,
+      sensitive: Boolean(d.requires_inspector),
+      pieceCount: d.piece_count != null ? Number(d.piece_count) : undefined,
     },
     loadingDate: d.loading_date ? String(d.loading_date).slice(0, 10) : undefined,
     timeWindow: {
@@ -90,6 +164,7 @@ function toMissionDto(row) {
     price: d.operator_price != null ? Number(d.operator_price) : (d.proposed_price != null ? Number(d.proposed_price) : undefined),
     photosUploaded: Array.isArray(d.photo_urls) ? d.photo_urls.length : 0,
     ownerId: d.owner_id,
+    inspection,
   };
 }
 
@@ -125,51 +200,97 @@ async function openShipments(driverId) {
 router.get('/profile', authMiddleware, async (req, res) => {
   const driver = await Driver.findByPk(req.user.id);
   if (!driver) return res.status(401).json({ message: 'کاربر یافت نشد' });
-  return res.json({ driver: toPanelDriver(driver) });
+  const notices = await driverNotices(driver.id);
+  return res.json({ driver: toPanelDriver(driver, { notices }) });
+});
+
+router.post('/documents', authMiddleware, (req, res, next) => {
+  documentUpload.array('files', 12)(req, res, (error) => {
+    if (error) return res.status(400).json({ message: error.message || 'آپلود مدرک ناموفق بود.' });
+    return next();
+  });
+}, async (req, res) => {
+  try {
+    const driver = await Driver.findByPk(req.user.id);
+    if (!driver) return res.status(401).json({ message: 'کاربر یافت نشد' });
+    const files = req.files || [];
+    if (!files.length) return res.status(400).json({ message: 'حداقل یک مدرک را انتخاب و تأیید کنید.' });
+    const slots = Array.isArray(req.body.slots) ? req.body.slots : (req.body.slots ? [req.body.slots] : []);
+    if (slots.length !== files.length) return res.status(400).json({ message: 'هر فایل باید به یک مدرک مشخص وصل باشد.' });
+    let documents = driver.documents;
+    for (let index = 0; index < files.length; index += 1) {
+      const meta = SLOT_META[slots[index]];
+      if (!meta) return res.status(400).json({ message: 'نوع مدرک نامعتبر است.' });
+      documents = upsertDocument(documents, {
+        group: meta.group,
+        key: slots[index],
+        title: meta.title,
+        url: `/uploads/${files[index].filename}`,
+      });
+    }
+    driver.documents = documents;
+    driver.changed('documents', true);
+    if (driver.verificationStatus === 'REJECTED') {
+      const stillRejected = flatDocuments(documents).some((item) => item.status === 'REJECTED');
+      if (!stillRejected) {
+        driver.verificationStatus = 'PENDING_VERIFICATION';
+        driver.rejectionReason = null;
+      }
+    }
+    await driver.save();
+    const notices = await driverNotices(driver.id);
+    return res.json({
+      message: 'مدارک ارسال شد و در صف بررسی است.',
+      driver: toPanelDriver(driver, { notices }),
+    });
+  } catch (error) {
+    return res.status(error.statusCode || 400).json({ message: error.message || 'آپلود مدرک ناموفق بود.' });
+  }
+});
+
+router.post('/notices/read', authMiddleware, async (req, res) => {
+  await DriverNotice.update({ isRead: true }, { where: { driverId: req.user.id, isRead: false } });
+  return res.json({ ok: true });
 });
 
 router.get('/missions', authMiddleware, async (req, res) => {
   const rows = await openShipments(req.user.id);
-  return res.json({ missions: rows.map(toMissionDto) });
+  const inspections = await latestInspections(rows.map((row) => row.id));
+  return res.json({ missions: rows.map((row) => toMissionDto(row, inspections.get(row.id) || null)) });
+});
+
+router.post('/missions/:id/photos', authMiddleware, (req, res, next) => {
+  documentUpload.single('file')(req, res, (error) => {
+    if (error) return res.status(400).json({ message: error.message || 'آپلود عکس ناموفق بود.' });
+    return next();
+  });
+}, async (req, res) => {
+  if (!req.file) return res.status(400).json({ message: 'عکس را انتخاب کنید.' });
+  const mission = await Shipment.findByPk(req.params.id);
+  if (!mission || String(mission.driver_id) !== String(req.user.id)) {
+    return res.status(403).json({ message: 'به این مأموریت دسترسی ندارید.' });
+  }
+  const photos = Array.isArray(mission.photo_urls) ? [...mission.photo_urls] : [];
+  photos.push(`/uploads/${req.file.filename}`);
+  mission.photo_urls = photos;
+  mission.changed('photo_urls', true);
+  await mission.save();
+  return res.json({ url: photos[photos.length - 1], count: photos.length });
 });
 
 router.post('/missions/:id/change-status', authMiddleware, async (req, res) => {
-  const mission = await Shipment.findByPk(req.params.id);
-  if (!mission) return res.status(404).json({ error: 'مأموریت پیدا نشد' });
-
-  const { status } = req.body;
-  const mine = mission.driver_id != null && String(mission.driver_id) === String(req.user.id);
-  if (mission.driver_id && !mine && status !== 'Declined') {
-    return res.status(409).json({ error: 'این بار را رانندهٔ دیگری قبول کرده است.' });
+  try {
+    const result = await applyLegacyDriverStatus({
+      missionId: req.params.id,
+      driverId: req.user.id,
+      status: req.body.status,
+      deliveryOtp: req.body.deliveryOtp,
+      exceptionReason: req.body.exceptionReason,
+    });
+    return res.json({ message: 'وضعیت بروزرسانی شد', status: result.driverStatus });
+  } catch (error) {
+    return res.status(error.statusCode || 400).json({ error: error.message || 'به‌روزرسانی وضعیت ناموفق بود.' });
   }
-
-  if (status === 'Accepted') {
-    if (mission.driver_id && !mine) {
-      return res.status(409).json({ error: 'این بار را رانندهٔ دیگری قبول کرده است.' });
-    }
-    mission.driver_id = req.user.id;
-    mission.driver_status = 'Accepted';
-    mission.status = 'driver_assigned';
-  } else if (status === 'Declined') {
-    const declined = Array.isArray(mission.declined_by) ? mission.declined_by : [];
-    mission.declined_by = [...new Set([...declined.map(String), String(req.user.id)])];
-    mission.changed('declined_by', true);
-  } else if (mine || !mission.driver_id) {
-    const next = {
-      EnRouteToPickup: { driver_status: 'EnRouteToPickup' },
-      ArrivedPickup: { driver_status: 'ArrivedPickup', status: 'at_pickup' },
-      WaybillIssued: { driver_status: 'WaybillIssued' },
-      InTransit: { driver_status: 'InTransit', status: 'in_transit' },
-      Completed: { driver_status: 'Completed', status: 'delivered' },
-      Cancelled: { driver_status: 'Cancelled', status: 'cancelled' },
-    }[status];
-    if (!next) return res.status(400).json({ error: 'وضعیت نامعتبر است' });
-    Object.assign(mission, next);
-    if (!mission.driver_id) mission.driver_id = req.user.id;
-  }
-
-  await mission.save();
-  return res.json({ message: 'وضعیت بروزرسانی شد', status: driverFacingStatus(mission) });
 });
 
 router.get('/missions/nearby', authMiddleware, async (req, res) => {
@@ -192,11 +313,12 @@ router.get('/missions/nearby', authMiddleware, async (req, res) => {
     destProvinceName: req.query.destProvince || undefined,
     driverProvince,
   });
+  const inspections = await latestInspections(matches.map(({ shipment }) => shipment.row.id));
   return res.json({
     driverProvince,
     bands: [50, 100, 200, 400, 800, 1600],
     missions: matches.map(({ shipment, distanceKm, bandKm }) => ({
-      ...toMissionDto(shipment.row),
+      ...toMissionDto(shipment.row, inspections.get(shipment.row.id) || null),
       distanceKm,
       bandKm,
     })),
@@ -212,7 +334,8 @@ router.get('/missions/search', authMiddleware, async (req, res) => {
   const matches = filterMissionsByRoute(rows.map(asSearchable), {
     originCityId, originProvinceId, destCityId, destProvinceId,
   });
-  return res.json({ missions: matches.map(({ shipment }) => toMissionDto(shipment.row)) });
+  const inspections = await latestInspections(matches.map(({ shipment }) => shipment.row.id));
+  return res.json({ missions: matches.map(({ shipment }) => toMissionDto(shipment.row, inspections.get(shipment.row.id) || null)) });
 });
 
 module.exports = router;

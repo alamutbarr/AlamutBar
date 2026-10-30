@@ -1,0 +1,465 @@
+/* توکن‌های مشترک برند الموت. پنل ادمین از همین متغیرها استفاده می‌کند
+   تا بعداً اپ راننده (React Native) و پولیش بقیه پنل‌ها همان پالت را داشته باشند. */
+:root {
+  --alamut-primary: #087f8c;
+  --alamut-secondary: #159a9c;
+  --alamut-ink: #17383b;
+  --alamut-gold: #d7b56d;
+  --alamut-cream: #f7f6f0;
+  --alamut-mist: #e1f3f0;
+  --alamut-ok: #1f8a4c;
+  --alamut-warn: #a16207;
+  --alamut-crit: #b42318;
+  --alamut-progress: #1d4ed8;
+  --alamut-radius: 8px;
+  --alamut-shadow: 0 1px 0 rgba(23, 56, 59, 0.04), 0 10px 28px -18px rgba(23, 56, 59, 0.28);
+  --alamut-line: #d8e1dc;
+}
+
+.panel-canvas {
+  background: var(--alamut-cream);
+}
+
+.panel-card,
+.panel-section,
+.glass-card {
+  background: #fff;
+  border: 1px solid var(--alamut-line);
+  border-radius: var(--alamut-radius);
+  box-shadow: var(--alamut-shadow);
+}
+
+.bg-ink-950 .glass-card,
+.brand-rail .glass-card {
+  background: rgba(247, 246, 240, 0.1);
+  border-color: rgba(247, 246, 240, 0.18);
+  box-shadow: none;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.brand-rail {
+  position: relative;
+  overflow: hidden;
+  background-color: #10282b;
+  background-image: radial-gradient(120% 80% at 100% 0%, rgba(215, 181, 109, 0.16), transparent 55%);
+  color: #f7f6f0;
+}
+
+.brand-rail::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.4;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 480 640' fill='none'%3E%3Cpath d='M-20 560C100 560 90 420 210 400S340 300 320 200 420 60 500 40' stroke='%23159a9c' stroke-width='2' stroke-dasharray='2 14' stroke-linecap='round'/%3E%3Ccircle cx='210' cy='400' r='4' fill='%23d8e1dc'/%3E%3Ccircle cx='320' cy='200' r='4' fill='%23d8e1dc'/%3E%3Ccircle cx='36' cy='530' r='5' fill='%23d7b56d'/%3E%3Ccircle cx='470' cy='52' r='5' fill='%23d7b56d'/%3E%3C/svg%3E");
+  background-size: cover;
+  background-position: center;
+}
+
+.brand-rail > * {
+  position: relative;
+  z-index: 1;
+}
+
+button.glass-card,
+a.glass-card {
+  cursor: pointer;
+  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+button.glass-card:hover,
+a.glass-card:hover {
+  border-color: rgba(21, 154, 156, 0.55);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 22px 42px -22px rgba(8, 127, 140, 0.38);
+}
+
+.panel-section {
+  overflow: hidden;
+}
+
+.panel-section-head {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.panel-section-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.panel-kicker {
+  margin: 0;
+  color: #6b5228;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.panel-dock {
+  background: #fff;
+  border: 1px solid var(--alamut-line);
+  border-radius: var(--alamut-radius);
+  box-shadow: var(--alamut-shadow);
+}
+
+.panel-kicker + h1,
+.panel-section-row h1 {
+  margin: 0;
+}
+
+:focus-visible {
+  outline: 2px solid var(--alamut-primary);
+  outline-offset: 2px;
+}
+
+/* ورود راننده و صاحب‌کالا: فرم وسط، فوکوس مشخص، شیشهٔ کم‌رنگ روی پالت موجود */
+.auth-stage {
+  display: flex;
+  align-items: safe center;
+  justify-content: center;
+  overflow-y: auto;
+  height: 100%;
+  min-height: 100%;
+  padding: 2.5rem 1.5rem;
+}
+
+.auth-stage-card {
+  width: min(32rem, 100%);
+  padding: 1.75rem 1.5rem 1.5rem;
+  border-radius: 1.25rem;
+  background: rgba(255, 252, 247, 0.58);
+  border: 1px solid rgba(216, 225, 220, 0.88);
+  box-shadow: 0 18px 40px -28px rgba(23, 56, 59, 0.3);
+  backdrop-filter: blur(12px) saturate(135%);
+  -webkit-backdrop-filter: blur(12px) saturate(135%);
+}
+
+.auth-stage-card--owner {
+  width: min(24rem, 100%);
+}
+
+.auth-field {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid var(--alamut-line);
+  color: var(--alamut-ink);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+
+.auth-field:hover {
+  border-color: var(--alamut-secondary);
+}
+
+.auth-field:focus,
+.auth-field:focus-visible {
+  outline: none;
+  border-color: var(--alamut-primary);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 0 0 3px rgba(8, 127, 140, 0.22);
+}
+
+.auth-field--error,
+.auth-field--error:hover {
+  border-color: #e7b6b0;
+}
+
+.auth-field--error:focus,
+.auth-field--error:focus-visible {
+  border-color: var(--alamut-crit);
+  box-shadow: 0 0 0 3px rgba(180, 35, 24, 0.16);
+}
+
+.auth-segment {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 1.5rem;
+  border-radius: 0.75rem;
+  background: rgba(225, 243, 240, 0.5);
+  border: 1px solid rgba(216, 225, 220, 0.85);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.auth-segment-btn {
+  flex: 1;
+  padding: 0.65rem 0.75rem;
+  border: 0;
+  border-radius: 0.55rem;
+  background: transparent;
+  color: #526d70;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+
+.auth-segment-btn:hover {
+  color: var(--alamut-ink);
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.auth-segment-btn.is-active {
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--alamut-primary);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9), 0 8px 18px -12px rgba(8, 127, 140, 0.55);
+}
+
+.auth-segment-btn:focus-visible {
+  outline: 2px solid var(--alamut-primary);
+  outline-offset: 1px;
+}
+
+.auth-plate {
+  border-color: var(--alamut-line);
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.auth-plate:focus-within {
+  border-color: var(--alamut-primary);
+  box-shadow: 0 0 0 3px rgba(8, 127, 140, 0.22);
+}
+
+.auth-plate input:focus,
+.auth-plate input:focus-visible {
+  outline: none;
+  background: var(--alamut-mist);
+}
+
+.chip-rail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  max-height: 7.5rem;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-bottom: 0.15rem;
+  scrollbar-width: thin;
+  scrollbar-color: #087f8c #e6eeea;
+}
+
+.chip-rail::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.chip-rail::-webkit-scrollbar-thumb {
+  background: #087f8c;
+  border-radius: 999px;
+}
+
+.option-rail {
+  max-height: min(22rem, 48vh);
+  overflow-y: auto;
+  padding-left: 0.2rem;
+  scrollbar-width: thin;
+  scrollbar-color: #087f8c #e6eeea;
+}
+
+.option-rail::-webkit-scrollbar {
+  width: 6px;
+}
+
+.option-rail::-webkit-scrollbar-thumb {
+  background: #087f8c;
+  border-radius: 999px;
+}
+
+/* تم روشن/تیره پنل راننده و صاحب‌کالا — همان پالت پنل ادمین */
+.panel-app {
+  --panel-bg: var(--alamut-cream);
+  --panel-surface: #ffffff;
+  --panel-text: var(--alamut-ink);
+  --panel-muted: #526d70;
+  --panel-line: rgba(23, 56, 59, 0.12);
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--panel-bg);
+  color: var(--panel-text);
+}
+
+.panel-app[data-theme='dark'] {
+  --panel-bg: #0e2427;
+  --panel-surface: #17383b;
+  --panel-text: var(--alamut-cream);
+  --panel-muted: #b7c6c4;
+  --panel-line: rgba(247, 246, 240, 0.14);
+  color-scheme: dark;
+}
+
+.panel-app .panel-canvas {
+  background: var(--panel-bg);
+  color: var(--panel-text);
+}
+
+.panel-app .theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 1px solid var(--panel-line);
+  background: transparent;
+  color: inherit;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.panel-app .theme-toggle--icon {
+  padding: 8px;
+}
+
+.panel-app .theme-toggle--row {
+  width: 100%;
+  padding: 10px 12px;
+}
+
+.panel-app .brand-rail .theme-toggle {
+  border-color: rgba(247, 246, 240, 0.28);
+  color: #f7f6f0;
+}
+
+.panel-app[data-theme='dark'] .panel-card,
+.panel-app[data-theme='dark'] .panel-section,
+.panel-app[data-theme='dark'] .panel-dock,
+.panel-app[data-theme='dark'] .glass-card,
+.panel-app[data-theme='dark'] .glass,
+.panel-app[data-theme='dark'] .glass-soft,
+.panel-app[data-theme='dark'] .glass-strong {
+  background: var(--panel-surface);
+  border-color: var(--panel-line);
+  box-shadow: none;
+}
+
+.panel-app[data-theme='dark'] .brand-rail .glass-card {
+  background: rgba(247, 246, 240, 0.1);
+  border-color: rgba(247, 246, 240, 0.18);
+}
+
+.panel-app[data-theme='dark'] .auth-stage-card {
+  background: rgba(23, 56, 59, 0.72);
+  border-color: rgba(247, 246, 240, 0.14);
+}
+
+.panel-app[data-theme='dark'] .auth-field,
+.panel-app[data-theme='dark'] .auth-plate {
+  background: rgba(14, 36, 39, 0.72);
+  color: var(--panel-text);
+  border-color: var(--panel-line);
+}
+
+.panel-app[data-theme='dark'] .auth-field:focus,
+.panel-app[data-theme='dark'] .auth-field:focus-visible {
+  background: rgba(14, 36, 39, 0.92);
+}
+
+.panel-app[data-theme='dark'] .auth-segment {
+  background: rgba(247, 246, 240, 0.08);
+  border-color: var(--panel-line);
+}
+
+.panel-app[data-theme='dark'] .auth-segment-btn {
+  color: var(--panel-muted);
+}
+
+.panel-app[data-theme='dark'] .auth-segment-btn:hover {
+  color: var(--panel-text);
+  background: rgba(247, 246, 240, 0.08);
+}
+
+.panel-app[data-theme='dark'] .auth-segment-btn.is-active {
+  background: rgba(247, 246, 240, 0.14);
+  color: #7ed4d6;
+  box-shadow: none;
+}
+
+.panel-app[data-theme='dark'] .bg-white,
+.panel-app[data-theme='dark'] .bg-route-bg,
+.panel-app[data-theme='dark'] .bg-slate-50,
+.panel-app[data-theme='dark'] .bg-ink-50,
+.panel-app[data-theme='dark'] .bg-\[\#f7f6f0\] {
+  background-color: var(--panel-surface);
+}
+
+.panel-app[data-theme='dark'] .text-ink-900,
+.panel-app[data-theme='dark'] .text-ink-800,
+.panel-app[data-theme='dark'] .text-ink-700,
+.panel-app[data-theme='dark'] .text-slate-800,
+.panel-app[data-theme='dark'] .text-slate-900,
+.panel-app[data-theme='dark'] .text-\[\#17383b\] {
+  color: var(--panel-text);
+}
+
+.panel-app[data-theme='dark'] .text-ink-500,
+.panel-app[data-theme='dark'] .text-ink-400,
+.panel-app[data-theme='dark'] .text-ink-300,
+.panel-app[data-theme='dark'] .text-slate-400,
+.panel-app[data-theme='dark'] .text-slate-500,
+.panel-app[data-theme='dark'] .text-slate-600,
+.panel-app[data-theme='dark'] .text-\[\#7d9394\],
+.panel-app[data-theme='dark'] .text-\[\#526d70\] {
+  color: var(--panel-muted);
+}
+
+.panel-app[data-theme='dark'] .border-ink-100,
+.panel-app[data-theme='dark'] .border-ink-50,
+.panel-app[data-theme='dark'] .border-slate-100,
+.panel-app[data-theme='dark'] .border-slate-200,
+.panel-app[data-theme='dark'] .border-\[\#d8e1dc\] {
+  border-color: var(--panel-line);
+}
+
+.panel-app[data-theme='dark'] .divide-ink-50 > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--panel-line);
+}
+
+.panel-app[data-theme='dark'] .bg-red-50 {
+  background-color: rgba(180, 35, 24, 0.16);
+}
+
+.panel-app[data-theme='dark'] .bg-amber-50 {
+  background-color: rgba(215, 181, 109, 0.14);
+}
+
+.panel-app[data-theme='dark'] .bg-emerald-50,
+.panel-app[data-theme='dark'] .bg-green-50 {
+  background-color: rgba(31, 138, 76, 0.16);
+}
+
+.panel-app[data-theme='dark'] input,
+.panel-app[data-theme='dark'] textarea,
+.panel-app[data-theme='dark'] select {
+  color: var(--panel-text);
+}
+
+.panel-app[data-theme='dark'] .placeholder\:text-ink-300::placeholder,
+.panel-app[data-theme='dark'] input::placeholder,
+.panel-app[data-theme='dark'] textarea::placeholder {
+  color: var(--panel-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-field,
+  .auth-segment-btn,
+  .auth-plate {
+    transition: none;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Bell, BellRing } from 'lucide-react';
 import { getMyNotifications, markNotificationAsRead } from '../../api/notification.api';
+import { notificationPath } from '../../utils/notificationPath';
 
 function timeAgo(dateStr) {
   const diffMs = Date.now() - new Date(dateStr).getTime();
@@ -51,26 +52,15 @@ export default function Notifications() {
           <ul className="divide-y divide-ink-50">
             {items.map((n) => (
               <li key={n.id}>
-                {n.shipment_id ? (
-                  <Link
-                    to={`/shipments/${n.shipment_id}`}
-                    onClick={() => handleClick(n)}
-                    className={`flex items-start gap-3 px-5 py-4 transition-colors hover:bg-ink-50/40 ${
-                      !n.is_read ? 'bg-amber-50/40' : ''
-                    }`}
-                  >
-                    <NotificationRow n={n} />
-                  </Link>
-                ) : (
-                  <div
-                    onClick={() => handleClick(n)}
-                    className={`flex cursor-pointer items-start gap-3 px-5 py-4 transition-colors hover:bg-ink-50/40 ${
-                      !n.is_read ? 'bg-amber-50/40' : ''
-                    }`}
-                  >
-                    <NotificationRow n={n} />
-                  </div>
-                )}
+                <Link
+                  to={notificationPath(n)}
+                  onClick={() => handleClick(n)}
+                  className={`flex items-start gap-3 px-5 py-4 transition-colors hover:bg-ink-50/40 ${
+                    !n.is_read ? 'bg-amber-50/40' : ''
+                  }`}
+                >
+                  <NotificationRow n={n} />
+                </Link>
               </li>
             ))}
           </ul>

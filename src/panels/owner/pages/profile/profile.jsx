@@ -10,6 +10,7 @@ import Button from "../../components/common/Button";
 import Avatar from "../../components/common/Avatar";
 import { toEnglishDigits } from "../../utils/digits";
 import { getErrorMessage } from "../../utils/errorMessage";
+import OwnerKyc from "./OwnerKyc";
 
 export default function Profile() {
   const { updateUser } = useAuth();
@@ -21,6 +22,7 @@ export default function Profile() {
     last_name: "",
     company_name: "",
     national_id: "",
+    postal_code: "",
   });
 
   const [loading, setLoading] = useState(true);
@@ -35,6 +37,7 @@ export default function Profile() {
       last_name: data.last_name || "",
       company_name: data.company_name || "",
       national_id: data.national_id || "",
+      postal_code: data.postal_code || "",
     });
     updateUser(data);
   };
@@ -59,6 +62,10 @@ export default function Profile() {
       setError(nationalIssue);
       return;
     }
+    if (!/^\d{10}$/.test(form.postal_code)) {
+      setError("کد پستی باید ۱۰ رقم باشد.");
+      return;
+    }
 
     setError("");
     setSaving(true);
@@ -69,6 +76,7 @@ export default function Profile() {
         last_name: form.last_name.trim(),
         company_name: form.company_name.trim(),
         national_id: form.national_id,
+        postal_code: form.postal_code,
       });
 
       applyProfile(data);
@@ -152,6 +160,11 @@ export default function Profile() {
           {form.company_name && (
             <p className="mt-0.5 truncate text-sm text-ink-400">
               {form.company_name}
+            </p>
+          )}
+          {profile?.postal_code && (
+            <p className="mt-0.5 text-sm text-ink-400">
+              کد پستی <bdi dir="ltr">{profile.postal_code}</bdi>
             </p>
           )}
 
@@ -245,6 +258,22 @@ export default function Profile() {
             />
 
             <Input
+              label="کد پستی"
+              required
+              hint="کد پستی ۱۰ رقمی."
+              value={form.postal_code}
+              onChange={(e) =>
+                setForm((current) => ({
+                  ...current,
+                  postal_code: toEnglishDigits(e.target.value).replace(/\D/g, "").slice(0, 10),
+                }))
+              }
+              inputMode="numeric"
+              dir="ltr"
+              className="tabular text-left"
+            />
+
+            <Input
               label="شماره موبایل"
               value={profile?.phone_number || ""}
               readOnly
@@ -260,6 +289,8 @@ export default function Profile() {
           </Button>
         </form>
       </div>
+
+      <OwnerKyc profile={profile} onChange={applyProfile} />
     </div>
   );
 }

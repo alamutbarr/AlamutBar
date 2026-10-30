@@ -1,0 +1,116 @@
+.inspector-app {
+  min-height: 100vh;
+  color: var(--alamut-ink);
+  background: var(--alamut-cream);
+}
+.inspector-frame {
+  width: min(480px, 100%);
+  margin: 0 auto;
+  min-height: 100vh;
+  padding-bottom: 112px;
+}
+.inspector-top {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 10px 16px;
+  background: #10282b;
+  color: var(--alamut-cream);
+}
+.inspector-main { padding: 16px; display: grid; gap: 12px; }
+.inspector-card {
+  background: #fff;
+  border: 1px solid #d8e1dc;
+  border-radius: 8px;
+  box-shadow: var(--alamut-shadow);
+  padding: 16px;
+  text-align: right;
+}
+button.inspector-card { cursor: pointer; }
+button.inspector-card:hover {
+  border-color: rgba(21, 154, 156, 0.5);
+}
+.inspector-card h1, .inspector-card h2 { margin: 0 0 8px; }
+.inspector-card p { margin: 6px 0; }
+.inspector-btn, .inspector-field, .inspector-area {
+  width: 100%;
+  border-radius: 8px;
+  font: inherit;
+}
+.inspector-btn {
+  border: 0;
+  background: var(--alamut-primary);
+  color: var(--alamut-cream);
+  font-weight: 700;
+  padding: 12px 14px;
+  cursor: pointer;
+}
+.inspector-btn.secondary { background: transparent; color: var(--alamut-ink); border: 1px solid rgba(23, 56, 59, 0.16); }
+.inspector-btn.gold { background: var(--alamut-gold); color: var(--alamut-ink); }
+.inspector-btn:disabled { opacity: 0.55; }
+.inspector-field, .inspector-area {
+  border: 1px solid rgba(23, 56, 59, 0.16);
+  background: white;
+  color: var(--alamut-ink);
+  padding: 12px;
+}
+.inspector-area { min-height: 84px; }
+.inspector-muted { color: #526d70; }
+.inspector-row { display: flex; justify-content: space-between; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(23, 56, 59, 0.08); }
+.inspector-pill {
+  display: inline-flex;
+  border-radius: 8px;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--alamut-mist);
+  color: var(--alamut-primary);
+}
+.inspector-pill.warn { background: #fbf3df; color: var(--alamut-warn); }
+.inspector-pill.bad { background: #fdeceb; color: var(--alamut-crit); }
+.inspector-pill.ok { background: #e8f6ee; color: var(--alamut-ok); }
+.inspector-bottom {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(456px, calc(100% - 24px));
+  bottom: 12px;
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid #d8e1dc;
+  box-shadow: var(--alamut-shadow);
+}
+.inspector-bottom a {
+  flex: 1;
+  text-align: center;
+  text-decoration: none;
+  color: var(--alamut-ink);
+  border-radius: 8px;
+  padding: 10px 8px;
+  font-weight: 700;
+}
+.inspector-bottom a.active { background: var(--alamut-mist); color: var(--alamut-primary); }
+.inspector-check { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; }
+.inspector-photo { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+.inspector-photo img { width: 54px; height: 54px; object-fit: cover; border-radius: 8px; }
+.inspector-login { min-height: 100vh; display: grid; background: var(--alamut-cream); color: var(--alamut-ink); }
+.inspector-login-brand { display: none; min-height: 100vh; flex-direction: column; justify-content: space-between; padding: 48px; }
+.inspector-login-copy { max-width: 24rem; }
+.inspector-login-copy h2 { margin: 12px 0 0; font-size: 32px; line-height: 1.45; color: #f7f6f0; }
+.inspector-login-copy h2 span { display: block; color: var(--alamut-secondary); }
+.inspector-login-copy p { margin: 16px 0 0; color: rgba(247, 246, 240, 0.75); font-size: 14px; line-height: 2; }
+.inspector-login-form { display: flex; align-items: center; justify-content: center; padding: 32px 16px; }
+.inspector-login-form form { width: min(24rem, 100%); display: grid; gap: 10px; }
+.inspector-login-mobile { background: #10282b; color: #f7f6f0; padding: 12px 16px; }
+@media (min-width: 1024px) {
+  .inspector-login { grid-template-columns: 1fr 1fr; }
+  .inspector-login-brand { display: flex; }
+  .inspector-login-mobile { display: none; }
+}

@@ -31,6 +31,32 @@ const CargoOwner = sequelize.define(
       type: DataTypes.STRING(255),
       allowNull: true,
     },
+    require_inspector: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    price_ceiling: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+    },
+    verification_status: {
+      type: DataTypes.STRING(20),
+      allowNull: false,
+      defaultValue: 'PENDING',
+    },
+    verification_note: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    postal_code: {
+      type: DataTypes.STRING(10),
+      allowNull: true,
+    },
+    kyc: {
+      type: DataTypes.JSON,
+      allowNull: true,
+    },
   },
   {
     tableName: "cargo_owners",

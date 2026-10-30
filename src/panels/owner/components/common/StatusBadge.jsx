@@ -9,6 +9,7 @@ const STATUS_MAP = {
   delivered: { label: 'تحویل داده شد', dot: 'bg-emerald-500', text: 'text-emerald-700', bg: 'bg-emerald-50' },
   completed: { label: 'تکمیل‌شده', dot: 'bg-emerald-500', text: 'text-emerald-700', bg: 'bg-emerald-50' },
   cancelled: { label: 'لغو شده', dot: 'bg-red-500', text: 'text-red-700', bg: 'bg-red-50' },
+  on_hold: { label: 'متوقف به‌خاطر بازرسی', dot: 'bg-red-500', text: 'text-red-700', bg: 'bg-red-50' },
 };
 
 export default function StatusBadge({ status }) {

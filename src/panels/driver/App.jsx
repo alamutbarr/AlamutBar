@@ -2,13 +2,13 @@ import { Routes, Route, Navigate, useNavigate, useLocation } from "react-router-
 import { useAuth } from "./contexts/AuthContext";
 import { useEffect, useState } from "react";
 import { api } from "./services/api";
-import { DriverLogin } from "@/driver/pages/DriverLogin";
-import { DriverDashboard } from "@/driver/pages/DriverDashboard";
-import { DriverMissions } from "@/driver/pages/DriverMissions";
-import { DriverMissionDetail } from "@/driver/pages/DriverMissionDetail";
-import { DriverProfile } from "@/driver/pages/DriverProfile";
-import { DriverLayout } from "@/driver/layouts/DriverLayout";
-import { isVerificationComplete } from "@/driver/verification";
+import { DriverLogin } from "@/pages/DriverLogin";
+import { DriverDashboard } from "@/pages/DriverDashboard";
+import { DriverMissions } from "@/pages/DriverMissions";
+import { DriverMissionDetail } from "@/pages/DriverMissionDetail";
+import { DriverProfile } from "@/pages/DriverProfile";
+import { DriverLayout } from "@/layouts/DriverLayout";
+import { serverVerificationComplete } from "@/verification";
 
 function getProfileError(error) {
   if (error?.message === "پاسخ بک‌اند شامل اطلاعات راننده نیست.") return error.message;
@@ -151,9 +151,13 @@ export default function App() {
   const currentPath = location.pathname.replace(/^\/driver\/?/, "") || "dashboard";
   const layoutCurrent = currentPath === "mission-detail" ? "missions" : currentPath;
 
-  const handleMissionAction = async (mission, action) => {
+  const handleMissionAction = async (mission, action, extra = {}) => {
     try {
-      const res = await api.post(`/driver/missions/${mission.id}/change-status`, { status: action });
+      const res = await api.post(`/driver/missions/${mission.id}/change-status`, {
+        status: action,
+        deliveryOtp: extra.otp,
+        exceptionReason: extra.exceptionReason,
+      });
       setMissions((previous) => previous.map((item) =>
         item.id === mission.id ? { ...item, status: res.data.status } : item,
       ));
@@ -166,7 +170,7 @@ export default function App() {
   // گرفتن بار (قبول مأموریت) مستلزم احراز هویت است؛ اگر کامل نباشد،
   // کاربر به بخش مدارک پروفایل هدایت می‌شود و اعلان اجباری‌بودن نمایش می‌گیرد.
   const handleAccept = (mission) => {
-    if (!isVerificationComplete(driver.id)) {
+    if (!serverVerificationComplete(driver.documents)) {
       navigate("/driver/profile", { state: { verificationRequired: true } });
       return;
     }
@@ -194,6 +198,7 @@ export default function App() {
                 setSelectedMission(mission);
                 navigate("/driver/mission-detail");
               }}
+              onDriverUpdate={setDriver}
             />
           }
         />
@@ -216,7 +221,6 @@ export default function App() {
               mission={selectedMission}
               onBack={() => navigate(-1)}
               onAccept={handleAccept}
-              onDecline={(mission) => handleMissionAction(mission, "Declined")}
               onAction={(mission, action) => {
                 const statusMap = {
                   en_route: "EnRouteToPickup",
@@ -225,11 +229,11 @@ export default function App() {
                 };
                 if (statusMap[action]) handleMissionAction(mission, statusMap[action]);
               }}
-              onPodComplete={(mission) => handleMissionAction(mission, "Completed")}
+              onPodComplete={(mission, result) => handleMissionAction(mission, "Completed", result || {})}
             />
           ) : <Navigate to="/driver/missions" replace />}
         />
-        <Route path="profile" element={<DriverProfile driver={driver} onLogout={logout} />} />
+        <Route path="profile" element={<DriverProfile driver={driver} onLogout={logout} onDriverUpdate={setDriver} />} />
         <Route path="*" element={<Navigate to="/driver/dashboard" replace />} />
       </Routes>
     </DriverLayout>

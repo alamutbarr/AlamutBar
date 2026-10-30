@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowRight, XCircle, Star, PackageCheck } from 'lucide-react';
+import { ArrowRight, XCircle, Star, PackageCheck, Copy } from 'lucide-react';
 import { getShipmentById, respondToPrice, cancelShipment, confirmDelivery } from '../../api/shipment.api';
 import StatusBadge from '../../components/common/StatusBadge';
 import Button from '../../components/common/Button';
@@ -79,8 +79,9 @@ export default function ShipmentDetail() {
       <ShipmentChat
         shipmentId={shipment.id}
         token={localStorage.getItem('token')}
-        enabled={Boolean(shipment.driver_id)}
+        enabled
         mine="owner"
+        channel="owner_operator"
       />
       <Link to="/owner/shipments" className="mb-4 inline-flex items-center gap-1 text-sm text-ink-300 hover:text-ink-700">
         <ArrowRight size={15} />
@@ -95,7 +96,12 @@ export default function ShipmentDetail() {
               {shipment.originCity?.name} ← {shipment.destCity?.name}
             </p>
           </div>
-          <StatusBadge status={shipment.status} />
+          <div className="flex flex-col items-end gap-2">
+            <StatusBadge status={shipment.workflow_status === 'ON_HOLD' ? 'on_hold' : shipment.status} />
+            <Button as={Link} to="/owner/create-shipment" state={{ repeat: shipment }} variant="ghost" size="sm" icon={Copy}>
+              تکرار این حمل
+            </Button>
+          </div>
         </div>
 
         <dl className="grid grid-cols-1 gap-y-3 text-sm sm:grid-cols-2">
@@ -114,6 +120,14 @@ export default function ShipmentDetail() {
             {new Intl.DateTimeFormat('fa-IR').format(new Date(shipment.loading_date))}
           </dd>
         </dl>
+
+        {shipment.inspection && (
+          <p className="mt-4 rounded-md border border-ink-100 bg-[#f7f6f0] px-3 py-2 text-sm text-ink-700">
+            بازرسی: {shipment.inspection.decision === 'APPROVED' ? 'تأیید شد' : shipment.inspection.decision === 'CORRECTED' ? 'اصلاح شد' : shipment.inspection.decision === 'STOPPED' ? 'توقف' : 'در انتظار سرپرست'}
+            {shipment.inspection.inspectorName ? ` — ${shipment.inspection.inspectorName}` : ''}
+            {shipment.inspection.decisionNote ? ` — ${shipment.inspection.decisionNote}` : ''}
+          </p>
+        )}
 
         {shipment.price_status === 'proposed' && (
           <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-4">
