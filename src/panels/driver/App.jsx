@@ -221,7 +221,6 @@ export default function App() {
               mission={selectedMission}
               onBack={() => navigate(-1)}
               onAccept={handleAccept}
-              onDecline={(mission) => handleMissionAction(mission, "Declined")}
               onAction={(mission, action) => {
                 const statusMap = {
                   en_route: "EnRouteToPickup",

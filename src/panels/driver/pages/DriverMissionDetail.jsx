@@ -9,7 +9,7 @@ import { useDriverGps } from '@/hooks/useDriverGps';
 import { formatPrice, formatWeight, formatDate, formatDay, formatDimensions, formatTimeWindow, vehicleTypeLabels, } from '@/driverFormat';
 import { ArrowRight, MapPin, Navigation, Truck, Package, Weight, Ruler, Clock, DollarSign, Lock, CheckCircle2, XCircle, Loader2, Route, Calendar, } from 'lucide-react';
 import ShipmentChat from '../../../shared/components/ShipmentChat';
-export function DriverMissionDetail({ mission, onBack, onAccept, onDecline, onAction, onPodComplete, }) {
+export function DriverMissionDetail({ mission, onBack, onAccept, onAction, onPodComplete, }) {
     const [actionLoading, setActionLoading] = useState(null);
     const gpsEnabled = ['InTransit', 'NearDestination', 'WaybillIssued'].includes(mission.status);
     const { status: gpsStatus, queueSize, onToggle, onSync, currentPoint } = useDriverGps(gpsEnabled, mission.id);
@@ -28,13 +28,6 @@ export function DriverMissionDetail({ mission, onBack, onAccept, onDecline, onAc
         setTimeout(() => {
             setActionLoading(null);
             onAccept?.(mission);
-        }, 600);
-    };
-    const handleDecline = () => {
-        setActionLoading('decline');
-        setTimeout(() => {
-            setActionLoading(null);
-            onDecline?.(mission);
         }, 600);
     };
     return (<div className="w-full pb-6">
@@ -123,17 +116,13 @@ export function DriverMissionDetail({ mission, onBack, onAccept, onDecline, onAc
             </div>)}
         </div>
 
-        {/* Offer actions */}
-        {mission.status === 'Offered' && (<div className="flex gap-3">
-            <button onClick={handleDecline} disabled={actionLoading !== null} className="flex-1 flex items-center justify-center gap-2 rounded-xl border-2 border-white/70 bg-white/60 px-4 py-3.5 text-base font-bold text-slate-600 backdrop-blur transition hover:bg-white/85 disabled:opacity-50 active:scale-[0.98]">
-              {actionLoading === 'decline' ? <Loader2 className="w-5 h-5 animate-spin"/> : <XCircle className="w-5 h-5"/>}
-              رد کردن
-            </button>
-            <button onClick={handleAccept} disabled={actionLoading !== null} className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-green-600 px-4 py-3.5 text-base font-bold text-white transition hover:bg-green-700 disabled:opacity-50 active:scale-[0.98]">
-              {actionLoading === 'accept' ? <Loader2 className="w-5 h-5 animate-spin"/> : <CheckCircle2 className="w-5 h-5"/>}
-              قبول مأموریت
-            </button>
-          </div>)}
+        {/* Offer actions — فقط قبول؛ رد از پنل راننده حذف شده است */}
+        {mission.status === 'Offered' && (
+          <button onClick={handleAccept} disabled={actionLoading !== null} className="w-full flex items-center justify-center gap-2 rounded-xl bg-green-600 px-4 py-3.5 text-base font-bold text-white transition hover:bg-green-700 disabled:opacity-50 active:scale-[0.98]">
+            {actionLoading === 'accept' ? <Loader2 className="w-5 h-5 animate-spin"/> : <CheckCircle2 className="w-5 h-5"/>}
+            قبول مأموریت
+          </button>
+        )}
 
         {/* Active mission: timeline */}
         {mission.status !== 'Offered' && mission.status !== 'Completed' && mission.status !== 'Cancelled' && mission.status !== 'Declined' && (<>
