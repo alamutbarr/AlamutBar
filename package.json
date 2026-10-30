@@ -8,7 +8,8 @@
     "dev:web": "vite --host 0.0.0.0 --port 4179",
     "start": "node src/server/server.js",
     "build": "vite build",
-    "test": "node --test src/server/admin/*.test.js src/server/mobile/*.test.js src/server/inspector/*.test.js src/server/utils/jsonList.test.js src/panels/admin/downloadGuard.test.mjs src/panels/driver/driverFormat.test.mjs"
+    "test": "node --test src/server/admin/*.test.js src/server/mobile/*.test.js src/server/inspector/*.test.js src/server/utils/jsonList.test.js src/panels/admin/downloadGuard.test.mjs src/panels/driver/driverFormat.test.mjs src/server/db/*.test.js",
+    "db:doctor": "node scripts/mysql-doctor.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

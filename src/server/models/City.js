@@ -27,6 +27,7 @@ const City = sequelize.define(
     timestamps: false,
     indexes: [
       {
+        name: "cities_name_province",
         unique: true,
         fields: ["name", "province"],
       },
