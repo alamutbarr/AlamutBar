@@ -48,6 +48,11 @@ test('renderDossier returns a PDF that opens', { timeout: 60000 }, async () => {
   assert.match(text, /تهران/);
   assert.match(text, /اصفهان/);
   assert.match(text, /خیام/);
+  assert.match(text, /18,000,000/);
+  assert.match(text, /17,500,000/);
+  assert.match(text, /250,000,000/);
+  assert.doesNotMatch(text, /81,000,000/);
+  assert.match(text, /1405/);
 });
 
 test('sendPdf writes a binary PDF and refuses a JSON body', async () => {

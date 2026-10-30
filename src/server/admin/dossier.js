@@ -10,9 +10,50 @@ function escapeHtml(value) {
     .replace(/>/g, '&gt;');
 }
 
+const LRI = '\u2066';
+const PDI = '\u2069';
+
 function money(value) {
   if (value == null || value === '') return '—';
   return `${Number(value).toLocaleString('fa-IR')} تومان`;
+}
+
+function ltr(value) {
+  return `${LRI}${value}${PDI}`;
+}
+
+function latinDigits(value) {
+  return String(value)
+    .replace(/[۰-۹]/g, (digit) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(digit)))
+    .replace(/[٠-٩]/g, (digit) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(digit)));
+}
+
+function protectNumbers(text) {
+  return latinDigits(text).replace(/[0-9][0-9,./:+-]*/g, (token) => ltr(token));
+}
+
+function pdfMoney(value) {
+  if (value == null || value === '') return '—';
+  return `${ltr(Number(value).toLocaleString('en-US'))} تومان`;
+}
+
+function pdfWhen(value) {
+  if (!value) return '';
+  return ltr(new Date(value).toLocaleString('fa-IR-u-nu-latn', {
+    timeZone: 'Asia/Tehran',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }));
+}
+
+function pdfPlate(value) {
+  const text = shown(value);
+  if (text === '—') return text;
+  if (/[\u0600-\u06FF]/.test(text) && /[0-9۰-۹]/.test(text)) return text.split('').reverse().join('');
+  return ltr(latinDigits(text));
 }
 
 function buildHtml(order) {
@@ -55,8 +96,8 @@ function shown(value) {
   return String(value);
 }
 
-function writeLine(doc, text) {
-  doc.fillColor('#17383b').fontSize(11).text(text, {
+function writeLine(doc, text, raw = false) {
+  doc.fillColor('#17383b').fontSize(11).text(raw ? text : protectNumbers(text), {
     align: 'right',
     width: doc.page.width - 72,
   });
@@ -95,7 +136,7 @@ function renderDossier(order) {
         align: 'right',
         width: width - 72,
       });
-      doc.fillColor('#d7b56d').fontSize(12).text(`${shown(order.trackingCode)} — ${shown(order.workflowLabel)}`, 36, 52, {
+      doc.fillColor('#d7b56d').fontSize(12).text(`${ltr(shown(order.trackingCode))} — ${shown(order.workflowLabel)}`, 36, 52, {
         align: 'right',
         width: width - 72,
       });
@@ -104,16 +145,17 @@ function renderDossier(order) {
       const ownerName = order.owner?.companyName || `${order.owner?.firstName || ''} ${order.owner?.lastName || ''}`.trim();
       writeSection(doc, 'بار');
       writeLine(doc, `${shown(order.cargo?.type)} — ${shown(order.cargo?.weightKg)} کیلوگرم`);
-      writeLine(doc, `ارزش: ${money(order.cargo?.value)}`);
+      writeLine(doc, `ارزش: ${pdfMoney(order.cargo?.value)}`, true);
       writeLine(doc, `${shown(order.loading?.city)} به ${shown(order.unloading?.city)}`);
       writeSection(doc, 'مبالغ');
-      writeLine(doc, `تخمینی: ${money(order.estimatedPrice)}`);
-      writeLine(doc, `نهایی: ${money(order.finalPrice)}`);
-      writeLine(doc, `جریمه: ${money(order.penaltyAmount)}`);
-      writeLine(doc, `بارنامه: ${shown(order.waybillNumber)}`);
+      writeLine(doc, `تخمینی: ${pdfMoney(order.estimatedPrice)}`, true);
+      writeLine(doc, `نهایی: ${pdfMoney(order.finalPrice)}`, true);
+      writeLine(doc, `جریمه: ${pdfMoney(order.penaltyAmount)}`, true);
+      writeLine(doc, `بارنامه: ${ltr(shown(order.waybillNumber))}`, true);
       writeSection(doc, 'طرف‌ها');
       writeLine(doc, `صاحب کالا: ${shown(ownerName)} — ${shown(order.owner?.phone)}`);
-      writeLine(doc, `راننده: ${shown(order.driver?.fullName)} — ${shown(order.driver?.phone)} — ${shown(order.driver?.plate)}`);
+      writeLine(doc, `راننده: ${shown(order.driver?.fullName)} — ${shown(order.driver?.phone)}`);
+      writeLine(doc, `پلاک: ${pdfPlate(order.driver?.plate)}`, true);
       for (const item of order.inspections || []) {
         writeSection(doc, 'بازرسی');
         writeLine(doc, `متصدی: ${shown(item.inspector?.fullName)}`);
@@ -124,8 +166,8 @@ function renderDossier(order) {
       const events = order.events || [];
       if (!events.length) writeLine(doc, 'رویدادی ثبت نشده است.');
       events.forEach((event) => {
-        const when = event.at ? new Date(event.at).toLocaleString('fa-IR') : '';
-        writeLine(doc, `${shown(event.actor)} — ${shown(event.description)}${when ? ` — ${when}` : ''}`);
+        const when = pdfWhen(event.at);
+        writeLine(doc, `${shown(event.actor)} — ${protectNumbers(shown(event.description))}${when ? ` — ${when}` : ''}`, true);
       });
       doc.end();
     } catch (error) {

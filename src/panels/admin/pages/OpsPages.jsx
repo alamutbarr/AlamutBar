@@ -83,7 +83,8 @@ function Inspections() {
           {reports.length === 0 && <p className="muted">گزارش بازی نیست.</p>}
         </div>
         <div className="card" style={{ padding: 14, alignSelf: 'start' }}>
-          <h3 style={{ marginTop: 0 }}>متصدیان</h3>
+          <h3 style={{ marginTop: 0 }}>متصدیان میدانی</h3>
+          <p className="muted">ورود پنل متصدی با نقش اپراتور باز نمی‌شود. همین‌جا نام و موبایل را ثبت کنید. شخص از مسیر /inspector با همان موبایل و کد یکبارمصرف وارد می‌شود. در حالت توسعه کد ۱۲۳۴۵ است. ساخت این حساب فقط برای «مدیر سامانه» و «سرپرست بازرسی» باز است.</p>
           {inspectors.map((item) => <p key={item.id}>{item.fullName} — {item.phone} {item.isActive ? '' : '(غیرفعال)'}</p>)}
           {can('inspectors.manage') && (
             <form style={{ display: 'grid', gap: 8 }} onSubmit={async (event) => {
@@ -440,6 +441,7 @@ function Admins() {
             } catch (err) { toast.error(err.message); }
           }}>
             <h3 style={{ margin: 0 }}>اپراتور جدید</h3>
+            <p className="muted">«سرپرست بازرسی» صفحهٔ بازرسی مرکز عملیات را باز می‌کند. برای خود پنل متصدی، در صفحهٔ بازرسی یک متصدی با موبایل بسازید.</p>
             <input className="field" placeholder="نام" value={form.fullName} onChange={(event) => setForm({ ...form, fullName: event.target.value })} />
             <input className="field" placeholder="نام کاربری" autoComplete="off" value={form.username} onChange={(event) => setForm({ ...form, username: event.target.value })} />
             <input className="field" type="password" placeholder="رمز عبور" autoComplete="new-password" value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} />
