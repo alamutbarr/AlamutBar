@@ -3,14 +3,13 @@ import { Wallet } from "lucide-react";
 import StepHeader from "./StepHeader";
 import Input from "../common/Input";
 import Button from "../common/Button";
-import { formatToman } from "../../utils/currency.util";
+import { formatRialAsTomanAmount } from "../../utils/currency.util";
 import { parseNumberInput } from "../../utils/digits";
 
 const ROWS = [
   ["origin_address", "مبدأ"],
   ["dest_address", "مقصد"],
   ["weight_ton", "وزن (تن)"],
-  ,
 ];
 
 function formatWeightTon(value) {
@@ -107,9 +106,9 @@ export default function Step12_Confirm({ data, onChange, onSubmit }) {
           </div>
         ))}
         <div className="flex justify-between gap-4 px-4 py-2.5 text-sm">
-          <span className="text-ink-300">ارزش اعلامی</span>
+          <span className="text-ink-300">ارزش اعلامی (تومان)</span>
           <span className="tabular font-medium text-ink-900">
-            {formatToman(data.cargo_value)} تومان
+            {formatRialAsTomanAmount(data.cargo_value) || "—"} تومان
           </span>
         </div>
         <div className="flex justify-between gap-4 px-4 py-2.5 text-sm">
