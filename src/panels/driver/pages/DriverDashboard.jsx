@@ -61,7 +61,8 @@ export function DriverDashboard({
               : "پیشنهاد جدیدی وجود ندارد"}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <SosButton variant="compact" />
           <GpsBadge status={gpsStatus} />
         </div>
       </div>
@@ -155,27 +156,6 @@ export function DriverDashboard({
         </div>
       )}
 
-      {/* Quick actions */}
-      <div className="glass-card anim-text d-4 rounded-2xl p-4">
-        <h4 className="text-sm font-bold text-slate-800 mb-3">
-          اقدامات سریع
-        </h4>
-        <div className="space-y-2">
-          <button
-            onClick={() => onNavigate("missions")}
-            className="w-full flex items-center justify-between rounded-md border border-[#d8e1dc] bg-white px-4 py-3 text-sm font-medium text-[#17383b] transition hover:border-[#087f8c]"
-          >
-            <span className="flex items-center gap-2">
-              <Package className="w-4 h-4 text-blue-500" />
-              مشاهده مأموریت‌ها
-            </span>
-            <ChevronLeft className="w-4 h-4 text-slate-400" />
-          </button>
-          <div className="pt-1">
-            <SosButton />
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

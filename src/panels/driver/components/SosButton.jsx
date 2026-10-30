@@ -1,32 +1,78 @@
-import { useState } from 'react';
-import { Phone, X } from 'lucide-react';
-export function SosButton() {
-    const [open, setOpen] = useState(false);
-    return (<>
-      <button onClick={() => setOpen(true)} className="flex items-center gap-2 rounded-xl border-2 border-red-300 bg-red-50 px-4 py-2.5 text-sm font-bold text-red-700 transition-all hover:bg-red-100 hover:border-red-400 active:scale-95">
-        <Phone className="w-4 h-4"/>
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import { Phone, X } from "lucide-react";
+
+const OPERATOR_TEL = "02112345678";
+const OPERATOR_DISPLAY = "۰۲۱-۱۲۳۴۵۶۷۸";
+
+export function SosButton({ variant = "default" }) {
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open]);
+
+  const compact = variant === "compact";
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className={
+          compact
+            ? "inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-medium text-red-700 transition hover:border-red-300 hover:bg-red-100"
+            : "flex items-center gap-2 rounded-xl border-2 border-red-300 bg-red-50 px-4 py-2.5 text-sm font-bold text-red-700 transition-all hover:border-red-400 hover:bg-red-100 active:scale-95"
+        }
+      >
+        <Phone className={compact ? "h-3.5 w-3.5" : "h-4 w-4"} />
         تماس با اپراتور
       </button>
 
-      {open && (<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setOpen(false)}>
-          <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-slate-800">تماس با اپراتور</h3>
-              <button onClick={() => setOpen(false)} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100">
-                <X className="w-5 h-5"/>
-              </button>
-            </div>
-            <p className="text-sm text-slate-500 mb-4">
-              در صورت بروز مشکل یا نیاز به راهنمایی، با اپراتور مرکز تماس بگیرید.
-            </p>
-            <a href="tel:02112345678" className="flex items-center justify-center gap-2 rounded-xl bg-green-600 px-4 py-3 text-base font-bold text-white transition hover:bg-green-700 active:scale-95">
-              <Phone className="w-5 h-5"/>
-              ۰۲۱-۱۲۳۴۵۶۷۸
+      {open &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[80] flex items-center justify-center bg-[#10282b]/70 backdrop-blur-md"
+            onClick={() => setOpen(false)}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="operator-call-number"
+          >
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="absolute left-5 top-5 rounded-full p-2 text-[#f7f6f0]/80 transition hover:bg-white/10 hover:text-[#f7f6f0]"
+              aria-label="بستن"
+            >
+              <X className="h-6 w-6" />
+            </button>
+            <a
+              href={`tel:${OPERATOR_TEL}`}
+              onClick={(event) => event.stopPropagation()}
+              className="flex flex-col items-center gap-4 px-6 text-center text-[#f7f6f0]"
+            >
+              <span className="flex h-16 w-16 items-center justify-center rounded-full bg-white/10">
+                <Phone className="h-8 w-8" />
+              </span>
+              <span
+                id="operator-call-number"
+                className="text-4xl font-extrabold tracking-wide tabular-nums sm:text-5xl"
+                dir="ltr"
+              >
+                {OPERATOR_DISPLAY}
+              </span>
+              <span className="text-sm font-medium text-[#f7f6f0]/80">
+                تماس با اپراتور
+              </span>
             </a>
-            <p className="mt-3 text-center text-xs text-slate-400">
-              خط ویژه رانندگان — ۲۴ ساعته
-            </p>
-          </div>
-        </div>)}
-    </>);
+          </div>,
+          document.body
+        )}
+    </>
+  );
 }
