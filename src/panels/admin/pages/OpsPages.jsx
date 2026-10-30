@@ -42,9 +42,30 @@ function Inspections() {
 
   return (
     <Page title="بازرسی و کیفیت">
-      <div className="split">
-        <div style={{ display: 'grid', gap: 10 }}>
-          {reports.map((report) => (
+      <article id="new-inspector" className="card" style={{ padding: 16, marginBottom: 12 }}>
+        <h2 style={{ marginTop: 0 }}>تعریف متصدی جدید</h2>
+        <p className="muted">نام و موبایل را بنویسید و «افزودن متصدی» را بزنید. ورود از مسیر /inspector با همان موبایل است. در حالت توسعه کد ۱۲۳۴۵ است.</p>
+        {can('inspectors.manage') ? (
+          <form style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', justifyContent: 'flex-start' }} onSubmit={async (event) => {
+            event.preventDefault();
+            try {
+              await api('/inspectors', { method: 'POST', body: form });
+              toast.success('متصدی ثبت شد');
+              setForm({ fullName: '', phone: '', notes: '' });
+              reload();
+            } catch (err) { toast.error(err.message); }
+          }}>
+            <input className="field" placeholder="نام متصدی" aria-label="نام متصدی" value={form.fullName} onChange={(event) => setForm({ ...form, fullName: event.target.value })} style={{ flex: '0 1 240px', width: '100%' }} />
+            <input className="field" placeholder="موبایل" aria-label="موبایل متصدی" value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} style={{ flex: '0 1 180px', width: '100%' }} />
+            <button type="submit" className="btn gold">افزودن متصدی</button>
+          </form>
+        ) : (
+          <p>ساخت متصدی برای نقش «مدیر سامانه» و «سرپرست بازرسی» باز است.</p>
+        )}
+        <p style={{ marginBottom: 0 }}>{inspectors.length ? inspectors.map((item) => `${item.fullName} — ${item.phone}${item.isActive ? '' : ' (غیرفعال)'}`).join(' · ') : 'هنوز متصدی ثبت نشده.'}</p>
+      </article>
+      <div style={{ display: 'grid', gap: 10 }}>
+        {reports.map((report) => (
             <article key={report.id} className="card" style={{ padding: 14 }}>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <strong>{report.trackingCode}</strong>
@@ -81,27 +102,6 @@ function Inspections() {
             </article>
           ))}
           {reports.length === 0 && <p className="muted">گزارش بازی نیست.</p>}
-        </div>
-        <div className="card" style={{ padding: 14, alignSelf: 'start' }}>
-          <h3 style={{ marginTop: 0 }}>متصدیان میدانی</h3>
-          <p className="muted">ورود پنل متصدی با نقش اپراتور باز نمی‌شود. همین‌جا نام و موبایل را ثبت کنید. شخص از مسیر /inspector با همان موبایل و کد یکبارمصرف وارد می‌شود. در حالت توسعه کد ۱۲۳۴۵ است. ساخت این حساب فقط برای «مدیر سامانه» و «سرپرست بازرسی» باز است.</p>
-          {inspectors.map((item) => <p key={item.id}>{item.fullName} — {item.phone} {item.isActive ? '' : '(غیرفعال)'}</p>)}
-          {can('inspectors.manage') && (
-            <form style={{ display: 'grid', gap: 8 }} onSubmit={async (event) => {
-              event.preventDefault();
-              try {
-                await api('/inspectors', { method: 'POST', body: form });
-                toast.success('متصدی ثبت شد');
-                setForm({ fullName: '', phone: '', notes: '' });
-                reload();
-              } catch (err) { toast.error(err.message); }
-            }}>
-              <input className="field" placeholder="نام" value={form.fullName} onChange={(event) => setForm({ ...form, fullName: event.target.value })} />
-              <input className="field" placeholder="موبایل" value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} />
-              <button type="submit" className="btn">افزودن متصدی</button>
-            </form>
-          )}
-        </div>
       </div>
     </Page>
   );
