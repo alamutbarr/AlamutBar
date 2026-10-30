@@ -15,6 +15,7 @@ import Avatar from "./Avatar";
 import Modal from "./Modal";
 import Button from "./Button";
 import BrandMark from "./BrandMark";
+import { ThemeToggle } from "../../../../shared/theme/PanelTheme";
 
 const links = [
   { to: "/owner/dashboard", label: "داشبورد", icon: LayoutGrid },
@@ -93,6 +94,9 @@ export default function Sidebar({ onClose = () => {} }) {
                   : user?.phone_number}
               </p>
             </div>
+          </div>
+          <div className="mb-1 px-1">
+            <ThemeToggle />
           </div>
           <button
             onClick={() => setLogoutOpen(true)}

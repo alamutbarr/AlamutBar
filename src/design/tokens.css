@@ -273,6 +273,180 @@ a.glass-card:hover {
   border-radius: 999px;
 }
 
+/* تم روشن/تیره پنل راننده و صاحب‌کالا — همان پالت پنل ادمین */
+.panel-app {
+  --panel-bg: var(--alamut-cream);
+  --panel-surface: #ffffff;
+  --panel-text: var(--alamut-ink);
+  --panel-muted: #526d70;
+  --panel-line: rgba(23, 56, 59, 0.12);
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--panel-bg);
+  color: var(--panel-text);
+}
+
+.panel-app[data-theme='dark'] {
+  --panel-bg: #0e2427;
+  --panel-surface: #17383b;
+  --panel-text: var(--alamut-cream);
+  --panel-muted: #b7c6c4;
+  --panel-line: rgba(247, 246, 240, 0.14);
+  color-scheme: dark;
+}
+
+.panel-app .panel-canvas {
+  background: var(--panel-bg);
+  color: var(--panel-text);
+}
+
+.panel-app .theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 1px solid var(--panel-line);
+  background: transparent;
+  color: inherit;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.panel-app .theme-toggle--icon {
+  padding: 8px;
+}
+
+.panel-app .theme-toggle--row {
+  width: 100%;
+  padding: 10px 12px;
+}
+
+.panel-app .brand-rail .theme-toggle {
+  border-color: rgba(247, 246, 240, 0.28);
+  color: #f7f6f0;
+}
+
+.panel-app[data-theme='dark'] .panel-card,
+.panel-app[data-theme='dark'] .panel-section,
+.panel-app[data-theme='dark'] .panel-dock,
+.panel-app[data-theme='dark'] .glass-card,
+.panel-app[data-theme='dark'] .glass,
+.panel-app[data-theme='dark'] .glass-soft,
+.panel-app[data-theme='dark'] .glass-strong {
+  background: var(--panel-surface);
+  border-color: var(--panel-line);
+  box-shadow: none;
+}
+
+.panel-app[data-theme='dark'] .brand-rail .glass-card {
+  background: rgba(247, 246, 240, 0.1);
+  border-color: rgba(247, 246, 240, 0.18);
+}
+
+.panel-app[data-theme='dark'] .auth-stage-card {
+  background: rgba(23, 56, 59, 0.72);
+  border-color: rgba(247, 246, 240, 0.14);
+}
+
+.panel-app[data-theme='dark'] .auth-field,
+.panel-app[data-theme='dark'] .auth-plate {
+  background: rgba(14, 36, 39, 0.72);
+  color: var(--panel-text);
+  border-color: var(--panel-line);
+}
+
+.panel-app[data-theme='dark'] .auth-field:focus,
+.panel-app[data-theme='dark'] .auth-field:focus-visible {
+  background: rgba(14, 36, 39, 0.92);
+}
+
+.panel-app[data-theme='dark'] .auth-segment {
+  background: rgba(247, 246, 240, 0.08);
+  border-color: var(--panel-line);
+}
+
+.panel-app[data-theme='dark'] .auth-segment-btn {
+  color: var(--panel-muted);
+}
+
+.panel-app[data-theme='dark'] .auth-segment-btn:hover {
+  color: var(--panel-text);
+  background: rgba(247, 246, 240, 0.08);
+}
+
+.panel-app[data-theme='dark'] .auth-segment-btn.is-active {
+  background: rgba(247, 246, 240, 0.14);
+  color: #7ed4d6;
+  box-shadow: none;
+}
+
+.panel-app[data-theme='dark'] .bg-white,
+.panel-app[data-theme='dark'] .bg-route-bg,
+.panel-app[data-theme='dark'] .bg-slate-50,
+.panel-app[data-theme='dark'] .bg-ink-50,
+.panel-app[data-theme='dark'] .bg-\[\#f7f6f0\] {
+  background-color: var(--panel-surface);
+}
+
+.panel-app[data-theme='dark'] .text-ink-900,
+.panel-app[data-theme='dark'] .text-ink-800,
+.panel-app[data-theme='dark'] .text-ink-700,
+.panel-app[data-theme='dark'] .text-slate-800,
+.panel-app[data-theme='dark'] .text-slate-900,
+.panel-app[data-theme='dark'] .text-\[\#17383b\] {
+  color: var(--panel-text);
+}
+
+.panel-app[data-theme='dark'] .text-ink-500,
+.panel-app[data-theme='dark'] .text-ink-400,
+.panel-app[data-theme='dark'] .text-ink-300,
+.panel-app[data-theme='dark'] .text-slate-400,
+.panel-app[data-theme='dark'] .text-slate-500,
+.panel-app[data-theme='dark'] .text-slate-600,
+.panel-app[data-theme='dark'] .text-\[\#7d9394\],
+.panel-app[data-theme='dark'] .text-\[\#526d70\] {
+  color: var(--panel-muted);
+}
+
+.panel-app[data-theme='dark'] .border-ink-100,
+.panel-app[data-theme='dark'] .border-ink-50,
+.panel-app[data-theme='dark'] .border-slate-100,
+.panel-app[data-theme='dark'] .border-slate-200,
+.panel-app[data-theme='dark'] .border-\[\#d8e1dc\] {
+  border-color: var(--panel-line);
+}
+
+.panel-app[data-theme='dark'] .divide-ink-50 > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--panel-line);
+}
+
+.panel-app[data-theme='dark'] .bg-red-50 {
+  background-color: rgba(180, 35, 24, 0.16);
+}
+
+.panel-app[data-theme='dark'] .bg-amber-50 {
+  background-color: rgba(215, 181, 109, 0.14);
+}
+
+.panel-app[data-theme='dark'] .bg-emerald-50,
+.panel-app[data-theme='dark'] .bg-green-50 {
+  background-color: rgba(31, 138, 76, 0.16);
+}
+
+.panel-app[data-theme='dark'] input,
+.panel-app[data-theme='dark'] textarea,
+.panel-app[data-theme='dark'] select {
+  color: var(--panel-text);
+}
+
+.panel-app[data-theme='dark'] .placeholder\:text-ink-300::placeholder,
+.panel-app[data-theme='dark'] input::placeholder,
+.panel-app[data-theme='dark'] textarea::placeholder {
+  color: var(--panel-muted);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .auth-field,
   .auth-segment-btn,

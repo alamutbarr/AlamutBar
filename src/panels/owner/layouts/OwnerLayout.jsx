@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import Sidebar from '../components/common/Sidebar';
 import BrandMark from '../components/common/BrandMark';
 import { useAuth } from '../hooks/useAuth';
+import { ThemeToggle } from '../../../shared/theme/PanelTheme';
 
 const MOBILE = [
   { to: '/owner/dashboard', label: 'خانه', icon: LayoutGrid, end: true },
@@ -33,6 +34,7 @@ export default function OwnerLayout() {
         <BrandMark light subtitle="صاحب کالا" />
         <div className="flex-1" />
         {name && <span className="max-w-[8rem] truncate text-sm">{name}</span>}
+        <ThemeToggle compact className="border-white/30 text-[#f7f6f0]" />
       </header>
         <main className="min-w-0 flex-1 overflow-y-auto">
           <div className="w-full px-4 py-5 pb-28 sm:px-6 sm:py-8 lg:px-8 lg:pb-8">
@@ -74,6 +76,9 @@ export default function OwnerLayout() {
                 <Icon size={18} /> {label}
               </NavLink>
             ))}
+            <div className="px-1 py-1">
+              <ThemeToggle />
+            </div>
             <button
               type="button"
               className="flex w-full items-center gap-3 rounded-md px-3 py-3 text-sm font-bold text-[#b42318]"

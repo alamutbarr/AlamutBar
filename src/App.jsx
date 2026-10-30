@@ -6,6 +6,7 @@ import { ToastProvider } from './panels/owner/context/ToastContext.jsx';
 import { AuthProvider as DriverAuth } from './panels/driver/contexts/AuthContext.jsx';
 import { AdminAuthProvider } from './panels/admin/auth.jsx';
 import { InspectorAuthProvider } from './panels/inspector/auth.jsx';
+import { PanelThemeProvider } from './shared/theme/PanelTheme.jsx';
 
 const OwnerApp = lazy(() => import('./panels/owner/App.jsx'));
 const DriverApp = lazy(() => import('./panels/driver/App.jsx'));
@@ -33,7 +34,9 @@ export default function App() {
         element={panel(
           <ToastProvider>
             <OwnerAuth>
-              <OwnerApp />
+              <PanelThemeProvider panel="owner">
+                <OwnerApp />
+              </PanelThemeProvider>
             </OwnerAuth>
           </ToastProvider>,
         )}
@@ -42,7 +45,9 @@ export default function App() {
         path="/driver/*"
         element={panel(
           <DriverAuth>
-            <DriverApp />
+            <PanelThemeProvider panel="driver">
+              <DriverApp />
+            </PanelThemeProvider>
           </DriverAuth>,
         )}
       />

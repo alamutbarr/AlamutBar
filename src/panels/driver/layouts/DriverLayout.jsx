@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { LayoutDashboard, ListTodo, User, LogOut, AlertTriangle, } from 'lucide-react';
+import { ThemeToggle } from '../../../shared/theme/PanelTheme';
 const navItems = [
     { key: 'dashboard', label: 'داشبورد', icon: LayoutDashboard },
     { key: 'missions', label: 'مأموریت‌ها', icon: ListTodo },
@@ -63,6 +64,9 @@ export function DriverLayout({ current, onNavigate, onLogout, driverName, childr
         </nav>
 
         <div className="border-t border-white/10 p-3">
+          <div className="mb-1 px-1">
+            <ThemeToggle />
+          </div>
           <button onClick={() => setConfirmLogout(true)} className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-[#f7f6f0]/70 transition-colors hover:bg-white/5 hover:text-[#f7f6f0]">
             <LogOut className="w-5 h-5"/>
             خروج از حساب کاربری
@@ -84,9 +88,12 @@ export function DriverLayout({ current, onNavigate, onLogout, driverName, childr
               <span className="text-[11px] text-[#f7f6f0]/80">{driverName || 'پنل راننده'}</span>
             </div>
           </div>
-          <button onClick={() => setConfirmLogout(true)} title="خروج از حساب کاربری" className="rounded-md border border-white/30 p-2 text-[#f7f6f0]">
-            <LogOut className="w-5 h-5"/>
-          </button>
+          <div className="flex items-center gap-2">
+            <ThemeToggle compact className="border-white/30 text-[#f7f6f0]" />
+            <button onClick={() => setConfirmLogout(true)} title="خروج از حساب کاربری" className="rounded-md border border-white/30 p-2 text-[#f7f6f0]">
+              <LogOut className="w-5 h-5"/>
+            </button>
+          </div>
         </header>
 
         <main className="min-w-0 flex-1 overflow-y-auto pb-[calc(4.75rem+env(safe-area-inset-bottom))] lg:pb-6">{children}</main>
