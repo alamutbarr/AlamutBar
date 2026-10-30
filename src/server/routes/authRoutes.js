@@ -24,7 +24,7 @@ const kycUpload = multer({
       cb(null, `kyc-${unique}${path.extname(file.originalname) || ".jpg"}`);
     },
   }),
-  limits: { fileSize: 8 * 1024 * 1024 },
+  limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.mimetype)) {
       cb(new Error("فقط تصویر JPG، PNG یا WEBP مجاز است."));
@@ -50,6 +50,9 @@ router.patch(
 router.patch("/kyc", authenticate, authController.setKycIdType);
 router.post("/kyc", authenticate, (req, res, next) => {
   kycUpload.single("file")(req, res, (error) => {
+    if (error?.code === "LIMIT_FILE_SIZE") {
+      return next(new AppError("حجم عکس نباید بیشتر از ۵ مگابایت باشد.", 400));
+    }
     if (error) return next(new AppError(error.message || "آپلود مدرک ناموفق بود.", 400));
     return next();
   });

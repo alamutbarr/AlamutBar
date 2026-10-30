@@ -1,8 +1,9 @@
-import { useState } from "react";
-import { Loader2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Camera, Loader2 } from "lucide-react";
 import api from "../../api/axios.config";
 import { getProfile } from "../../api/auth.api";
 import { getErrorMessage } from "../../utils/errorMessage";
+import { KYC_MAX_LABEL, kycFileIssue } from "../../utils/kycFile";
 
 const STATUS = {
   MISSING: "ارسال نشده",
@@ -17,10 +18,24 @@ const OVERALL = {
   PENDING: "هویت هنوز کامل تأیید نشده",
 };
 
+const FALLBACK_DOCS = [
+  { key: "selfie", title: "سلفی", status: "MISSING", url: null },
+  { key: "holding", title: "سلفی به‌همراه مدرک شناسایی", status: "MISSING", url: null },
+];
+
 export default function OwnerKyc({ profile, onChange }) {
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
+  const [slotErrors, setSlotErrors] = useState({});
+  const [previews, setPreviews] = useState({});
+  const previewsRef = useRef({});
+  previewsRef.current = previews;
   const kyc = profile?.kyc || { idType: null, documents: [], verificationStatus: "PENDING" };
+  const documents = (kyc.documents && kyc.documents.length > 0) ? kyc.documents : FALLBACK_DOCS;
+
+  useEffect(() => () => {
+    Object.values(previewsRef.current).forEach((url) => URL.revokeObjectURL(url));
+  }, []);
 
   const refresh = async () => {
     const data = await getProfile();
@@ -42,6 +57,21 @@ export default function OwnerKyc({ profile, onChange }) {
 
   const upload = async (slot, file) => {
     if (!file) return;
+    const issue = kycFileIssue(file);
+    if (issue) {
+      setSlotErrors((current) => ({ ...current, [slot]: issue }));
+      return;
+    }
+    setSlotErrors((current) => {
+      const next = { ...current };
+      delete next[slot];
+      return next;
+    });
+    const localUrl = URL.createObjectURL(file);
+    setPreviews((current) => {
+      if (current[slot]) URL.revokeObjectURL(current[slot]);
+      return { ...current, [slot]: localUrl };
+    });
     setBusy(slot);
     setError("");
     try {
@@ -57,7 +87,10 @@ export default function OwnerKyc({ profile, onChange }) {
       });
       await refresh();
     } catch (err) {
-      setError(getErrorMessage(err, "بارگذاری مدرک انجام نشد."));
+      setSlotErrors((current) => ({
+        ...current,
+        [slot]: getErrorMessage(err, "بارگذاری مدرک انجام نشد."),
+      }));
     } finally {
       setBusy("");
     }
@@ -69,7 +102,7 @@ export default function OwnerKyc({ profile, onChange }) {
         <div>
           <h2 className="text-lg font-bold text-ink-900">احراز هویت</h2>
           <p className="mt-1 text-sm text-ink-300">
-            سلفی، یک عکس از مدرک شناسایی (صفحه اول شناسنامه یا کارت ملی) و سلفی به‌همراه همان مدرک. هر کدام جدا بررسی می‌شود.
+            برای هر بخش یک عکس بفرستید. پیش‌نمایش کوچک همان‌جا دیده می‌شود. سقف حجم هر عکس {KYC_MAX_LABEL} است.
           </p>
         </div>
         <span className="rounded-md bg-[#17383b] px-3 py-1 text-xs font-bold text-[#f7f6f0]">
@@ -98,38 +131,59 @@ export default function OwnerKyc({ profile, onChange }) {
         ))}
       </div>
 
+      {!kyc.idType && (
+        <p className="mb-3 text-xs text-[#526d70]">
+          نوع مدرک را انتخاب کنید تا بخش عکس صفحه اول شناسنامه یا کارت ملی باز شود.
+        </p>
+      )}
+
       {error && <p className="mb-3 text-sm text-red-600">{error}</p>}
 
       <div className="grid gap-3">
-        {(kyc.documents || []).map((doc) => (
-          <article key={doc.key} className="rounded-md border border-ink-100 p-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <strong className="text-sm text-ink-900">{doc.title}</strong>
-              <span className="text-xs font-bold text-[#087f8c]">{STATUS[doc.status] || doc.status}</span>
-            </div>
-            {doc.url && (
-              <img src={doc.url} alt={doc.title} className="mt-2 max-h-40 rounded-md border border-ink-100 object-contain" />
-            )}
-            {doc.status === "REJECTED" && doc.note && (
-              <p className="mt-2 text-sm text-red-600">دلیل رد: {doc.note}</p>
-            )}
-            <label className="mt-3 inline-flex cursor-pointer items-center gap-2 text-xs font-bold text-[#087f8c]">
-              {busy === doc.key ? <Loader2 size={14} className="animate-spin" /> : null}
-              {doc.url ? "بارگذاری دوباره" : "انتخاب تصویر"}
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                hidden
-                disabled={Boolean(busy)}
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-                  event.target.value = "";
-                  upload(doc.key, file);
-                }}
-              />
-            </label>
-          </article>
-        ))}
+        {documents.map((doc) => {
+          const preview = previews[doc.key] || doc.url;
+          return (
+            <article key={doc.key} className="rounded-md border border-ink-100 p-3">
+              <div className="flex items-start gap-3">
+                <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-md border border-ink-100 bg-[#f7f6f0]">
+                  {preview ? (
+                    <img src={preview} alt={doc.title} className="h-full w-full object-cover" />
+                  ) : (
+                    <Camera size={22} className="text-ink-300" />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <strong className="text-sm text-ink-900">{doc.title}</strong>
+                    <span className="text-xs font-bold text-[#087f8c]">{STATUS[doc.status] || doc.status}</span>
+                  </div>
+                  {doc.status === "REJECTED" && doc.note && (
+                    <p className="mt-1 text-sm text-red-600">دلیل رد: {doc.note}</p>
+                  )}
+                  <p className="mt-1 text-[11px] text-ink-300">JPG، PNG یا WEBP — حداکثر {KYC_MAX_LABEL}</p>
+                  <label className="mt-2 inline-flex cursor-pointer items-center gap-2 rounded-md border border-[#087f8c] px-3 py-1.5 text-xs font-bold text-[#087f8c]">
+                    {busy === doc.key ? <Loader2 size={14} className="animate-spin" /> : null}
+                    {doc.url || preview ? "تغییر تصویر" : "انتخاب تصویر"}
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      hidden
+                      disabled={Boolean(busy)}
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        event.target.value = "";
+                        upload(doc.key, file);
+                      }}
+                    />
+                  </label>
+                  {slotErrors[doc.key] && (
+                    <p className="mt-2 text-sm text-red-600">{slotErrors[doc.key]}</p>
+                  )}
+                </div>
+              </div>
+            </article>
+          );
+        })}
       </div>
     </section>
   );
