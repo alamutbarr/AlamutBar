@@ -68,18 +68,20 @@ export function DriverProfile({ driver, onLogout, onDriverUpdate }) {
     };
     return (<div className="w-full space-y-4 px-4 py-5 sm:px-6 lg:px-8">
       {/* اعلان اجباری‌بودن احراز هویت (وقتی از مسیر قبول مأموریت آمده باشیم) */}
-      {showVerifyNotice && (<div className="anim-text rounded-2xl border border-rose-200/70 bg-rose-50/70 p-4 backdrop-blur">
+      {(showVerifyNotice || driver.verificationStatus !== 'VERIFIED') && (<div className="anim-text rounded-2xl border border-rose-200/70 bg-rose-50/70 p-4 backdrop-blur">
         <div className="flex items-start gap-2.5">
           <ShieldAlert className="w-5 h-5 text-rose-500 shrink-0 mt-0.5"/>
           <div className="flex-1">
-            <p className="text-sm font-bold text-rose-700">احراز هویت فرایندی اجباری است</p>
+            <p className="text-sm font-bold text-rose-700">تأیید مدارک از پنل ادمین لازم است</p>
             <p className="mt-1 text-xs leading-6 text-slate-600">
-              برای گرفتن بار باید ابتدا مدارک الزامی (گواهینامه رانندگی و عکس شخصی با کارت) را بارگذاری کنید.
+              تا وقتی مدارک ارسالی از پنل ادمین تأیید نشده، نمی‌توانید باری را قبول کنید. گواهینامه و عکس شخصی را بارگذاری کنید و منتظر تأیید ادمین بمانید.
             </p>
           </div>
-          <button type="button" onClick={() => setShowVerifyNotice(false)} className="shrink-0 text-slate-400 hover:text-slate-600 transition">
-            <X className="w-4 h-4"/>
-          </button>
+          {showVerifyNotice && (
+            <button type="button" onClick={() => setShowVerifyNotice(false)} className="shrink-0 text-slate-400 hover:text-slate-600 transition">
+              <X className="w-4 h-4"/>
+            </button>
+          )}
         </div>
       </div>)}
 

@@ -8,7 +8,7 @@ import { DriverMissions } from "@/pages/DriverMissions";
 import { DriverMissionDetail } from "@/pages/DriverMissionDetail";
 import { DriverProfile } from "@/pages/DriverProfile";
 import { DriverLayout } from "@/layouts/DriverLayout";
-import { serverVerificationComplete } from "@/verification";
+import { driverAcceptIssue } from "@/driverAcceptGate";
 
 function getProfileError(error) {
   if (error?.message === "پاسخ بک‌اند شامل اطلاعات راننده نیست.") return error.message;
@@ -38,6 +38,7 @@ export default function App() {
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState("");
   const [retryKey, setRetryKey] = useState(0);
+  const [actionError, setActionError] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -158,23 +159,32 @@ export default function App() {
         deliveryOtp: extra.otp,
         exceptionReason: extra.exceptionReason,
       });
+      setActionError("");
       setMissions((previous) => previous.map((item) =>
         item.id === mission.id ? { ...item, status: res.data.status } : item,
       ));
       setSelectedMission((previous) => previous ? { ...previous, status: res.data.status } : null);
     } catch (error) {
-      console.error("Could not update mission:", error);
+      const message = error?.response?.data?.error || error?.response?.data?.message || "به‌روزرسانی وضعیت ناموفق بود.";
+      setActionError(message);
     }
   };
 
-  // گرفتن بار (قبول مأموریت) مستلزم احراز هویت است؛ اگر کامل نباشد،
-  // کاربر به بخش مدارک پروفایل هدایت می‌شود و اعلان اجباری‌بودن نمایش می‌گیرد.
-  const handleAccept = (mission) => {
-    if (!serverVerificationComplete(driver.documents)) {
+  const acceptIssue = selectedMission ? driverAcceptIssue(driver, missions, selectedMission) : null;
+
+  // قبول بار فقط پس از تأیید مدارک در پنل ادمین و فقط برای یک مأموریت فعال.
+  const handleAccept = async (mission) => {
+    const issue = driverAcceptIssue(driver, missions, mission);
+    if (issue?.code === "DOCS_NOT_APPROVED") {
+      setActionError(issue.message);
       navigate("/driver/profile", { state: { verificationRequired: true } });
       return;
     }
-    handleMissionAction(mission, "Accepted");
+    if (issue) {
+      setActionError(issue.message);
+      return;
+    }
+    await handleMissionAction(mission, "Accepted");
   };
 
   return (
@@ -219,6 +229,8 @@ export default function App() {
           element={selectedMission ? (
             <DriverMissionDetail
               mission={selectedMission}
+              acceptIssue={acceptIssue}
+              actionError={actionError}
               onBack={() => navigate(-1)}
               onAccept={handleAccept}
               onAction={(mission, action) => {

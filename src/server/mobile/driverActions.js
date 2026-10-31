@@ -3,6 +3,12 @@ const AppError = require('../utils/AppError');
 const { setWorkflow, loadOrder } = require('../admin/orderOps');
 const { assertDeliveryOtp } = require('./missionPolicy');
 const { logEvent } = require('../admin/audit');
+const {
+  DRIVER_ACCEPT_DOCS_REQUIRED,
+  DRIVER_ACCEPT_ONE_ACTIVE,
+  documentsApproved,
+  activeAssignmentWhere,
+} = require('./driverAcceptPolicy');
 
 const DRIVER_TO_WORKFLOW = {
   Accepted: 'DRIVER_ACCEPTED',
@@ -54,7 +60,18 @@ async function applyLegacyDriverStatus({ missionId, driverId, status, deliveryOt
   }
 
   if (status === 'Accepted') {
+    if (!documentsApproved(driver)) {
+      const error = new AppError(DRIVER_ACCEPT_DOCS_REQUIRED, 400);
+      error.code = 'DRIVER_DOCS_NOT_APPROVED';
+      throw error;
+    }
     if (mission.driver_id && !mine) throw new AppError('این بار را راننده دیگری قبول کرده است.', 409);
+    const existing = await Shipment.findOne({ where: activeAssignmentWhere(driver.id, mission.id) });
+    if (existing) {
+      const error = new AppError(DRIVER_ACCEPT_ONE_ACTIVE, 409);
+      error.code = 'DRIVER_ONE_ACTIVE_LOAD';
+      throw error;
+    }
     mission.driver_id = driver.id;
     await mission.save();
     await markBusy(driver);

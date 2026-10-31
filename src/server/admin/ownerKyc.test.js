@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
   setIdType, uploadDocument, reviewDocument, overallStatus, present,
-  shipmentGateMessage, KYC_SHIPMENT_MISSING, KYC_SHIPMENT_PENDING, KYC_SHIPMENT_REJECTED,
+  shipmentGateMessage, postalCodeGateMessage, KYC_SHIPMENT_MISSING, KYC_SHIPMENT_PENDING, KYC_SHIPMENT_REJECTED, POSTAL_CODE_REQUIRED,
 } = require('./ownerKyc');
 
 function pack(idType) {
@@ -84,6 +84,13 @@ test('shipment create stays blocked until identity is approved', () => {
   }
   assert.equal(overallStatus(approved), 'VERIFIED');
   assert.equal(shipmentGateMessage(approved), null);
+});
+
+test('shipment create also requires a 10-digit owner postal code', () => {
+  assert.equal(postalCodeGateMessage(null), POSTAL_CODE_REQUIRED);
+  assert.equal(postalCodeGateMessage(''), POSTAL_CODE_REQUIRED);
+  assert.equal(postalCodeGateMessage('12345'), POSTAL_CODE_REQUIRED);
+  assert.equal(postalCodeGateMessage('1234567890'), null);
 });
 
 test('switching the identity document invalidates the previous set', () => {

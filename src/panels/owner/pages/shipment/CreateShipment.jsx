@@ -8,7 +8,11 @@ import Button from "../../components/common/Button";
 import { useAuth } from "../../hooks/useAuth";
 import { useToast } from "../../hooks/useToast";
 import { getErrorMessage } from "../../utils/errorMessage";
-import { ownerKycShipmentIssue } from "../../utils/ownerKycGate";
+import {
+  ownerKycShipmentIssue,
+  ownerPostalShipmentIssue,
+  ownerShipmentBlockers,
+} from "../../utils/ownerKycGate";
 
 import Step1_Origin from "../../components/shipment-steps/Step1_Origin";
 import Step2_Destination from "../../components/shipment-steps/Step2_Destination";
@@ -148,6 +152,7 @@ export default function CreateShipment() {
   const toast = useToast();
   const [formData, setFormData] = useState(() => formFromShipment(repeat));
   const kycIssue = ownerKycShipmentIssue(user);
+  const postalIssue = ownerPostalShipmentIssue(user);
 
   useEffect(() => {
     let cancelled = false;
@@ -263,10 +268,11 @@ export default function CreateShipment() {
   };
 
   const handleSubmit = async () => {
-    const identityIssue = ownerKycShipmentIssue(user);
-    if (identityIssue) {
-      setStepError(identityIssue);
-      toast.error(identityIssue);
+    const blockers = ownerShipmentBlockers(user);
+    if (blockers.length) {
+      const first = blockers[0].message;
+      setStepError(first);
+      toast.error(first);
       return;
     }
     // چک نهایی سرتاسری قبل از ارسال - اگر جایی ناقص مانده، مستقیم کاربر را همان‌جا می‌بریم
@@ -314,19 +320,32 @@ export default function CreateShipment() {
   const ActiveStep = STEPS[currentStep - 1].Component;
   const isFinal = currentStep === STEPS.length;
 
-  if (kycIssue) {
+  if (kycIssue || postalIssue) {
     return (
       <div className="mx-auto w-full max-w-4xl">
         <h1 className="text-2xl font-bold text-ink-900">{repeat ? "تکرار حمل" : "ثبت بار جدید"}</h1>
-        <div className="mt-6 rounded-xl border border-red-200 bg-red-50 px-5 py-5 text-right shadow-panel">
-          <p className="text-sm font-bold text-red-700">{kycIssue}</p>
-          <p className="mt-2 text-sm text-red-600">
-            ابتدا به پروفایل بروید و احراز هویت را کامل کنید؛ بعد می‌توانید بار ثبت کنید.
-          </p>
-          <Button as={Link} to="/owner/profile" variant="accent" className="mt-4">
-            رفتن به احراز هویت
-          </Button>
-        </div>
+        {kycIssue && (
+          <div className="mt-6 rounded-xl border border-red-200 bg-red-50 px-5 py-5 text-right shadow-panel">
+            <p className="text-sm font-bold text-red-700">{kycIssue}</p>
+            <p className="mt-2 text-sm text-red-600">
+              ابتدا به پروفایل بروید و احراز هویت را کامل کنید؛ بعد می‌توانید بار ثبت کنید.
+            </p>
+            <Button as={Link} to="/owner/profile" variant="accent" className="mt-4">
+              رفتن به احراز هویت
+            </Button>
+          </div>
+        )}
+        {postalIssue && (
+          <div className={`${kycIssue ? "mt-4" : "mt-6"} rounded-xl border border-amber-200 bg-amber-50 px-5 py-5 text-right shadow-panel`}>
+            <p className="text-sm font-bold text-amber-800">{postalIssue}</p>
+            <p className="mt-2 text-sm text-amber-700">
+              کد پستی هنگام ورود درخواست نمی‌شود، اما برای ثبت بار اجباری است. آن را در پروفایل وارد کنید.
+            </p>
+            <Button as={Link} to="/owner/profile" variant="accent" className="mt-4">
+              وارد کردن کد پستی
+            </Button>
+          </div>
+        )}
       </div>
     );
   }

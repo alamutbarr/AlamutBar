@@ -134,6 +134,7 @@ export default function Profile() {
 
   const displayName = `${form.first_name} ${form.last_name}`.trim();
   const hasPhoto = Boolean(profile?.avatar_url);
+  const postalMissing = !/^\d{10}$/.test(String(form.postal_code || "").trim());
 
   return (
     <div>
@@ -143,6 +144,17 @@ export default function Profile() {
           اطلاعات حساب کاربری خود را مشاهده و ویرایش کنید
         </p>
       </div>
+
+      {postalMissing && (
+        <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-right shadow-panel">
+          <p className="text-sm font-bold text-amber-800">
+            برای ثبت بار وارد کردن کد پستی الزامی است
+          </p>
+          <p className="mt-1 text-sm text-amber-700">
+            کد پستی هنگام ورود به سایت گرفته نمی‌شود. این فیلد در پروفایل اجباری است و بدون آن نمی‌توانید بار ثبت کنید.
+          </p>
+        </div>
+      )}
 
       <div className="mb-6 flex flex-col items-center gap-5 rounded-xl border border-ink-100 bg-white p-6 shadow-panel sm:flex-row">
         <Avatar
@@ -260,7 +272,7 @@ export default function Profile() {
             <Input
               label="کد پستی"
               required
-              hint="کد پستی ۱۰ رقمی."
+              hint="کد پستی ۱۰ رقمی. هنگام ورود گرفته نمی‌شود و برای ثبت بار الزامی است."
               value={form.postal_code}
               onChange={(e) =>
                 setForm((current) => ({

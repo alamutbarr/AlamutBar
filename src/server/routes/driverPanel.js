@@ -289,7 +289,10 @@ router.post('/missions/:id/change-status', authMiddleware, async (req, res) => {
     });
     return res.json({ message: 'وضعیت بروزرسانی شد', status: result.driverStatus });
   } catch (error) {
-    return res.status(error.statusCode || 400).json({ error: error.message || 'به‌روزرسانی وضعیت ناموفق بود.' });
+    return res.status(error.statusCode || 400).json({
+      error: error.message || 'به‌روزرسانی وضعیت ناموفق بود.',
+      code: error.code,
+    });
   }
 });
 

@@ -62,6 +62,16 @@ const KYC_SHIPMENT_PENDING =
   'مدارک هویت هنوز تأیید نشده است. پس از تأیید احراز هویت می‌توانید بار ثبت کنید.';
 const KYC_SHIPMENT_REJECTED =
   'مدارک هویت رد شده است. ابتدا در پروفایل مدارک را اصلاح کنید تا بتوانید بار ثبت کنید.';
+const POSTAL_CODE_REQUIRED =
+  'برای ثبت بار وارد کردن کد پستی در پروفایل الزامی است. این مورد هنگام ورود گرفته نمی‌شود و باید در پروفایل تکمیل شود.';
+
+function hasValidPostalCode(postal) {
+  return /^\d{10}$/.test(String(postal || '').trim());
+}
+
+function postalCodeGateMessage(postal) {
+  return hasValidPostalCode(postal) ? null : POSTAL_CODE_REQUIRED;
+}
 
 function shipmentGateMessage(raw, verificationStatus) {
   const fromDocs = overallStatus(raw);
@@ -153,6 +163,9 @@ module.exports = {
   KYC_SHIPMENT_MISSING,
   KYC_SHIPMENT_PENDING,
   KYC_SHIPMENT_REJECTED,
+  POSTAL_CODE_REQUIRED,
+  hasValidPostalCode,
+  postalCodeGateMessage,
   normalize,
   requiredKeys,
   overallStatus,
