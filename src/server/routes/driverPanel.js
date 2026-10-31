@@ -8,6 +8,7 @@ const { Shipment, Driver, City, VehicleType, Zone, DriverNotice } = require('../
 const { upsertDocument } = require('../admin/documents');
 const { canRevealExactDestination } = require('../mobile/missionPolicy');
 const { applyLegacyDriverStatus } = require('../mobile/driverActions');
+const { isOfferedVisibleToDriver } = require('../services/vehicleOfferMatch');
 const { filterNearbyMissions, filterMissionsByRoute } = require('../services/missionSearch');
 const { resolveDriverProvince } = require('../services/geocoding');
 const { latestInspections } = require('../inspector/summary');
@@ -180,6 +181,7 @@ function asSearchable(row) {
 }
 
 async function openShipments(driverId) {
+  const driver = await Driver.findByPk(driverId);
   const rows = await Shipment.findAll({
     where: {
       [Op.or]: [
@@ -190,11 +192,7 @@ async function openShipments(driverId) {
     include: includes,
     order: [['createdAt', 'DESC']],
   });
-  return rows.filter((row) => {
-    if (row.driver_id) return true;
-    const declined = Array.isArray(row.declined_by) ? row.declined_by : [];
-    return !declined.map(String).includes(String(driverId));
-  });
+  return rows.filter((row) => isOfferedVisibleToDriver(row, driver, driverId));
 }
 
 router.get('/profile', authMiddleware, async (req, res) => {

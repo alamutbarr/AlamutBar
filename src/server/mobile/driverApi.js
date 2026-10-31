@@ -9,6 +9,7 @@ const { authMiddleware } = require('../middleware/auth');
 const { signDriver, DRIVER_OTP, hashToken, registrationIssue } = require('../routes/driverAuth');
 const { validateVehicleSelection } = require('../services/vehicleConfig');
 const { applyLegacyDriverStatus } = require('./driverActions');
+const { isOfferedVisibleToDriver } = require('../services/vehicleOfferMatch');
 const { canRevealExactDestination } = require('./missionPolicy');
 const { ingestDriverPing } = require('../admin/monitor');
 const { getSettings } = require('../admin/settingsStore');
@@ -207,18 +208,16 @@ router.get('/missions', requireDriver, asyncHandler(async (req, res) => {
         { driver_id: req.user.id },
       ],
     };
+  const driver = await Driver.findByPk(req.user.id);
   const rows = await Shipment.findAll({ where, include: includes, order: [['createdAt', 'DESC']] });
-  const missions = rows.filter((row) => {
-    if (row.driver_id) return true;
-    const declined = Array.isArray(row.declined_by) ? row.declined_by : [];
-    return !declined.map(String).includes(String(req.user.id));
-  }).map((row) => toMission(row, req.user.id));
+  const missions = rows.filter((row) => isOfferedVisibleToDriver(row, driver, req.user.id)).map((row) => toMission(row, req.user.id));
   ok(res, { missions });
 }));
 
 router.get('/missions/:id', requireDriver, asyncHandler(async (req, res) => {
+  const driver = await Driver.findByPk(req.user.id);
   const row = await Shipment.findByPk(req.params.id, { include: includes });
-  if (!row) throw new AppError('مأموریت پیدا نشد.', 404);
+  if (!row || !isOfferedVisibleToDriver(row, driver, req.user.id)) throw new AppError('مأموریت پیدا نشد.', 404);
   ok(res, toMission(row, req.user.id));
 }));
 

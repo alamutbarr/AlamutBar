@@ -18,10 +18,7 @@ const OVERALL = {
   PENDING: "هویت هنوز کامل تأیید نشده",
 };
 
-const FALLBACK_DOCS = [
-  { key: "selfie", title: "سلفی", status: "MISSING", url: null },
-  { key: "holding", title: "سلفی به‌همراه مدرک شناسایی", status: "MISSING", url: null },
-];
+const FALLBACK_DOCS = [];
 
 export default function OwnerKyc({ profile, onChange }) {
   const [busy, setBusy] = useState("");
@@ -45,6 +42,9 @@ export default function OwnerKyc({ profile, onChange }) {
   const chooseType = async (idType) => {
     setBusy("type");
     setError("");
+    Object.values(previewsRef.current).forEach((url) => URL.revokeObjectURL(url));
+    setPreviews({});
+    setSlotErrors({});
     try {
       await api.patch("/auth/kyc", { idType });
       await refresh();
@@ -102,8 +102,8 @@ export default function OwnerKyc({ profile, onChange }) {
         <div>
           <h2 className="text-lg font-bold text-ink-900">احراز هویت</h2>
           <p className="mt-1 text-sm text-ink-300">
-            انجام یکی از دو مدرک کافی است: یا صفحهٔ اول شناسنامه یا کارت ملی. نیازی به بارگذاری هر دو نیست.
-            برای هر بخش یک عکس بفرستید. پیش‌نمایش کوچک همان‌جا دیده می‌شود. سقف حجم هر عکس {KYC_MAX_LABEL} است.
+            انجام یکی از دو مدرک کافی است: یا شناسنامه یا کارت ملی. نیازی به بارگذاری هر دو نیست.
+            عکس‌های هر بخش جداست؛ حتی سلفی شناسنامه با سلفی کارت ملی یکی نیست. سقف حجم هر عکس {KYC_MAX_LABEL} است.
           </p>
         </div>
         <span className="rounded-md bg-[#17383b] px-3 py-1 text-xs font-bold text-[#f7f6f0]">

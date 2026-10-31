@@ -1,6 +1,6 @@
 import api from './axios.config';
 
-// آپلود حداکثر ۵ عکس از کالا (مرحله ۵ فرم ثبت بار)
+// آپلود حداکثر ۴ عکس از کالا (مرحله عکس فرم ثبت بار)
 export const uploadShipmentPhotos = async (files) => {
   const formData = new FormData();
   files.forEach((file) => formData.append('photos', file));

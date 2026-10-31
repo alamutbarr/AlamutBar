@@ -59,7 +59,7 @@ const Shipment = sequelize.define(
     // مرحله ۴: ارزش کالا (بیمه)
     cargo_value: { type: DataTypes.BIGINT, allowNull: false },
 
-    // مرحله ۵: عکس (حداکثر ۵ عدد، اختیاری)
+    // مرحله ۵: عکس (حداکثر ۴ عدد، اختیاری)
     photo_urls: {
       type: DataTypes.JSON,
       allowNull: true,

@@ -1,14 +1,14 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
-  setIdType, uploadDocument, reviewDocument, overallStatus, present,
+  setIdType, uploadDocument, reviewDocument, overallStatus, present, normalize,
   shipmentGateMessage, postalCodeGateMessage, KYC_SHIPMENT_MISSING, KYC_SHIPMENT_PENDING, KYC_SHIPMENT_REJECTED, POSTAL_CODE_REQUIRED,
 } = require('./ownerKyc');
 
 function pack(idType) {
   let state = setIdType(null, idType);
   const prefix = idType === 'shenasnameh' ? 'shenasnameh' : 'national_card';
-  const slots = ['selfie', 'holding', `${prefix}:front`];
+  const slots = [`${prefix}:selfie`, `${prefix}:holding`, `${prefix}:front`];
   for (const key of slots) state = uploadDocument(state, { key, url: `/uploads/${key}.jpg` });
   return state;
 }
@@ -17,19 +17,19 @@ test('each document is reviewed on its own and one rejection blocks verification
   const state = pack('shenasnameh');
   assert.equal(overallStatus(state), 'PENDING');
   assert.throws(
-    () => reviewDocument(state, { key: 'selfie', decision: 'REJECTED', reason: 'نه' }),
+    () => reviewDocument(state, { key: 'shenasnameh:selfie', decision: 'REJECTED', reason: 'نه' }),
     /دلیل رد/,
   );
-  const rejected = reviewDocument(state, { key: 'selfie', decision: 'REJECTED', reason: 'تصویر تار است' });
-  assert.equal(rejected.kyc.documents.selfie.status, 'REJECTED');
-  assert.equal(rejected.kyc.documents.selfie.note, 'تصویر تار است');
-  assert.equal(rejected.kyc.documents.holding.status, 'PENDING');
+  const rejected = reviewDocument(state, { key: 'shenasnameh:selfie', decision: 'REJECTED', reason: 'تصویر تار است' });
+  assert.equal(rejected.kyc.documents['shenasnameh:selfie'].status, 'REJECTED');
+  assert.equal(rejected.kyc.documents['shenasnameh:selfie'].note, 'تصویر تار است');
+  assert.equal(rejected.kyc.documents['shenasnameh:holding'].status, 'PENDING');
   assert.equal(rejected.verificationStatus, 'REJECTED');
-  assert.equal(rejected.verificationNote, 'سلفی: تصویر تار است');
-  assert.match(rejected.notice.message, /سلفی: تصویر تار است/);
+  assert.equal(rejected.verificationNote, 'سلفی برای شناسنامه: تصویر تار است');
+  assert.match(rejected.notice.message, /سلفی برای شناسنامه: تصویر تار است/);
 
   let approved = rejected.kyc;
-  for (const key of ['holding', 'shenasnameh:front']) {
+  for (const key of ['shenasnameh:holding', 'shenasnameh:front']) {
     approved = reviewDocument(approved, { key, decision: 'APPROVED' }).kyc;
   }
   assert.equal(overallStatus(approved), 'REJECTED');
@@ -48,7 +48,7 @@ test('re-upload clears the rejection and verification needs every required docum
   assert.equal(overallStatus(again), 'PENDING');
 
   let state = again;
-  for (const key of ['selfie', 'holding', 'national_card:front']) {
+  for (const key of ['national_card:selfie', 'national_card:holding', 'national_card:front']) {
     const result = reviewDocument(state, { key, decision: 'APPROVED' });
     assert.equal(result.notice, null);
     state = result.kyc;
@@ -65,6 +65,47 @@ test('re-upload clears the rejection and verification needs every required docum
   );
 });
 
+test('national card photos stay out of the birth-certificate section', () => {
+  const shenasnameh = pack('shenasnameh');
+  const mixed = uploadDocument(shenasnameh, { key: 'national_card:selfie', url: '/uploads/card-selfie.jpg', idType: 'national_card' });
+  const cardView = present(mixed);
+  assert.equal(cardView.idType, 'national_card');
+  assert.deepEqual(cardView.documents.map((doc) => doc.key), [
+    'national_card:selfie',
+    'national_card:holding',
+    'national_card:front',
+  ]);
+  assert.equal(cardView.documents.find((doc) => doc.key === 'national_card:selfie').url, '/uploads/card-selfie.jpg');
+  const bookView = present({ ...mixed, idType: 'shenasnameh' });
+  assert.deepEqual(bookView.documents.map((doc) => doc.key), [
+    'shenasnameh:selfie',
+    'shenasnameh:holding',
+    'shenasnameh:front',
+  ]);
+  assert.equal(bookView.documents.find((doc) => doc.key === 'shenasnameh:selfie').url, '/uploads/shenasnameh:selfie.jpg');
+  assert.notEqual(bookView.documents.find((doc) => doc.key === 'shenasnameh:selfie').url, '/uploads/card-selfie.jpg');
+});
+
+test('legacy shared selfie migrates only into the selected identity type', () => {
+  const legacy = {
+    idType: 'shenasnameh',
+    documents: {
+      selfie: { url: '/uploads/old-selfie.jpg', status: 'APPROVED' },
+      holding: { url: '/uploads/old-holding.jpg', status: 'APPROVED' },
+      'shenasnameh:front': { url: '/uploads/old-front.jpg', status: 'APPROVED' },
+    },
+  };
+  assert.equal(overallStatus(legacy), 'VERIFIED');
+  const book = present(legacy);
+  assert.equal(book.documents.find((doc) => doc.key === 'shenasnameh:selfie').url, '/uploads/old-selfie.jpg');
+  const migrated = normalize(legacy);
+  const card = present({ ...migrated, idType: 'national_card' });
+  assert.equal(card.documents.find((doc) => doc.key === 'national_card:selfie')?.url, null);
+  const afterCardSelfie = uploadDocument(migrated, { key: 'national_card:selfie', url: '/uploads/new-card.jpg', idType: 'national_card' });
+  assert.equal(present({ ...afterCardSelfie, idType: 'shenasnameh' }).documents.find((doc) => doc.key === 'shenasnameh:selfie').url, '/uploads/old-selfie.jpg');
+  assert.equal(present(afterCardSelfie).documents.find((doc) => doc.key === 'national_card:selfie').url, '/uploads/new-card.jpg');
+});
+
 test('shipment create stays blocked until identity is approved', () => {
   assert.equal(shipmentGateMessage(null), KYC_SHIPMENT_MISSING);
   assert.equal(shipmentGateMessage(null, 'VERIFIED'), null);
@@ -73,13 +114,13 @@ test('shipment create stays blocked until identity is approved', () => {
   assert.equal(overallStatus(uploaded), 'PENDING');
   assert.equal(shipmentGateMessage(uploaded), KYC_SHIPMENT_PENDING);
   const rejected = reviewDocument(uploaded, {
-    key: 'selfie',
+    key: 'shenasnameh:selfie',
     decision: 'REJECTED',
     reason: 'تصویر تار است',
   });
   assert.equal(shipmentGateMessage(rejected.kyc), KYC_SHIPMENT_REJECTED);
   let approved = uploaded;
-  for (const key of ['selfie', 'holding', 'shenasnameh:front']) {
+  for (const key of ['shenasnameh:selfie', 'shenasnameh:holding', 'shenasnameh:front']) {
     approved = reviewDocument(approved, { key, decision: 'APPROVED' }).kyc;
   }
   assert.equal(overallStatus(approved), 'VERIFIED');
@@ -95,7 +136,7 @@ test('shipment create also requires a 10-digit owner postal code', () => {
 
 test('switching the identity document invalidates the previous set', () => {
   let state = pack('shenasnameh');
-  for (const key of ['selfie', 'holding', 'shenasnameh:front']) {
+  for (const key of ['shenasnameh:selfie', 'shenasnameh:holding', 'shenasnameh:front']) {
     state = reviewDocument(state, { key, decision: 'APPROVED' }).kyc;
   }
   assert.equal(overallStatus(state), 'VERIFIED');
@@ -106,7 +147,7 @@ test('switching the identity document invalidates the previous set', () => {
     /جور نیست/,
   );
   assert.throws(
-    () => reviewDocument(setIdType(null, 'shenasnameh'), { key: 'selfie', decision: 'APPROVED' }),
+    () => reviewDocument(setIdType(null, 'shenasnameh'), { key: 'shenasnameh:selfie', decision: 'APPROVED' }),
     /پیدا نشد/,
   );
 });

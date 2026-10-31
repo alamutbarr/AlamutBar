@@ -1,4 +1,4 @@
-const { Driver, Shipment } = require('../models');
+const { Driver, Shipment, VehicleType } = require('../models');
 const AppError = require('../utils/AppError');
 const { setWorkflow, loadOrder } = require('../admin/orderOps');
 const { assertDeliveryOtp } = require('./missionPolicy');
@@ -9,6 +9,7 @@ const {
   documentsApproved,
   activeAssignmentWhere,
 } = require('./driverAcceptPolicy');
+const { driverMatchesOffer, VEHICLE_MISMATCH } = require('../services/vehicleOfferMatch');
 
 const DRIVER_TO_WORKFLOW = {
   Accepted: 'DRIVER_ACCEPTED',
@@ -66,6 +67,19 @@ async function applyLegacyDriverStatus({ missionId, driverId, status, deliveryOt
       throw error;
     }
     if (mission.driver_id && !mine) throw new AppError('این بار را راننده دیگری قبول کرده است.', 409);
+    if (!mine) {
+      const vehicleType = mission.vehicleType || (mission.vehicle_type_id
+        ? await VehicleType.findByPk(mission.vehicle_type_id)
+        : null);
+      if (!driverMatchesOffer(
+        { tractorType: driver.tractorType, trailerType: driver.trailerType },
+        { vehicleTitle: vehicleType?.title, variants: mission.vehicle_variants },
+      )) {
+        const error = new AppError(VEHICLE_MISMATCH, 400);
+        error.code = 'VEHICLE_MISMATCH';
+        throw error;
+      }
+    }
     const existing = await Shipment.findOne({ where: activeAssignmentWhere(driver.id, mission.id) });
     if (existing) {
       const error = new AppError(DRIVER_ACCEPT_ONE_ACTIVE, 409);

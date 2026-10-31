@@ -29,6 +29,11 @@ import {
   isValidIranNationalId,
   isValidIranPostalCode,
 } from "../../utils/receiverValidation";
+import {
+  clearShipmentDraft,
+  loadShipmentDraft,
+  saveShipmentDraft,
+} from "../../utils/shipmentDraft";
 
 const STEPS = [
   { title: "مبدأ", Component: Step1_Origin },
@@ -124,6 +129,7 @@ function formFromShipment(shipment) {
     width_cm: shipment.width_cm ?? "",
     height_cm: shipment.height_cm ?? "",
     cargo_value: shipment.cargo_value ?? "",
+    photo_urls: Array.isArray(shipment.photo_urls) ? shipment.photo_urls : [],
     notes: shipment.notes || "",
     loading_date: date,
     loading_time_from: shipment.loading_time_from || "",
@@ -151,6 +157,8 @@ export default function CreateShipment() {
   const [stepError, setStepError] = useState("");
   const toast = useToast();
   const [formData, setFormData] = useState(() => formFromShipment(repeat));
+  const [draftReady, setDraftReady] = useState(() => Boolean(repeat));
+  const [draftRestored, setDraftRestored] = useState(false);
   const kycIssue = ownerKycShipmentIssue(user);
   const postalIssue = ownerPostalShipmentIssue(user);
 
@@ -167,6 +175,29 @@ export default function CreateShipment() {
     // فقط یک‌بار از سرور وضعیت احراز را تازه می‌کنیم
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (repeat || !user?.id || draftReady) return;
+    const draft = loadShipmentDraft(user.id);
+    if (draft?.formData) {
+      setFormData((current) => ({ ...emptyFormData, ...current, ...draft.formData }));
+      const step = Number(draft.currentStep) || 1;
+      const max = Number(draft.maxStepReached) || step;
+      setCurrentStep(Math.min(Math.max(step, 1), TOTAL_VISIBLE_STEPS));
+      setMaxStepReached(Math.min(Math.max(max, 1), TOTAL_VISIBLE_STEPS));
+      setDraftRestored(true);
+    }
+    setDraftReady(true);
+  }, [user?.id, repeat, draftReady]);
+
+  useEffect(() => {
+    if (!user?.id || !draftReady) return;
+    if (currentStep === STEPS.length) {
+      clearShipmentDraft(user.id);
+      return;
+    }
+    saveShipmentDraft(user.id, { formData, currentStep, maxStepReached });
+  }, [user?.id, draftReady, formData, currentStep, maxStepReached]);
 
   const updateFormData = (key, value) =>
     setFormData((prev) => ({ ...prev, [key]: value }));
@@ -308,6 +339,7 @@ export default function CreateShipment() {
 
     try {
       const { shipment, needsManualReview } = await createShipment(payload);
+      if (user?.id) clearShipmentDraft(user.id);
       updateFormData("trackingCode", shipment.tracking_code);
       updateFormData("needsManualReview", needsManualReview);
       toast.success("بار با موفقیت ثبت شد.");
@@ -352,6 +384,12 @@ export default function CreateShipment() {
 
   return (
     <div className="mx-auto w-full max-w-4xl">
+      {!isFinal && draftRestored && !repeat && (
+        <p className="mb-4 rounded-lg border border-[#d7b56d] bg-[#f7f6f0] px-3 py-2 text-sm text-[#17383b]">
+          پیش‌نویس ثبت بار ذخیره شده است. از همان مرحله می‌توانید ادامه بدهید.
+        </p>
+      )}
+
       {!isFinal && repeat && (
         <p className="mb-4 rounded-lg border border-[#d7b56d] bg-[#f7f6f0] px-3 py-2 text-sm text-[#17383b]">
           مشخصات از حمل {repeat.tracking_code} آمده است. وزن، تعداد، زمان و مقصد را پیش از ثبت عوض کنید. اگر تاریخ بارگیری گذشته باشد، در مرحلهٔ زمان یک تاریخ تازه بگذارید.

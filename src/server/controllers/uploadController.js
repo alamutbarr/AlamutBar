@@ -2,7 +2,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const { success } = require('../utils/apiResponse');
 const AppError = require('../utils/AppError');
 
-// آپلود عکس‌های کالا (حداکثر ۵ فایل) - مرحله ۵ فرم ثبت بار
+// آپلود عکس‌های کالا (حداکثر ۴ فایل) - مرحله عکس فرم ثبت بار
 const uploadPhotos = asyncHandler(async (req, res) => {
   if (!req.files || req.files.length === 0) {
     throw new AppError('هیچ فایلی ارسال نشد.', 400);

@@ -1,12 +1,16 @@
 const ID_TYPES = ['shenasnameh', 'national_card'];
 
 const SLOTS = {
-  selfie: { title: 'سلفی', always: true },
-  holding: { title: 'سلفی به‌همراه مدرک شناسایی', always: true },
+  'shenasnameh:selfie': { title: 'سلفی برای شناسنامه', idType: 'shenasnameh' },
+  'shenasnameh:holding': { title: 'سلفی به‌همراه شناسنامه', idType: 'shenasnameh' },
   'shenasnameh:front': { title: 'صفحه اول شناسنامه', idType: 'shenasnameh' },
   'shenasnameh:back': { title: 'پشت شناسنامه', idType: 'shenasnameh', retired: true },
+  'national_card:selfie': { title: 'سلفی برای کارت ملی', idType: 'national_card' },
+  'national_card:holding': { title: 'سلفی به‌همراه کارت ملی', idType: 'national_card' },
   'national_card:front': { title: 'کارت ملی', idType: 'national_card' },
   'national_card:back': { title: 'پشت کارت ملی', idType: 'national_card', retired: true },
+  selfie: { title: 'سلفی', retired: true },
+  holding: { title: 'سلفی به‌همراه مدرک شناسایی', retired: true },
 };
 
 function fail(message, statusCode) {
@@ -23,28 +27,42 @@ function asObject(raw) {
   return typeof raw === 'object' ? raw : {};
 }
 
+function readDoc(item) {
+  const url = item && item.url ? String(item.url) : null;
+  const status = url && ['PENDING', 'APPROVED', 'REJECTED'].includes(item.status) ? item.status : (url ? 'PENDING' : 'MISSING');
+  return {
+    url,
+    status,
+    note: status === 'REJECTED' && item && item.note ? String(item.note) : null,
+  };
+}
+
+function migrateLegacyDocuments(source, idType) {
+  const docs = source.documents && typeof source.documents === 'object' ? { ...source.documents } : {};
+  if (!idType) return docs;
+  for (const legacy of ['selfie', 'holding']) {
+    const alreadyTyped = ID_TYPES.some((type) => docs[`${type}:${legacy}`] && docs[`${type}:${legacy}`].url);
+    if (alreadyTyped) continue;
+    if (docs[legacy] && docs[legacy].url) docs[`${idType}:${legacy}`] = docs[legacy];
+  }
+  return docs;
+}
+
 function normalize(raw) {
   const source = asObject(raw);
   const idType = ID_TYPES.includes(source.idType) ? source.idType : null;
+  const migrated = migrateLegacyDocuments(source, idType);
   const documents = {};
   for (const key of Object.keys(SLOTS)) {
-    const item = source.documents && source.documents[key];
-    const url = item && item.url ? String(item.url) : null;
-    const status = url && ['PENDING', 'APPROVED', 'REJECTED'].includes(item.status) ? item.status : (url ? 'PENDING' : 'MISSING');
-    documents[key] = {
-      url,
-      status,
-      note: status === 'REJECTED' && item && item.note ? String(item.note) : null,
-    };
+    documents[key] = readDoc(migrated[key]);
   }
   return { idType, documents };
 }
 
 function requiredKeys(idType) {
-  const keys = ['selfie', 'holding'];
-  if (idType === 'shenasnameh') keys.push('shenasnameh:front');
-  if (idType === 'national_card') keys.push('national_card:front');
-  return keys;
+  if (idType === 'shenasnameh') return ['shenasnameh:selfie', 'shenasnameh:holding', 'shenasnameh:front'];
+  if (idType === 'national_card') return ['national_card:selfie', 'national_card:holding', 'national_card:front'];
+  return [];
 }
 
 function overallStatus(raw) {
@@ -113,14 +131,19 @@ function setIdType(raw, idType) {
 }
 
 function uploadDocument(raw, { key, url, idType }) {
-  if (!SLOTS[key] || !url) throw fail('نوع مدرک نامعتبر است.', 400);
+  if (!url) throw fail('نوع مدرک نامعتبر است.', 400);
   const state = idType ? setIdType(raw, idType) : normalize(raw);
-  const slot = SLOTS[key];
+  let slotKey = key;
+  if ((key === 'selfie' || key === 'holding') && state.idType) {
+    slotKey = `${state.idType}:${key}`;
+  }
+  const slot = SLOTS[slotKey];
+  if (!slot || slot.retired) throw fail('نوع مدرک نامعتبر است.', 400);
   if (slot.idType && state.idType && slot.idType !== state.idType) {
     throw fail('این مدرک با نوع شناسایی انتخاب‌شده جور نیست.', 400);
   }
   if (slot.idType && !state.idType) state.idType = slot.idType;
-  state.documents[key] = { url: String(url), status: 'PENDING', note: null };
+  state.documents[slotKey] = { url: String(url), status: 'PENDING', note: null };
   return state;
 }
 
@@ -151,9 +174,14 @@ function present(raw) {
     documents: Object.entries(SLOTS).map(([key, slot]) => ({
       key,
       title: slot.title,
-      required: Boolean(slot.always || (slot.idType === state.idType && !slot.retired)),
+      required: required.has(key),
       ...state.documents[key],
-    })).filter((doc) => !SLOTS[doc.key].retired && (doc.required || doc.url || required.has(doc.key))),
+    })).filter((doc) => {
+      const slot = SLOTS[doc.key];
+      if (slot.retired) return false;
+      if (!state.idType) return false;
+      return slot.idType === state.idType;
+    }),
   };
 }
 

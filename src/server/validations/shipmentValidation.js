@@ -135,7 +135,7 @@ const createShipmentSchema = Joi.object({
     .label("ارزش اعلامی کالا"),
   photo_urls: Joi.array()
     .items(Joi.string())
-    .max(5)
+    .max(4)
     .optional()
     .label("تصاویر کالا"),
   notes: Joi.string().max(1000).allow("", null).label("توضیحات تکمیلی"),
