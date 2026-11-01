@@ -85,10 +85,10 @@ export function IranianPlateInput({ value, onChange }) {
     >
       {/* پرچم ایران - سمت چپ (انحنای گوشه‌ها به صورت دستی اعمال شد) */}
       <div className="h-full bg-blue-600 w-10 flex flex-col items-center justify-center text-white text-[10px] font-bold shrink-0 rounded-l-[10px]">
-        <div className="w-5 h-3 flex flex-col mb-1 border border-white/20">
-          <div className="h-1 bg-green-500 w-full"></div>
-          <div className="h-1 bg-white w-full"></div>
-          <div className="h-1 bg-red-500 w-full"></div>
+        <div className="plate-iran-flag mb-1 flex h-3 w-5 flex-col border border-white/20">
+          <div className="plate-flag-stripe plate-flag-stripe--green h-1 w-full"></div>
+          <div className="plate-flag-stripe plate-flag-stripe--white h-1 w-full"></div>
+          <div className="plate-flag-stripe plate-flag-stripe--red h-1 w-full"></div>
         </div>
         I.R
         <br />

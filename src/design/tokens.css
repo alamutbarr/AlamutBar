@@ -234,6 +234,14 @@ a.glass-card:hover {
   background: var(--alamut-mist);
 }
 
+.plate-flag-stripe--green { background-color: #239f40; }
+.plate-flag-stripe--white { background-color: #ffffff; }
+.plate-flag-stripe--red { background-color: #da0000; }
+
+.panel-app[data-theme='dark'] .plate-flag-stripe--green { background-color: #239f40; }
+.panel-app[data-theme='dark'] .plate-flag-stripe--white { background-color: #ffffff; }
+.panel-app[data-theme='dark'] .plate-flag-stripe--red { background-color: #da0000; }
+
 .chip-rail {
   display: flex;
   flex-wrap: wrap;
@@ -615,6 +623,124 @@ a.glass-card:hover {
 .panel-app[data-theme='dark'] input::placeholder,
 .panel-app[data-theme='dark'] textarea::placeholder {
   color: var(--panel-muted);
+}
+
+.shipment-chat {
+  margin-top: 1rem;
+  overflow: hidden;
+  border: 1px solid var(--panel-line, var(--alamut-line));
+  border-radius: 1rem;
+  background: var(--panel-surface, var(--surface, #fff));
+  color: var(--panel-text, var(--text, #17383b));
+}
+
+.shipment-chat--idle {
+  padding: 1rem;
+  font-size: 0.875rem;
+  line-height: 1.75;
+  color: var(--panel-muted, var(--muted, #526d70));
+}
+
+.shipment-chat__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--panel-line, var(--alamut-line));
+}
+
+.shipment-chat__head h2 {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.shipment-chat__head span,
+.shipment-chat__empty,
+.shipment-chat__meta {
+  color: var(--panel-muted, var(--muted, #526d70));
+  font-size: 11px;
+}
+
+.shipment-chat__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 18rem;
+  overflow-y: auto;
+  padding: 12px;
+  background: var(--panel-bg, var(--bg, #f7f6f0));
+}
+
+.shipment-chat__empty {
+  margin: auto;
+  text-align: center;
+  font-size: 0.875rem;
+}
+
+.shipment-chat__bubble {
+  max-width: 85%;
+  border-radius: 1rem;
+  padding: 8px 12px;
+  font-size: 0.875rem;
+  line-height: 1.75;
+}
+
+.shipment-chat__bubble.is-own {
+  align-self: flex-end;
+  background: #17383b;
+  color: #f7f6f0;
+}
+
+.shipment-chat__bubble.is-other {
+  align-self: flex-start;
+  border: 1px solid var(--panel-line, var(--alamut-line));
+  background: var(--panel-surface, var(--surface, #fff));
+}
+
+.shipment-chat__bubble.is-own .shipment-chat__meta {
+  color: rgba(247, 246, 240, 0.7);
+}
+
+.shipment-chat__meta {
+  margin: 0 0 4px;
+}
+
+.shipment-chat__notice {
+  padding: 8px 16px 0;
+  font-size: 12px;
+  color: #b42318;
+}
+
+.shipment-chat__form {
+  display: flex;
+  gap: 8px;
+  border-top: 1px solid var(--panel-line, var(--alamut-line));
+  padding: 12px;
+}
+
+.shipment-chat__form input {
+  min-width: 0;
+  flex: 1;
+  border: 1px solid var(--panel-line, var(--alamut-line));
+  border-radius: 12px;
+  background: var(--panel-well, var(--bg, #f7f6f0));
+  color: inherit;
+  padding: 8px 12px;
+  font-size: 0.875rem;
+  outline: none;
+}
+
+.shipment-chat__form button {
+  border: 0;
+  border-radius: 12px;
+  background: #087f8c;
+  color: #f7f6f0;
+  padding: 8px 16px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
 }
 
 @media (prefers-reduced-motion: reduce) {
