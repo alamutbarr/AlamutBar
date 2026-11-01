@@ -13,7 +13,7 @@ function Shell() {
     <div className="inspector-app">
       <div className="inspector-frame">
         <header className="inspector-top">
-          <BrandMark light subtitle="متصدی میدان" />
+          <BrandMark light subtitle="متصدی میدان" to="/inspector" />
           <div style={{ flex: 1 }} />
           <button type="button" className="inspector-btn secondary" style={{ width: 'auto', color: 'inherit', borderColor: 'rgba(247,246,240,.4)' }} onClick={async () => { await logout(); navigate('/inspector/login'); }}>
             {user?.fullName ? 'خروج' : ''}

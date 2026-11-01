@@ -60,8 +60,18 @@ const services = [
 
 
 function BrandMark({ light = false }) {
+  const goTop = (event) => {
+    if (window.location.pathname !== '/' && window.location.pathname !== '') return;
+    event.preventDefault();
+    const top = document.getElementById('top');
+    if (top) top.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (window.location.hash !== '#top') {
+      window.history.replaceState(null, '', '/#top');
+    }
+  };
   return (
-    <a className={`brand-mark ${light ? 'brand-light' : ''}`} href="#top" aria-label="صفحهٔ اصلی شرکت الموت">
+    <a className={`brand-mark ${light ? 'brand-light' : ''}`} href="/#top" onClick={goTop} aria-label="صفحهٔ اصلی شرکت الموت">
       <span className="brand-symbol" aria-hidden="true">
         <svg viewBox="0 0 40 40" fill="none">
           <path d="M5 28.5 17.5 8l7.1 11.8L30 10l5 8.7v9.8H5Z" />

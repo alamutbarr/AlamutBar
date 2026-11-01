@@ -31,7 +31,7 @@ export default function OwnerLayout() {
       <Sidebar />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <header className="z-30 flex items-center gap-3 bg-[#10282b] px-4 py-3 text-[#f7f6f0] lg:hidden">
-        <BrandMark light subtitle="صاحب کالا" />
+        <BrandMark light subtitle="صاحب کالا" to="/owner/dashboard" />
         <div className="flex-1" />
         {name && <span className="max-w-[8rem] truncate text-sm">{name}</span>}
         <ThemeToggle compact className="border-white/30 text-[#f7f6f0]" />

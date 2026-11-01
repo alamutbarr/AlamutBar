@@ -50,7 +50,7 @@ export default function Sidebar({ onClose = () => {} }) {
     <>
       <aside className="brand-rail hidden h-full w-64 shrink-0 flex-col overflow-hidden lg:flex">
         <div className="px-5 pb-2 pt-6">
-          <BrandMark light subtitle="صاحب کالا" />
+          <BrandMark light subtitle="صاحب کالا" to="/owner/dashboard" />
           <p className="mt-5 text-[11px] font-medium text-[#d7b56d]">حمل بار، با خیال راحت</p>
         </div>
 

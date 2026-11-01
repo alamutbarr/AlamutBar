@@ -12,7 +12,7 @@ export default function AuthShell({ title, subtitle, children }) {
     <div className="min-h-screen bg-route-bg" dir="rtl">
       <header className="bg-ink-950 px-4 py-3 text-[#f7f6f0] lg:hidden">
         <div className="flex items-center gap-3">
-          <BrandMark light subtitle="صاحب کالا" />
+          <BrandMark light subtitle="صاحب کالا" to="/owner/dashboard" />
           <div className="flex-1" />
           <ThemeToggle compact className="border-white/30 text-[#f7f6f0]" />
         </div>
@@ -29,7 +29,7 @@ export default function AuthShell({ title, subtitle, children }) {
           custom={0}
           className="relative z-10"
         >
-          <BrandMark light subtitle="حمل‌ونقل و لجستیک" />
+          <BrandMark light subtitle="حمل‌ونقل و لجستیک" to="/owner/dashboard" />
         </motion.div>
 
         <motion.div variants={fadeUp} initial="hidden" animate="show" custom={0.12} className="relative z-10 max-w-sm">

@@ -38,10 +38,10 @@ export default function Login() {
   return (
     <div className="inspector-login">
       <header className="inspector-login-mobile">
-        <BrandMark light subtitle="متصدی میدان" />
+        <BrandMark light subtitle="متصدی میدان" to="/inspector" />
       </header>
       <aside className="inspector-login-brand brand-rail">
-        <BrandMark light subtitle="حمل‌ونقل و لجستیک" />
+        <BrandMark light subtitle="حمل‌ونقل و لجستیک" to="/inspector" />
         <div className="inspector-login-copy">
           <p style={{ color: '#d7b56d', fontSize: 11, margin: 0 }}>حمل بار، با خیال راحت</p>
           <h2>مسیر مطمئن،<span>حمل هوشمند.</span></h2>

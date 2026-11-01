@@ -30,10 +30,10 @@ export default function Login() {
   return (
     <div className="admin-login">
       <header className="admin-login-mobile">
-        <BrandMark light subtitle="مرکز عملیات" />
+        <BrandMark light subtitle="مرکز عملیات" to="/admin" />
       </header>
       <aside className="admin-login-brand brand-rail">
-        <BrandMark light subtitle="حمل‌ونقل و لجستیک" />
+        <BrandMark light subtitle="حمل‌ونقل و لجستیک" to="/admin" />
         <div className="admin-login-copy">
           <p className="admin-kicker">حمل بار، با خیال راحت</p>
           <h2>مسیر مطمئن،<span>حمل هوشمند.</span></h2>

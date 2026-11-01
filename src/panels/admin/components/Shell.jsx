@@ -58,7 +58,7 @@ export default function Shell() {
     <div className="admin-app" data-theme={theme}>
       <aside className="admin-side brand-rail">
         <div className="admin-side-brand">
-          <BrandMark light subtitle="مرکز عملیات" />
+          <BrandMark light subtitle="مرکز عملیات" to="/admin" />
           <p className="admin-kicker">حمل بار، با خیال راحت</p>
         </div>
         <nav>
@@ -85,7 +85,7 @@ export default function Shell() {
       </aside>
       <div className="admin-body">
         <header className="admin-top">
-          <span className="admin-mobile-brand"><BrandMark light subtitle="مرکز عملیات" /></span>
+          <span className="admin-mobile-brand"><BrandMark light subtitle="مرکز عملیات" to="/admin" /></span>
           <div style={{ flex: 1 }} />
           <button type="button" className="btn secondary bell" onClick={() => navigate('/admin/alerts')} aria-label="هشدارها">
             <Bell size={18} />

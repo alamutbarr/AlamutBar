@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { ThemeToggle } from "../../../shared/theme/PanelTheme";
+import BrandMark from "../../owner/components/common/BrandMark";
 
 const FIXED_OTP_CODE = "1234";
 
@@ -275,18 +276,14 @@ export function DriverLogin() {
       <header className="bg-[#10282b] px-4 py-3 text-[#f7f6f0] lg:hidden">
         <div className="flex items-center gap-3">
           <div className="flex-1">
-            <p className="text-[11px] font-medium text-[#d7b56d]">حمل بار، با خیال راحت</p>
-            <p className="text-sm font-extrabold tracking-[0.16em]">ALAMUT</p>
+            <BrandMark light subtitle="راننده" to="/driver/dashboard" />
           </div>
           <ThemeToggle compact className="border-white/30 text-[#f7f6f0]" />
         </div>
       </header>
       <div className="grid min-h-[calc(100vh-64px)] lg:min-h-screen lg:grid-cols-2">
         <aside className="brand-rail hidden flex-col justify-between p-12 lg:flex">
-          <div>
-            <p className="text-[15px] font-extrabold tracking-[0.18em]">ALAMUT</p>
-            <p className="mt-1 text-[11px] text-[#f7f6f0]/70">حمل‌ونقل و لجستیک</p>
-          </div>
+          <BrandMark light subtitle="حمل‌ونقل و لجستیک" to="/driver/dashboard" />
           <div className="max-w-sm">
             <p className="text-[11px] font-medium text-[#d7b56d]">حمل بار، با خیال راحت</p>
             <p className="mt-3 text-3xl font-bold leading-snug text-[#f7f6f0]">

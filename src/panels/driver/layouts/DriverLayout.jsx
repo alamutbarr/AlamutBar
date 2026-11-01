@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { LayoutDashboard, ListTodo, User, LogOut, AlertTriangle, } from 'lucide-react';
 import { ThemeToggle } from '../../../shared/theme/PanelTheme';
+import BrandMark from '../../owner/components/common/BrandMark';
 const navItems = [
     { key: 'dashboard', label: 'داشبورد', icon: LayoutDashboard },
     { key: 'missions', label: 'مأموریت‌ها', icon: ListTodo },
@@ -35,18 +36,7 @@ export function DriverLayout({ current, onNavigate, onLogout, driverName, childr
     return (<div className="panel-canvas flex h-dvh max-h-dvh overflow-hidden" dir="rtl">
       <aside className="brand-rail hidden h-full w-64 shrink-0 flex-col overflow-hidden lg:flex">
         <div className="px-5 pb-2 pt-6">
-          <div className="flex items-center gap-3 text-[#f7f6f0]">
-            <span className="block h-9 w-9 shrink-0" aria-hidden="true">
-              <svg viewBox="0 0 40 40" fill="none" className="h-full w-full stroke-current" strokeWidth="1.5" strokeLinejoin="bevel">
-                <path d="M5 28.5 17.5 8l7.1 11.8L30 10l5 8.7v9.8H5Z" />
-                <path d="M5 28.5h30M12 21l4.6 7.5M24.4 20l5.6 8.5" />
-              </svg>
-            </span>
-            <div className="leading-tight">
-              <h1 className="text-[15px] font-extrabold tracking-[0.16em]">ALAMUT</h1>
-              <p className="mt-1 text-[11px] text-[#f7f6f0]/70">{driverName || 'پنل راننده'}</p>
-            </div>
-          </div>
+          <BrandMark light subtitle={driverName || 'پنل راننده'} to="/driver/dashboard" />
           <p className="mt-5 text-[11px] font-medium text-[#d7b56d]">حمل بار، با خیال راحت</p>
         </div>
 
@@ -76,18 +66,7 @@ export function DriverLayout({ current, onNavigate, onLogout, driverName, childr
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <header className="lg:hidden z-30 flex items-center justify-between bg-[#10282b] px-4 py-3 text-[#f7f6f0]">
-          <div className="flex items-center gap-2">
-            <span className="block h-8 w-8 text-[#f7f6f0]" aria-hidden="true">
-              <svg viewBox="0 0 40 40" fill="none" className="h-full w-full stroke-current" strokeWidth="1.6" strokeLinejoin="bevel">
-                <path d="M5 28.5 17.5 8l7.1 11.8L30 10l5 8.7v9.8H5Z" />
-                <path d="M5 28.5h30" />
-              </svg>
-            </span>
-            <div className="leading-tight">
-              <span className="block text-sm font-extrabold tracking-[0.14em]">ALAMUT</span>
-              <span className="text-[11px] text-[#f7f6f0]/80">{driverName || 'پنل راننده'}</span>
-            </div>
-          </div>
+          <BrandMark light subtitle={driverName || 'پنل راننده'} to="/driver/dashboard" />
           <div className="flex items-center gap-2">
             <ThemeToggle compact className="border-white/30 text-[#f7f6f0]" />
             <button onClick={() => setConfirmLogout(true)} title="خروج از حساب کاربری" className="rounded-md border border-white/30 p-2 text-[#f7f6f0]">
