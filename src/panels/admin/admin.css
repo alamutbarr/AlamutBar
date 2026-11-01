@@ -160,6 +160,52 @@ table.data th { color: var(--muted); font-weight: 600; }
   background: #17383b;
   border-color: rgba(247, 246, 240, 0.12);
 }
+.chat-split {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.9fr) minmax(320px, 1.3fr);
+  gap: 12px;
+  align-items: start;
+}
+.chat-inbox,
+.chat-thread { padding: 12px; }
+.chat-inbox__row {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  margin-bottom: 6px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  padding: 10px 12px;
+  text-align: right;
+  cursor: pointer;
+}
+.chat-inbox__row.is-active {
+  background: rgba(8, 127, 140, 0.12);
+}
+.admin-app[data-theme='dark'] .chat-inbox__row.is-active {
+  background: rgba(247, 246, 240, 0.1);
+}
+.chat-inbox__preview {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+.chat-thread__switch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.admin-app .shipment-chat {
+  margin-top: 8px;
+}
+.admin-app .shipment-chat__list {
+  height: min(28rem, 55vh);
+}
 .stat-grid, .split, .form-grid { display: grid; gap: 12px; }
 .stat-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .split { grid-template-columns: 1.4fr .8fr; }

@@ -86,8 +86,12 @@ async function inbox() {
       },
     };
   }).sort((a, b) => {
-    const score = (row) => (row.channels.owner_operator ? 1 : 0) + (row.channels.driver_operator ? 1 : 0);
-    return score(b) - score(a);
+    const time = (row) => {
+      const ownerAt = row.channels.owner_operator?.createdAt;
+      const driverAt = row.channels.driver_operator?.createdAt;
+      return Math.max(ownerAt ? new Date(ownerAt).getTime() : 0, driverAt ? new Date(driverAt).getTime() : 0, 0);
+    };
+    return time(b) - time(a);
   });
 }
 

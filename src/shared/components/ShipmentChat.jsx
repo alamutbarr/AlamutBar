@@ -7,6 +7,36 @@ function socketUrl(token) {
 
 const ROLE_LABEL = { owner: 'صاحب کالا', driver: 'راننده', operator: 'اپراتور' };
 
+async function readJson(response) {
+  return response.json().catch(() => ({}));
+}
+
+async function restHistory({ shipmentId, channel, token, mine }) {
+  const headers = { Authorization: `Bearer ${token}` };
+  const path = mine === 'operator'
+    ? `/api/admin/chats/${shipmentId}?channel=${encodeURIComponent(channel)}`
+    : `/api/chat/${shipmentId}?channel=${encodeURIComponent(channel)}`;
+  const response = await fetch(path, { headers });
+  const json = await readJson(response);
+  if (!response.ok) throw new Error(json.error || json.message || 'خواندن گفتگو ناموفق بود.');
+  if (Array.isArray(json.data)) return json.data;
+  if (Array.isArray(json.messages)) return json.messages;
+  return [];
+}
+
+async function restSend({ shipmentId, channel, token, mine, body }) {
+  const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+  const path = mine === 'operator' ? `/api/admin/chats/${shipmentId}` : `/api/chat/${shipmentId}`;
+  const response = await fetch(path, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ channel, body }),
+  });
+  const json = await readJson(response);
+  if (!response.ok) throw new Error(json.error || json.message || 'ارسال پیام ناموفق بود.');
+  return json.data || json.message;
+}
+
 export default function ShipmentChat({ shipmentId, token, enabled, mine, channel = 'owner_operator', title = 'گفتگو با اپراتور' }) {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
@@ -18,33 +48,55 @@ export default function ShipmentChat({ shipmentId, token, enabled, mine, channel
   useEffect(() => {
     if (!enabled || !token || !shipmentId) return undefined;
     let closed = false;
-    const socket = new WebSocket(socketUrl(token));
-    socketRef.current = socket;
+    let socket;
+    let reconnectTimer;
 
-    socket.onopen = () => {
-      if (closed) return;
-      setLive(true);
-      socket.send(JSON.stringify({ type: 'join', shipmentId, channel }));
+    const append = (message) => {
+      if (!message?.id) return;
+      setMessages((current) => (current.some((item) => item.id === message.id) ? current : [...current, message]));
     };
-    socket.onmessage = (event) => {
-      const packet = JSON.parse(event.data);
-      if (packet.type === 'history') setMessages(packet.messages || []);
-      if (packet.type === 'message') {
-        setMessages((current) => (
-          current.some((item) => item.id === packet.message.id) ? current : [...current, packet.message]
-        ));
-      }
-      if (packet.type === 'error') setNotice(packet.error);
+
+    const loadHistory = () => {
+      restHistory({ shipmentId, channel, token, mine })
+        .then((rows) => {
+          if (!closed) setMessages(rows);
+        })
+        .catch((error) => {
+          if (!closed) setNotice(error.message);
+        });
     };
-    socket.onclose = () => {
-      if (!closed) setLive(false);
+
+    const connect = () => {
+      socket = new WebSocket(socketUrl(token));
+      socketRef.current = socket;
+      socket.onopen = () => {
+        if (closed) return;
+        setLive(true);
+        setNotice('');
+        socket.send(JSON.stringify({ type: 'join', shipmentId, channel }));
+      };
+      socket.onmessage = (event) => {
+        const packet = JSON.parse(event.data);
+        if (packet.type === 'history') setMessages(packet.messages || []);
+        if (packet.type === 'message') append(packet.message);
+        if (packet.type === 'error') setNotice(packet.error);
+      };
+      socket.onclose = () => {
+        if (closed) return;
+        setLive(false);
+        reconnectTimer = window.setTimeout(connect, 4000);
+      };
     };
+
+    loadHistory();
+    connect();
 
     return () => {
       closed = true;
-      socket.close();
+      window.clearTimeout(reconnectTimer);
+      socket?.close();
     };
-  }, [enabled, token, shipmentId, channel]);
+  }, [enabled, token, shipmentId, channel, mine]);
 
   useEffect(() => {
     const list = listRef.current;
@@ -53,52 +105,62 @@ export default function ShipmentChat({ shipmentId, token, enabled, mine, channel
 
   if (!enabled) {
     return (
-      <section className="mt-4 rounded-2xl border border-[#d8e1dc] bg-white p-4 text-sm leading-7 text-[#526d70]">
+      <section className="shipment-chat shipment-chat--idle">
         گفتگو با اپراتور بعد از قبول بار باز می‌شود.
       </section>
     );
   }
 
-  const send = (event) => {
+  const send = async (event) => {
     event.preventDefault();
     const body = text.trim();
+    if (!body) return;
+    setNotice('');
     const socket = socketRef.current;
-    if (!body || !socket || socket.readyState !== WebSocket.OPEN) return;
-    socket.send(JSON.stringify({ type: 'message', shipmentId, channel, body }));
-    setText('');
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ type: 'message', shipmentId, channel, body }));
+      setText('');
+      return;
+    }
+    try {
+      const message = await restSend({ shipmentId, channel, token, mine, body });
+      if (message?.id) {
+        setMessages((current) => (current.some((item) => item.id === message.id) ? current : [...current, message]));
+      }
+      setText('');
+    } catch (error) {
+      setNotice(error.message);
+    }
   };
 
   return (
-    <section className="mt-4 overflow-hidden rounded-2xl border border-[#d8e1dc] bg-white">
-      <header className="flex items-center justify-between border-b border-[#d8e1dc] px-4 py-3">
-        <h2 className="text-sm font-bold text-[#17383b]">{title}</h2>
-        <span className="text-xs text-[#526d70]">{live ? 'آنلاین' : 'در حال اتصال'}</span>
+    <section className="shipment-chat">
+      <header className="shipment-chat__head">
+        <h2>{title}</h2>
+        <span>{live ? 'آنلاین' : 'در حال اتصال'}</span>
       </header>
-      <div ref={listRef} className="flex h-72 flex-col gap-2 overflow-y-auto bg-[#f7f6f0] px-3 py-3">
+      <div ref={listRef} className="shipment-chat__list">
         {messages.length === 0 && (
-          <p className="m-auto text-center text-sm text-[#526d70]">هنوز پیامی رد و بدل نشده.</p>
+          <p className="shipment-chat__empty">هنوز پیامی رد و بدل نشده.</p>
         )}
         {messages.map((message) => {
           const own = message.senderRole === mine;
           return (
-            <div key={message.id} className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-7 ${own ? 'self-start bg-[#17383b] text-[#f7f6f0]' : 'self-end border border-[#d8e1dc] bg-white text-[#17383b]'}`}>
-              <p className="mb-1 text-[11px] opacity-70">{ROLE_LABEL[message.senderRole] || 'پیام'}</p>
+            <div key={message.id} className={`shipment-chat__bubble ${own ? 'is-own' : 'is-other'}`}>
+              <p className="shipment-chat__meta">{ROLE_LABEL[message.senderRole] || 'پیام'}</p>
               <p>{message.body}</p>
             </div>
           );
         })}
       </div>
-      {notice && <p className="px-4 pt-2 text-xs text-red-600">{notice}</p>}
-      <form onSubmit={send} className="flex gap-2 border-t border-[#d8e1dc] p-3">
+      {notice && <p className="shipment-chat__notice">{notice}</p>}
+      <form onSubmit={send} className="shipment-chat__form">
         <input
           value={text}
           onChange={(event) => setText(event.target.value)}
           placeholder="پیام بنویسید"
-          className="min-w-0 flex-1 rounded-xl border border-[#d8e1dc] bg-[#f7f6f0] px-3 py-2 text-sm outline-none focus:border-[#087f8c]"
         />
-        <button type="submit" className="rounded-xl bg-[#087f8c] px-4 py-2 text-sm font-bold text-[#f7f6f0]">
-          ارسال
-        </button>
+        <button type="submit">ارسال</button>
       </form>
     </section>
   );

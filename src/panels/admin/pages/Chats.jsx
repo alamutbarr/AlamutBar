@@ -9,6 +9,22 @@ const CHANNELS = [
   ['driver_operator', 'راننده'],
 ];
 
+function lastPreview(row, channel) {
+  return row.channels?.[channel]?.body || '';
+}
+
+function lastTime(row) {
+  const ownerAt = row.channels?.owner_operator?.createdAt;
+  const driverAt = row.channels?.driver_operator?.createdAt;
+  const stamp = [ownerAt, driverAt].filter(Boolean).sort().at(-1);
+  if (!stamp) return 'بدون پیام';
+  try {
+    return new Intl.DateTimeFormat('fa-IR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(stamp));
+  } catch {
+    return '—';
+  }
+}
+
 export default function Chats() {
   const [rows, setRows] = useState(null);
   const [selected, setSelected] = useState(null);
@@ -16,8 +32,9 @@ export default function Chats() {
 
   useEffect(() => {
     api('/chats').then((data) => {
-      setRows(data || []);
-      if (data?.[0]) setSelected(data[0]);
+      const list = data || [];
+      setRows(list);
+      if (list[0]) setSelected(list[0]);
     }).catch((error) => toast.error(error.message));
   }, []);
 
@@ -25,26 +42,30 @@ export default function Chats() {
 
   return (
     <Page title="گفتگوها">
-      <div className="split">
-        <article className="card" style={{ padding: 12 }}>
-          {rows.map((row) => (
-            <button
-              key={row.id}
-              type="button"
-              onClick={() => setSelected(row)}
-              className="nav-link"
-              style={{ display: 'block', width: '100%', textAlign: 'right', background: selected?.id === row.id ? 'var(--alamut-mist)' : 'transparent' }}
-            >
-              <strong>{row.trackingCode}</strong>
-              <div className="muted">صاحب کالا: {row.ownerPhone || '—'} · راننده: {row.driverName || 'هنوز تعیین نشده'}</div>
-            </button>
-          ))}
+      <div className="chat-split">
+        <article className="card chat-inbox">
+          {rows.map((row) => {
+            const preview = lastPreview(row, channel) || lastPreview(row, 'owner_operator') || lastPreview(row, 'driver_operator');
+            return (
+              <button
+                key={row.id}
+                type="button"
+                onClick={() => setSelected(row)}
+                className={`chat-inbox__row${selected?.id === row.id ? ' is-active' : ''}`}
+              >
+                <strong>{row.trackingCode}</strong>
+                <span className="muted">{lastTime(row)}</span>
+                <div className="muted">صاحب کالا: {row.ownerPhone || '—'} · راننده: {row.driverName || 'هنوز تعیین نشده'}</div>
+                {preview && <p className="chat-inbox__preview">{preview}</p>}
+              </button>
+            );
+          })}
           {!rows.length && <p className="muted">گفتگویی ثبت نشده. با انتخاب بار می‌توانید به صاحب کالا یا راننده پیام بدهید.</p>}
         </article>
-        <article className="card" style={{ padding: 12 }}>
+        <article className="card chat-thread">
           {selected ? (
             <>
-              <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+              <div className="chat-thread__switch">
                 {CHANNELS.map(([key, label]) => (
                   <button key={key} type="button" className={channel === key ? 'btn' : 'btn secondary'} onClick={() => setChannel(key)}>
                     گفتگو با {label}
