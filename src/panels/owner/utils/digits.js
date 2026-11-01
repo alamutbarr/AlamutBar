@@ -27,3 +27,23 @@ export function parseNumberInput(rawValue, { allowDecimal = true, allowNegative 
   const num = Number(normalized);
   return Number.isNaN(num) ? '' : num;
 }
+
+export function ungroupNumber(value) {
+  return toEnglishDigits(value ?? '').replace(/[,٬،\s]/g, '');
+}
+
+export function formatGroupedDigits(value, { decimal = false } = {}) {
+  const english = toEnglishDigits(value ?? '');
+  if (decimal) {
+    const cleaned = english.replace(/[^\d.]/g, '');
+    if (!cleaned) return '';
+    const [intPart, ...rest] = cleaned.split('.');
+    const grouped = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    if (rest.length) return `${grouped}.${rest.join('').replace(/\./g, '').slice(0, 3)}`;
+    if (cleaned.endsWith('.')) return `${grouped}.`;
+    return grouped;
+  }
+  const digits = english.replace(/[^\d]/g, '');
+  if (!digits) return '';
+  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}

@@ -29,7 +29,7 @@ export default function Visits({ scope = 'open' }) {
     <>
       <header className="panel-section-head">
         <p className="panel-kicker">متصدی میدان</p>
-        <h1 style={{ margin: 0 }}>{scope === 'done' ? 'مراجعه‌های بسته‌شده' : 'مراجعه‌های امروز'}</h1>
+        <h1 style={{ margin: 0 }}>{scope === 'done' ? 'تأیید شده‌ها' : 'مراجعه‌های امروز'}</h1>
       </header>
       <p className="inspector-muted">{data.payerNote}</p>
       {data.missions.map((mission) => (

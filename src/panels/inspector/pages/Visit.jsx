@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api, upload } from '../api';
+import SearchableSelect from '../../owner/components/common/SearchableSelect';
+import Input from '../../owner/components/common/Input';
+import CARGO_TYPES from '../../../shared/cargoTypes.json';
+import { formatGroupedDigits, ungroupNumber } from '../../owner/utils/digits';
 
 const PHOTOS = [
   ['seal', 'عکس پلمب'],
@@ -10,9 +14,39 @@ const PHOTOS = [
   ['cargo', 'عکس محموله'],
 ];
 
+const PHOTO_MAX_MB = 5;
+const PHOTO_MAX_BYTES = PHOTO_MAX_MB * 1024 * 1024;
+const PHOTO_ACCEPT = ['image/jpeg', 'image/png', 'image/webp'];
+
+const cargoOptions = [
+  ...CARGO_TYPES.filter((name) => name !== 'سایر').map((name) => ({
+    value: name,
+    label: name,
+  })),
+  { value: 'other', label: 'سایر' },
+];
+
+const knownCargo = new Set(CARGO_TYPES.filter((name) => name !== 'سایر'));
+
 function money(value) {
-  if (value == null) return '—';
-  return `${Number(value).toLocaleString('fa-IR')} تومان`;
+  if (value == null || value === '') return '—';
+  const grouped = formatGroupedDigits(value);
+  return grouped ? `${grouped} تومان` : '—';
+}
+
+function resolveCargoSelection(rawType, otherText = '') {
+  const type = String(rawType || '').trim();
+  const other = String(otherText || '').trim();
+  if (!type) return { actualCargoType: '', actualCargoTypeOther: '' };
+  if (type === 'other' || type === 'سایر') {
+    return { actualCargoType: 'other', actualCargoTypeOther: other };
+  }
+  if (knownCargo.has(type)) {
+    return { actualCargoType: type, actualCargoTypeOther: '' };
+  }
+  const wrapped = type.match(/^سایر\s*\((.+)\)\s*$/);
+  if (wrapped) return { actualCargoType: 'other', actualCargoTypeOther: wrapped[1] };
+  return { actualCargoType: 'other', actualCargoTypeOther: type };
 }
 
 export default function Visit() {
@@ -22,18 +56,25 @@ export default function Visit() {
   const [form, setForm] = useState(null);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState('');
 
   function apply(next, options = {}) {
     setMission(next);
     const vehicleGap = (next.discrepancies || []).find((item) => item.field === 'vehicle');
     setForm((current) => {
       if (options.keepDraft && current) return current;
+      const cargoSel = resolveCargoSelection(
+        next.actualCargoType || next.cargo.typeCode || next.cargo.type,
+        next.actualCargoType ? '' : (next.cargo.typeOther || ''),
+      );
       return {
         checklist: next.checklist,
-        weightEmpty: next.weights.empty ?? '',
-        weightFull: next.weights.full ?? '',
-        cargoValue: next.recordedCargoValue ?? next.cargo.declaredValue ?? '',
-        actualCargoType: next.actualCargoType || next.cargo.type || '',
+        weightEmpty: formatGroupedDigits(next.weights.empty ?? '', { decimal: true }),
+        weightFull: formatGroupedDigits(next.weights.full ?? '', { decimal: true }),
+        cargoValue: formatGroupedDigits(next.recordedCargoValue ?? next.cargo.declaredValue ?? ''),
+        actualCargoType: cargoSel.actualCargoType,
+        actualCargoTypeOther: cargoSel.actualCargoTypeOther,
         actualVehicle: vehicleGap?.actual || '',
         note: '',
       };
@@ -51,66 +92,110 @@ export default function Visit() {
     ? `https://www.openstreetmap.org/?mlat=${mission.visit.lat}&mlon=${mission.visit.lng}#map=16/${mission.visit.lat}/${mission.visit.lng}`
     : null;
 
-  async function save(finalize) {
+  async function save() {
     setError('');
     setMessage('');
+    setSaving(true);
     try {
+      const actualCargoType = form.actualCargoType === 'other'
+        ? (form.actualCargoTypeOther.trim() || 'سایر')
+        : form.actualCargoType;
       const next = await api(`/missions/${id}/report`, {
         method: 'POST',
         body: {
           checklist: form.checklist,
-          weightEmpty: form.weightEmpty,
-          weightFull: form.weightFull,
-          cargoValue: form.cargoValue,
-          actualCargoType: form.actualCargoType,
+          weightEmpty: ungroupNumber(form.weightEmpty),
+          weightFull: ungroupNumber(form.weightFull),
+          cargoValue: ungroupNumber(form.cargoValue),
+          actualCargoType,
           actualVehicle: form.actualVehicle,
           discrepancies: form.note ? [{ field: 'note', expected: '', actual: '', note: form.note }] : [],
-          finalize,
+          finalize: true,
         },
       });
       apply(next);
-      setMessage(finalize ? 'گزارش به مرکز عملیات رسید.' : 'پیش‌نویس ذخیره شد.');
+      setMessage('گزارش به مرکز عملیات رسید.');
     } catch (err) {
       setError(err.message);
+    } finally {
+      setSaving(false);
     }
   }
 
   async function addPhoto(kind, file) {
     if (!file) return;
     setError('');
+    if (!PHOTO_ACCEPT.includes(file.type)) {
+      setError('فقط تصویر JPG، PNG یا WEBP مجاز است.');
+      return;
+    }
+    if (file.size > PHOTO_MAX_BYTES) {
+      setError(`حجم عکس نباید بیشتر از ${PHOTO_MAX_MB.toLocaleString('fa-IR')} مگابایت باشد.`);
+      return;
+    }
+    setUploading(kind);
     try {
       apply(await upload(`/missions/${id}/photos`, file, { kind }), { keepDraft: true });
     } catch (err) {
       setError(err.message);
+    } finally {
+      setUploading('');
     }
   }
 
   return (
     <>
-      <button type="button" className="inspector-btn secondary" onClick={() => navigate('/inspector')}>بازگشت</button>
+      <button type="button" className="inspector-btn secondary inspector-back" onClick={() => navigate('/inspector')}>بازگشت</button>
+
       <article className="inspector-card">
-        <div className="inspector-row">
-          <h1 style={{ fontSize: 22 }}>{mission.trackingCode}</h1>
+        <p className="panel-kicker">پرونده مراجعه</p>
+        <div className="inspector-row" style={{ borderBottom: 0, paddingTop: 0 }}>
+          <h1>{mission.trackingCode}</h1>
           <span className={`inspector-pill ${mission.completeness.complete ? 'ok' : 'warn'}`}>
             {mission.completeness.complete ? 'آماده ادامه' : 'ناقص'}
           </span>
         </div>
-        <p>{mission.workflowLabel}</p>
-        <p><strong>محل مراجعه:</strong> {mission.visit.city}، {mission.visit.address}</p>
-        <p><strong>زمان:</strong> {mission.visit.date ? new Date(mission.visit.date).toLocaleDateString('fa-IR') : '—'} از {mission.visit.from || '—'} تا {mission.visit.to || '—'}</p>
-        <p className="inspector-muted">مقصد: {mission.destinationCity}</p>
-        <p className="inspector-muted">{mission.payerNote}</p>
-        {mapHref && <a href={mapHref} target="_blank" rel="noreferrer">مسیر روی نقشه</a>}
+        <p className="inspector-lead">{mission.workflowLabel}</p>
+        <dl className="inspector-dl">
+          <div>
+            <dt>محل مراجعه</dt>
+            <dd>{mission.visit.city}، {mission.visit.address}</dd>
+          </div>
+          <div>
+            <dt>زمان</dt>
+            <dd>{mission.visit.date ? new Date(mission.visit.date).toLocaleDateString('fa-IR') : '—'} از {mission.visit.from || '—'} تا {mission.visit.to || '—'}</dd>
+          </div>
+          <div>
+            <dt>مقصد</dt>
+            <dd>{mission.destinationCity || '—'}</dd>
+          </div>
+        </dl>
+        <p className="inspector-muted" style={{ marginTop: 10 }}>{mission.payerNote}</p>
+        {mapHref && <a className="inspector-map-link" href={mapHref} target="_blank" rel="noreferrer">مسیر روی نقشه</a>}
       </article>
 
       <article className="inspector-card">
         <h2>چه چیزی را باید ببینید</h2>
-        <p>بار: {mission.cargo.type}، {mission.cargo.weightKg?.toLocaleString('fa-IR')} کیلو، بسته‌بندی {mission.cargo.packaging || '—'}</p>
-        <p>ارزش اعلامی: {money(mission.cargo.declaredValue)}</p>
-        <p>ناوگان: {mission.vehicle.title || '—'} {mission.vehicle.plate ? `— ${mission.vehicle.plate}` : ''}</p>
-        <p>راننده: {mission.vehicle.driverName || 'هنوز تخصیص نشده'}</p>
+        <dl className="inspector-dl">
+          <div>
+            <dt>بار</dt>
+            <dd>{mission.cargo.type}، {mission.cargo.weightKg != null ? `${formatGroupedDigits(mission.cargo.weightKg, { decimal: true })} کیلو` : '—'}، بسته‌بندی {mission.cargo.packaging || '—'}</dd>
+          </div>
+          <div>
+            <dt>ارزش اعلامی</dt>
+            <dd>{money(mission.cargo.declaredValue)}</dd>
+          </div>
+          <div>
+            <dt>ناوگان</dt>
+            <dd>{mission.vehicle.title || '—'}{mission.vehicle.plate ? ` — ${mission.vehicle.plate}` : ''}</dd>
+          </div>
+          <div>
+            <dt>راننده</dt>
+            <dd>{mission.vehicle.driverName || 'هنوز تخصیص نشده'}</dd>
+          </div>
+        </dl>
         {!mission.assignedToMe && mission.canEdit && (
-          <button type="button" className="inspector-btn" onClick={async () => {
+          <button type="button" className="inspector-btn" style={{ marginTop: 14 }} onClick={async () => {
             try { apply(await api(`/missions/${id}/claim`, { method: 'POST' })); }
             catch (err) { setError(err.message); }
           }}>این مراجعه را می‌پذیرم</button>
@@ -133,38 +218,108 @@ export default function Visit() {
 
       <article className="inspector-card">
         <h2>عکس و مدرک</h2>
-        {PHOTOS.map(([kind, label]) => {
-          const shots = mission.photos.filter((photo) => photo.kind === kind);
-          return (
-            <div key={kind} className="inspector-photo">
-              <div>
-                <strong>{label}</strong>
-                <div className="inspector-muted">{shots.length ? `${shots.length.toLocaleString('fa-IR')} عکس` : 'ثبت نشده'}</div>
+        <p className="inspector-muted">سقف هر عکس {PHOTO_MAX_MB.toLocaleString('fa-IR')} مگابایت است. JPG، PNG یا WEBP.</p>
+        <div className="inspector-photos">
+          {PHOTOS.map(([kind, label]) => {
+            const shots = mission.photos.filter((photo) => photo.kind === kind);
+            return (
+              <div key={kind} className="inspector-photo">
+                {shots[0] ? (
+                  <a href={shots[0].url} target="_blank" rel="noreferrer">
+                    <img src={shots[0].url} alt={label} />
+                  </a>
+                ) : (
+                  <div className="inspector-photo-empty">بدون عکس</div>
+                )}
+                <div>
+                  <strong>{label}</strong>
+                  <div className="inspector-muted">{shots.length ? `${shots.length.toLocaleString('fa-IR')} عکس` : 'ثبت نشده'}</div>
+                </div>
+                {mission.canEdit && (
+                  <label className="inspector-btn secondary inspector-photo-btn">
+                    {uploading === kind ? 'در حال ارسال...' : 'دوربین'}
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      capture="environment"
+                      hidden
+                      disabled={Boolean(uploading)}
+                      onChange={(event) => {
+                        addPhoto(kind, event.target.files?.[0]);
+                        event.target.value = '';
+                      }}
+                    />
+                  </label>
+                )}
               </div>
-              {shots[0] && <img src={shots[0].url} alt={label} />}
-              {mission.canEdit && (
-                <label className="inspector-btn secondary" style={{ width: 'auto' }}>
-                  دوربین
-                  <input type="file" accept="image/*" capture="environment" hidden onChange={(event) => addPhoto(kind, event.target.files?.[0])} />
-                </label>
-              )}
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </article>
 
       <article className="inspector-card">
         <h2>باسکول و ارزش بیمه</h2>
-        <label className="inspector-muted">وزن خالی (کیلو)</label>
-        <input className="inspector-field" inputMode="decimal" disabled={!mission.canEdit} value={form.weightEmpty} onChange={(event) => setForm({ ...form, weightEmpty: event.target.value })} />
-        <label className="inspector-muted">وزن پر (کیلو)</label>
-        <input className="inspector-field" inputMode="decimal" disabled={!mission.canEdit} value={form.weightFull} onChange={(event) => setForm({ ...form, weightFull: event.target.value })} />
-        <p className="inspector-muted">خالص ثبت‌شده: {mission.weights.net ?? '—'}</p>
-        <label className="inspector-muted">ارزش دقیق کالا (تومان)</label>
-        <input className="inspector-field" inputMode="numeric" disabled={!mission.canEdit} value={form.cargoValue} onChange={(event) => setForm({ ...form, cargoValue: event.target.value })} />
-        <label className="inspector-muted">نوع بار در محل</label>
-        <input className="inspector-field" disabled={!mission.canEdit} value={form.actualCargoType} onChange={(event) => setForm({ ...form, actualCargoType: event.target.value })} />
-        <label className="inspector-muted">اگر خودرو فرق دارد، نوع واقعی</label>
+        <div className="inspector-fields inspector-fields-2">
+          <div>
+            <label className="inspector-label">وزن خالی (کیلو)</label>
+            <input
+              className="inspector-field"
+              inputMode="decimal"
+              disabled={!mission.canEdit}
+              value={form.weightEmpty}
+              onChange={(event) => setForm({ ...form, weightEmpty: formatGroupedDigits(event.target.value, { decimal: true }) })}
+            />
+          </div>
+          <div>
+            <label className="inspector-label">وزن پر (کیلو)</label>
+            <input
+              className="inspector-field"
+              inputMode="decimal"
+              disabled={!mission.canEdit}
+              value={form.weightFull}
+              onChange={(event) => setForm({ ...form, weightFull: formatGroupedDigits(event.target.value, { decimal: true }) })}
+            />
+          </div>
+        </div>
+        <p className="inspector-muted">خالص ثبت‌شده: {mission.weights.net != null ? formatGroupedDigits(mission.weights.net, { decimal: true }) : '—'}</p>
+        <div className="inspector-value-block">
+          <label className="inspector-label">ارزش دقیق کالا (تومان)</label>
+          <input
+            className="inspector-field"
+            inputMode="numeric"
+            dir="ltr"
+            disabled={!mission.canEdit}
+            value={form.cargoValue}
+            onChange={(event) => setForm({ ...form, cargoValue: formatGroupedDigits(event.target.value) })}
+          />
+        </div>
+        <div className="inspector-cargo-type">
+          <SearchableSelect
+            label="نوع بار در محل"
+            value={form.actualCargoType}
+            options={cargoOptions}
+            stickyOptionValue="other"
+            accent="teal"
+            disabled={!mission.canEdit}
+            onChange={(value) => setForm({
+              ...form,
+              actualCargoType: value,
+              actualCargoTypeOther: value === 'other' ? form.actualCargoTypeOther : '',
+            })}
+            placeholder="جستجو یا انتخاب نوع کالا..."
+            noResultsText="نوع کالایی با این مشخصات یافت نشد"
+          />
+          {form.actualCargoType === 'other' && (
+            <Input
+              label="توضیح نوع کالا"
+              value={form.actualCargoTypeOther}
+              onChange={(event) => setForm({ ...form, actualCargoTypeOther: event.target.value })}
+              placeholder="نوع کالا را توضیح دهید"
+              disabled={!mission.canEdit}
+            />
+          )}
+        </div>
+        <label className="inspector-label">اگر خودرو فرق دارد، نوع واقعی</label>
         <input className="inspector-field" disabled={!mission.canEdit} value={form.actualVehicle} onChange={(event) => setForm({ ...form, actualVehicle: event.target.value })} />
         <textarea className="inspector-area" disabled={!mission.canEdit} placeholder="یادداشت مغایرت" value={form.note} onChange={(event) => setForm({ ...form, note: event.target.value })} />
       </article>
@@ -184,10 +339,9 @@ export default function Visit() {
         {error && <p style={{ color: 'var(--alamut-crit)' }}>{error}</p>}
         {message && <p>{message}</p>}
         {mission.canEdit && (
-          <div style={{ display: 'grid', gap: 8 }}>
-            <button type="button" className="inspector-btn secondary" onClick={() => save(false)}>ذخیره پیش‌نویس</button>
-            <button type="button" className="inspector-btn gold" onClick={() => save(true)}>ارسال به مرکز عملیات</button>
-          </div>
+          <button type="button" className="inspector-btn gold" disabled={saving} onClick={save}>
+            {saving ? 'در حال ارسال...' : 'ارسال به مرکز عملیات'}
+          </button>
         )}
       </article>
     </>

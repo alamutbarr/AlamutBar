@@ -53,9 +53,11 @@ function ok(res, data, message = 'موفق') {
 
 function num(value) {
   if (value == null || value === '') return null;
-  const parsed = Number(value);
+  const parsed = Number(String(value).replace(/[,٬،\s]/g, ''));
   return Number.isFinite(parsed) ? parsed : null;
 }
+
+const INSPECTOR_PHOTO_MAX_BYTES = 5 * 1024 * 1024;
 
 function latestReport(shipment) {
   const rows = shipment.inspections || [];
@@ -94,7 +96,9 @@ function presentMission(shipment, inspector, settings) {
     },
     destinationCity: shipment.destCity?.name,
     cargo: {
-      type: shipment.cargo_type,
+      type: shipment.cargo_type === 'other' ? (shipment.cargo_type_other || 'سایر') : shipment.cargo_type,
+      typeCode: shipment.cargo_type,
+      typeOther: shipment.cargo_type_other || '',
       weightKg: num(shipment.weight_kg),
       declaredValue: num(shipment.cargo_value),
       packaging: shipment.packaging_type,
@@ -263,9 +267,13 @@ function imageUpload(limitBytes) {
 }
 
 router.post('/missions/:id/photos', asyncHandler(async (req, res, next) => {
-  const settings = await getSettings();
-  const upload = imageUpload((Number(settings.image_max_kb) || 300) * 1024);
-  upload.single('file')(req, res, (error) => (error ? next(error) : next()));
+  const upload = imageUpload(INSPECTOR_PHOTO_MAX_BYTES);
+  upload.single('file')(req, res, (error) => {
+    if (error?.code === 'LIMIT_FILE_SIZE') {
+      return next(new AppError('حجم عکس نباید بیشتر از ۵ مگابایت باشد.', 400));
+    }
+    return error ? next(error) : next();
+  });
 }), asyncHandler(async (req, res) => {
   if (!req.file) throw new AppError('عکس را انتخاب کنید.', 400);
   const kind = ['seal', 'lashing', 'weighbridge_empty', 'weighbridge_full', 'cargo', 'other'].includes(req.body.kind)
@@ -315,7 +323,7 @@ router.post('/missions/:id/report', asyncHandler(async (req, res) => {
     declaredValue: num(shipment.cargo_value),
     actualValue: cargoValue,
     valueRatio: settings.value_discrepancy_ratio,
-    declaredCargo: shipment.cargo_type,
+    declaredCargo: shipment.cargo_type === 'other' ? (shipment.cargo_type_other || 'سایر') : shipment.cargo_type,
     actualCargo,
     declaredVehicle: shipment.vehicleType?.title,
     actualVehicle: req.body.actualVehicle,

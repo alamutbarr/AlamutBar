@@ -86,7 +86,26 @@ export default function SearchableSelect({
   portalDropdown = false,
   dropdownMaxHeight = 280,
   stickyOptionValue = null,
+  accent = "amber",
 }) {
+  const tone =
+    accent === "teal"
+      ? {
+          required: "text-[#087f8c]",
+          open: "border-[#087f8c] ring-2 ring-[#087f8c]/30",
+          chevron: "rotate-180 text-[#087f8c]",
+          highlighted: "bg-[#e1f3f0] font-medium text-[#17383b]",
+          selected: "bg-[#cfe8e4] font-semibold text-[#087f8c]",
+          hover: "hover:bg-[#e1f3f0] hover:text-[#087f8c]",
+        }
+      : {
+          required: "text-amber-600",
+          open: "border-amber-400 ring-2 ring-amber-500/30",
+          chevron: "rotate-180 text-amber-500",
+          highlighted: "bg-amber-50 font-medium text-amber-900",
+          selected: "bg-amber-100/70 font-semibold text-amber-950",
+          hover: "hover:bg-amber-50 hover:text-amber-900",
+        };
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [highlightedIndex, setHighlightedIndex] = useState(0);
@@ -316,7 +335,7 @@ export default function SearchableSelect({
       {label && (
         <span className="mb-1.5 flex items-baseline gap-1 text-sm font-medium text-ink-700">
           {label}
-          {required && <span className="text-amber-600">*</span>}
+          {required && <span className={tone.required}>*</span>}
         </span>
       )}
 
@@ -327,7 +346,7 @@ export default function SearchableSelect({
             : "hover:border-ink-300"
         } ${
           isOpen
-            ? "border-amber-400 ring-2 ring-amber-500/30"
+            ? tone.open
             : error
               ? "border-red-300"
               : "border-ink-100"
@@ -369,7 +388,7 @@ export default function SearchableSelect({
           <ChevronDown
             size={16}
             className={`cursor-pointer transition-transform ${
-              isOpen ? "rotate-180 text-amber-500" : ""
+              isOpen ? tone.chevron : ""
             }`}
             onClick={() => !disabled && setIsOpen((open) => !open)}
           />
@@ -427,14 +446,10 @@ export default function SearchableSelect({
                   <div
                     key={opt.key || `${opt.value}|${opt.label}|${opt.subLabel || ""}|${idx}`}
                     data-option-index={idx}
-                    className={`flex cursor-pointer items-center justify-between border-b border-gray-50 px-3 py-2 text-sm last:border-0 ${
-                      isHighlighted
-                        ? "bg-amber-50 font-medium text-amber-900"
-                        : ""
+                    className={`flex cursor-pointer items-center justify-between border-b border-gray-50 px-3 py-2 text-sm last:border-0 ${tone.hover} ${
+                      isHighlighted ? tone.highlighted : ""
                     } ${
-                      isSelected
-                        ? "bg-amber-100/70 font-semibold text-amber-950"
-                        : "text-ink-800"
+                      isSelected ? tone.selected : "text-ink-800"
                     }`}
                     onMouseEnter={() => setHighlightedIndex(idx)}
                     onClick={() => handleSelect(opt)}
@@ -460,13 +475,13 @@ export default function SearchableSelect({
             {stickyOption && (
               <div
                 data-option-index={visibleOptions.length}
-                className={`flex shrink-0 cursor-pointer items-center justify-between border-t border-ink-100 px-3 py-2 text-sm ${
+                className={`flex shrink-0 cursor-pointer items-center justify-between border-t border-ink-100 px-3 py-2 text-sm ${tone.hover} ${
                   highlightedIndex === visibleOptions.length
-                    ? "bg-amber-50 font-medium text-amber-900"
+                    ? tone.highlighted
                     : "text-ink-800"
                 } ${
                   String(stickyOption.value) === String(value)
-                    ? "bg-amber-100/70 font-semibold text-amber-950"
+                    ? tone.selected
                     : ""
                 }`}
                 onMouseEnter={() => setHighlightedIndex(visibleOptions.length)}
