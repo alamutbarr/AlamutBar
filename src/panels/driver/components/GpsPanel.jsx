@@ -14,7 +14,8 @@ export function GpsPanel({ status, queueSize, onToggle, onSync, currentPoint, })
       {currentPoint && (<div className="mb-3 flex items-center gap-2 rounded-xl bg-slate-50 p-2.5 text-xs text-slate-600">
           <MapPin className="w-4 h-4 text-blue-500"/>
           <span className="tabular-nums">
-            lat: {currentPoint.lat.toFixed(5)}, lng: {currentPoint.lng.toFixed(5)}
+            {currentPoint.lat.toFixed(5)}، {currentPoint.lng.toFixed(5)}
+            {Number.isFinite(currentPoint.accuracy) ? ` · دقت ${Math.round(currentPoint.accuracy)} متر` : ''}
           </span>
         </div>)}
 

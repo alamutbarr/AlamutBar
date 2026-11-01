@@ -7,6 +7,7 @@ const { getSettings } = require('./settingsStore');
 const { logEvent } = require('./audit');
 const { publish } = require('./realtime');
 const { refreshPriority, driverName, num } = require('./orderOps');
+const { normalizePoint, pickLatestPoint } = require('./locationPoint');
 
 const orderIncludes = [
   { model: City, as: 'originCity' },
@@ -95,23 +96,20 @@ async function evaluateShipment(shipment, driver, settings) {
   if (absence) await openAlert(shipment, driver, absence);
 }
 
-async function ingestDriverPing({ driver, missionId, points = [], active = true }) {
+async function ingestDriverPing({ driver, missionId, points = [], current, active = true }) {
   const settings = await getSettings();
   const cap = Number(settings.gps_offline_points) || 5000;
-  const clean = points
-    .map((point) => ({
-      lat: Number(point.lat),
-      lng: Number(point.lng),
-      ts: point.ts ? new Date(point.ts) : new Date(),
-    }))
-    .filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lng))
-    .slice(-cap);
-  if (clean.length) {
-    const last = clean[clean.length - 1];
+  const clean = points.map(normalizePoint).filter(Boolean).slice(-cap);
+  const currentPoint = normalizePoint(current);
+  const last = currentPoint || pickLatestPoint(clean);
+  const stored = currentPoint && !clean.some((point) => point.ts.getTime() === currentPoint.ts.getTime())
+    ? [...clean, currentPoint]
+    : clean;
+  if (last) {
     driver.lastLat = last.lat;
     driver.lastLng = last.lng;
     driver.lastLocationAt = last.ts;
-    await DriverLocation.bulkCreate(clean.map((point) => ({
+    await DriverLocation.bulkCreate(stored.map((point) => ({
       driverId: driver.id,
       shipmentId: missionId || null,
       lat: point.lat,
@@ -134,7 +132,7 @@ async function ingestDriverPing({ driver, missionId, points = [], active = true 
     type: 'location',
     vehicle: vehicleOf(driver, shipment),
   });
-  return { stored: clean.length, active: driver.isGpsActive };
+  return { stored: stored.length, active: driver.isGpsActive };
 }
 
 function vehicleOf(driver, shipment) {

@@ -5,14 +5,12 @@ import { StatusTimeline } from '@/components/StatusTimeline';
 import { GpsPanel } from '@/components/GpsPanel';
 import { PodFlow } from '@/components/PodFlow';
 import { SosButton } from '@/components/SosButton';
-import { useDriverGps } from '@/hooks/useDriverGps';
 import { formatPrice, formatWeight, formatDate, formatDay, formatDimensions, formatTimeWindow, vehicleTypeLabels, } from '@/driverFormat';
 import { ArrowRight, MapPin, Navigation, Truck, Package, Weight, Ruler, Clock, DollarSign, Lock, CheckCircle2, XCircle, Loader2, Route, Calendar, } from 'lucide-react';
 import ShipmentChat from '../../../shared/components/ShipmentChat';
-export function DriverMissionDetail({ mission, acceptIssue, actionError, onBack, onAccept, onAction, onPodComplete, }) {
+export function DriverMissionDetail({ mission, acceptIssue, actionError, gpsStatus, queueSize, onToggle, onSync, currentPoint, onBack, onAccept, onAction, onPodComplete, }) {
     const [actionLoading, setActionLoading] = useState(null);
     const gpsEnabled = ['InTransit', 'NearDestination', 'WaybillIssued'].includes(mission.status);
-    const { status: gpsStatus, queueSize, onToggle, onSync, currentPoint } = useDriverGps(gpsEnabled, mission.id);
     const destLabel = mission.visibleDestinationExact
         ? mission.destExact.address
         : `${mission.destCity} — ${mission.destArea} (محدود)`;

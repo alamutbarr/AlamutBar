@@ -9,6 +9,9 @@ import { DriverMissionDetail } from "@/pages/DriverMissionDetail";
 import { DriverProfile } from "@/pages/DriverProfile";
 import { DriverLayout } from "@/layouts/DriverLayout";
 import { driverAcceptIssue } from "@/driverAcceptGate";
+import { useDriverGps } from "@/hooks/useDriverGps";
+
+const GPS_STATUSES = ["InTransit", "NearDestination", "WaybillIssued"];
 
 function getProfileError(error) {
   if (error?.message === "پاسخ بک‌اند شامل اطلاعات راننده نیست.") return error.message;
@@ -97,6 +100,10 @@ export default function App() {
       cancelled = true;
     };
   }, [token, retryKey]);
+
+  const gpsMission = missions.find((mission) => GPS_STATUSES.includes(mission.status))
+    || (selectedMission && GPS_STATUSES.includes(selectedMission.status) ? selectedMission : null);
+  const gps = useDriverGps(Boolean(token && gpsMission), gpsMission?.id);
 
   if (!token) {
     return <DriverLogin />;
@@ -202,7 +209,7 @@ export default function App() {
             <DriverDashboard
               driver={driver}
               missions={missions}
-              gpsStatus="active"
+              gpsStatus={gps.status}
               onNavigate={(path) => navigate(`/driver/${path}`)}
               onMissionClick={(mission) => {
                 setSelectedMission(mission);
@@ -231,6 +238,11 @@ export default function App() {
               mission={selectedMission}
               acceptIssue={acceptIssue}
               actionError={actionError}
+              gpsStatus={gps.status}
+              queueSize={gps.queueSize}
+              onToggle={gps.onToggle}
+              onSync={gps.onSync}
+              currentPoint={gps.currentPoint}
               onBack={() => navigate(-1)}
               onAccept={handleAccept}
               onAction={(mission, action) => {

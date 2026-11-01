@@ -1,9 +1,14 @@
 const MAX_POINTS = 5000;
-const STORAGE_KEY = 'xbar_gps_queue';
 const FIFO_LIMIT = MAX_POINTS;
+const LEGACY_KEY = 'xbar_gps_queue';
+
+export function gpsQueueKey(missionId) {
+  return missionId == null || missionId === '' ? 'alamut_gps_queue' : `alamut_gps_queue:${missionId}`;
+}
 
 export class GpsQueue {
-  constructor() {
+  constructor(missionId) {
+    this.missionId = missionId;
     this.points = [];
     this.storage = typeof window !== 'undefined' ? window.localStorage : null;
     this.loadFromStorage();
@@ -12,9 +17,14 @@ export class GpsQueue {
   loadFromStorage() {
     if (!this.storage) return;
     try {
-      const raw = this.storage.getItem(STORAGE_KEY);
+      const raw = this.storage.getItem(gpsQueueKey(this.missionId));
       if (raw) {
         this.points = JSON.parse(raw);
+        return;
+      }
+      if (this.missionId == null || this.missionId === '') {
+        const legacy = this.storage.getItem(LEGACY_KEY);
+        if (legacy) this.points = JSON.parse(legacy);
       }
     } catch {
       this.points = [];
@@ -24,14 +34,13 @@ export class GpsQueue {
   saveToStorage() {
     if (!this.storage) return;
     try {
-      this.storage.setItem(STORAGE_KEY, JSON.stringify(this.points.slice(-200)));
+      this.storage.setItem(gpsQueueKey(this.missionId), JSON.stringify(this.points.slice(-200)));
     } catch {
-      // storage full — drop oldest
       this.points = this.points.slice(-100);
       try {
-        this.storage.setItem(STORAGE_KEY, JSON.stringify(this.points));
+        this.storage.setItem(gpsQueueKey(this.missionId), JSON.stringify(this.points));
       } catch {
-        // give up
+        /* give up */
       }
     }
   }
@@ -46,6 +55,10 @@ export class GpsQueue {
 
   getBatch(maxCount = 50) {
     return this.points.slice(0, maxCount);
+  }
+
+  latest() {
+    return this.points.length ? this.points[this.points.length - 1] : null;
   }
 
   removeBatch(count) {
