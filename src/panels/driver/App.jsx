@@ -10,6 +10,7 @@ import { DriverProfile } from "@/pages/DriverProfile";
 import { DriverLayout } from "@/layouts/DriverLayout";
 import { driverAcceptIssue } from "@/driverAcceptGate";
 import { useDriverGps } from "@/hooks/useDriverGps";
+import LogoutConfirm from "../../shared/components/LogoutConfirm";
 
 const GPS_STATUSES = ["InTransit", "NearDestination", "WaybillIssued"];
 
@@ -42,6 +43,7 @@ export default function App() {
   const [profileError, setProfileError] = useState("");
   const [retryKey, setRetryKey] = useState(0);
   const [actionError, setActionError] = useState("");
+  const [confirmLogout, setConfirmLogout] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -134,16 +136,24 @@ export default function App() {
             </button>
             <button
               type="button"
-              onClick={() => {
-                logout();
-                navigate("/driver", { replace: true });
-              }}
+              onClick={() => setConfirmLogout(true)}
               className="rounded-xl border border-slate-300 px-5 py-3 font-bold text-slate-700 hover:bg-slate-50"
             >
               خروج و ورود مجدد
             </button>
           </div>
         </div>
+        <LogoutConfirm
+          open={confirmLogout}
+          onCancel={() => setConfirmLogout(false)}
+          onConfirm={() => {
+            setConfirmLogout(false);
+            logout();
+            navigate("/driver", { replace: true });
+          }}
+          title="ورود مجدد"
+          message="آیا مطمئن هستید که می‌خواهید از حساب خارج شوید و دوباره وارد شوید؟"
+        />
       </div>
     );
   }

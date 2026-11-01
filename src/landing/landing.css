@@ -422,4 +422,12 @@ body { font-feature-settings: 'ss01'; line-height: 1.7; }
   .hero-foot { font-size: 10px; }
   .hero-foot > span:first-child { max-width: none; }
   .section-kicker { flex-wrap: wrap; row-gap: 6px; }
+  .entry-card { padding: 18px 14px; }
+  .entry-card h2 { font-size: 22px; }
+  .nav-wrap { padding: 0 12px; }
+  .section-pad, .contact-section { padding-left: 16px; padding-right: 16px; }
+}
+@media (max-width: 360px) {
+  .hero h1 { font-size: 28px; }
+  .brand-words strong { letter-spacing: .08em; font-size: 13px; }
 }

@@ -175,6 +175,12 @@ html {
 }
 
 /* احترام به تنظیم کاهش انیمیشن سیستم */
+@media (max-width: 480px) {
+  .glass-card {
+    border-radius: 14px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .anim-text,
   .anim-fade,

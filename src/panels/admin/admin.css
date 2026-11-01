@@ -265,6 +265,17 @@ table.data th { color: var(--muted); font-weight: 600; }
   .stat-grid, .split, .form-grid { grid-template-columns: 1fr 1fr; }
   .admin-main { padding-bottom: 110px; }
 }
+@media (max-width: 900px) {
+  .chat-split { grid-template-columns: 1fr; }
+  .map-shell { min-height: 280px; height: min(70vh, calc(100dvh - 210px)); }
+}
 @media (max-width: 700px) {
   .stat-grid, .split, .form-grid { grid-template-columns: 1fr; }
+  .admin-main { padding: 14px 12px 110px; }
+  .admin-login-form { padding: 24px 16px; }
+  table.data th, table.data td { padding: 10px 8px; font-size: 13px; }
+}
+@media (max-width: 480px) {
+  .admin-top { padding: 10px 12px; }
+  .modal-card { padding: 14px; }
 }

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { LayoutDashboard, ListTodo, User, LogOut, AlertTriangle, } from 'lucide-react';
+import { LayoutDashboard, ListTodo, User, LogOut, } from 'lucide-react';
 import { ThemeToggle } from '../../../shared/theme/PanelTheme';
 import BrandMark from '../../owner/components/common/BrandMark';
+import LogoutConfirm from '../../../shared/components/LogoutConfirm';
 const navItems = [
     { key: 'dashboard', label: 'داشبورد', icon: LayoutDashboard },
     { key: 'missions', label: 'مأموریت‌ها', icon: ListTodo },
@@ -9,16 +10,6 @@ const navItems = [
 ];
 export function DriverLayout({ current, onNavigate, onLogout, driverName, children, }) {
     const [confirmLogout, setConfirmLogout] = useState(false);
-
-    // بستن پنجره‌ی تأیید با کلید Escape
-    useEffect(() => {
-        if (!confirmLogout) return undefined;
-        const onKeyDown = (event) => {
-            if (event.key === 'Escape') setConfirmLogout(false);
-        };
-        window.addEventListener('keydown', onKeyDown);
-        return () => window.removeEventListener('keydown', onKeyDown);
-    }, [confirmLogout]);
 
     useEffect(() => {
         const html = document.documentElement;
@@ -89,27 +80,11 @@ export function DriverLayout({ current, onNavigate, onLogout, driverName, childr
         })}
       </nav>
 
-      {/* تأیید خروج از حساب کاربری */}
-      {confirmLogout && (<div className="glass-overlay fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setConfirmLogout(false)} role="dialog" aria-modal="true">
-          <div className="glass-strong anim-pop w-full max-w-sm rounded-2xl p-5 shadow-2xl" onClick={(event) => event.stopPropagation()}>
-            <div className="mb-3 flex items-center gap-3">
-              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-red-50 text-red-600">
-                <AlertTriangle className="w-5 h-5"/>
-              </span>
-              <h3 className="text-base font-bold text-slate-800">خروج از حساب کاربری</h3>
-            </div>
-            <p className="mb-5 text-sm leading-7 text-slate-600">
-              آیا مطمئن هستید که می‌خواهید از حساب کاربری خود خارج شوید؟
-            </p>
-            <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-              <button type="button" onClick={() => setConfirmLogout(false)} className="anim-text d-1 order-2 rounded-md border border-[#d8e1dc] bg-white px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-[#f7f6f0] sm:order-1">
-                انصراف
-              </button>
-              <button type="button" onClick={() => { setConfirmLogout(false); onLogout(); }} className="anim-text d-2 order-1 rounded-md bg-red-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-red-700 sm:order-2">
-                بله، خارج می‌شوم
-              </button>
-            </div>
-          </div>
-        </div>)}
+      <LogoutConfirm
+        open={confirmLogout}
+        onCancel={() => setConfirmLogout(false)}
+        onConfirm={() => { setConfirmLogout(false); onLogout(); }}
+        message="آیا مطمئن هستید که می‌خواهید از پنل راننده خارج شوید؟ برای ادامه کار باید دوباره وارد شوید."
+      />
     </div>);
 }

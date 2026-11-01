@@ -4,10 +4,12 @@ import { User, Phone, CreditCard, Award, Calendar, ShieldCheck, ShieldAlert, Sta
 import { getInitials, readAvatar, saveAvatar, removeAvatar, fileToAvatarDataUrl, } from '@/avatar';
 import { isVerificationComplete } from '@/verification';
 import { VerificationDocuments } from '@/components/VerificationDocuments';
+import LogoutConfirm from '../../../shared/components/LogoutConfirm';
 export function DriverProfile({ driver, onLogout, onDriverUpdate }) {
     const location = useLocation();
     const verificationRef = useRef(null);
     const [verified, setVerified] = useState(() => isVerificationComplete(driver.id));
+    const [confirmLogout, setConfirmLogout] = useState(false);
     const [showVerifyNotice, setShowVerifyNotice] = useState(false);
     const initials = getInitials(driver.name);
     const fileInputRef = useRef(null);
@@ -165,10 +167,16 @@ export function DriverProfile({ driver, onLogout, onDriverUpdate }) {
       </div>
 
       {/* Logout */}
-      <button onClick={onLogout} className="anim-text d-4 w-full flex items-center justify-center gap-2 rounded-xl border-2 border-red-200/80 bg-red-50/70 px-4 py-3.5 text-base font-bold text-red-600 backdrop-blur transition hover:bg-red-100/90 active:scale-[0.98]">
+      <button onClick={() => setConfirmLogout(true)} className="anim-text d-4 w-full flex items-center justify-center gap-2 rounded-xl border-2 border-red-200/80 bg-red-50/70 px-4 py-3.5 text-base font-bold text-red-600 backdrop-blur transition hover:bg-red-100/90 active:scale-[0.98]">
         <X className="w-5 h-5"/>
         خروج از حساب
       </button>
+      <LogoutConfirm
+        open={confirmLogout}
+        onCancel={() => setConfirmLogout(false)}
+        onConfirm={() => { setConfirmLogout(false); onLogout(); }}
+        message="آیا مطمئن هستید که می‌خواهید از پنل راننده خارج شوید؟ برای ادامه کار باید دوباره وارد شوید."
+      />
     </div>);
 }
 function StatBox({ icon, label, value, color }) {
