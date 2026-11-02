@@ -175,7 +175,7 @@ export default function SearchableSelect({
         width: anchor.width,
         zIndex: 1200,
         maxHeight: Math.max(80, Math.min(dropdownMaxHeight, availableSpace)),
-        overflowY: "auto",
+        overflow: "hidden",
         ...(openAbove
           ? { bottom: window.innerHeight - anchor.top + gap }
           : { top: anchor.bottom + gap }),
@@ -408,34 +408,23 @@ export default function SearchableSelect({
         createPortal(
           <div
             ref={dropdownRef}
-            style={
-              stickyOption
-                ? {
-                    ...dropdownStyle,
-                    height: dropdownStyle.maxHeight,
-                    overflow: "hidden",
-                    display: "flex",
-                    flexDirection: "column",
-                  }
-                : dropdownStyle
-            }
+            style={{
+              ...dropdownStyle,
+              height: dropdownStyle.maxHeight,
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
+            }}
             className="rounded-lg border border-ink-100 bg-white shadow-xl"
           >
             <div
               ref={listRef}
               onScroll={growList}
-              style={
-                stickyOption
-                  ? {
-                      flex: 1,
-                      minHeight: 0,
-                      overflowY: "auto",
-                    }
-                  : {
-                      maxHeight: dropdownStyle.maxHeight,
-                      overflowY: "auto",
-                    }
-              }
+              style={{
+                flex: 1,
+                minHeight: 0,
+                overflowY: "auto",
+              }}
             >
               {normalizeFa(searchTerm) &&
                 filteredOptions.length === 0 &&

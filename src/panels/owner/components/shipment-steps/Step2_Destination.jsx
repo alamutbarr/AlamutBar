@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { Flag } from "lucide-react";
 import Input from "../common/Input";
 import LocationPicker from "../common/LocationPicker";
-import CityZoneFields from "../common/CityZoneFields";
+import SearchableSelect from "../common/SearchableSelect";
 import StepHeader from "./StepHeader";
 import { getCities, getZonesByCity } from "../../api/location.api";
 import { cityOptionKey, mergeCityCatalog } from "../../data/mergeCities";
@@ -96,40 +96,48 @@ export default function Step2_Destination({ data, onChange }) {
         description="شهر مقصد را انتخاب کنید. محل دقیق روی نقشه اختیاری است؛ اگر ثبت شود، آدرس دقیق فقط بعد از صدور بارنامه به راننده نشان داده می‌شود."
       />
 
-      <div className="relative z-20">
-        <CityZoneFields
-          cityLabel="شهر مقصد"
-          zoneLabel={isTehran ? "محدوده مقصد" : "محدوده مقصد (اختیاری)"}
-          zoneRequired={isTehran}
-          cityValue={data.dest_city_id || ""}
-          zoneValue={data.dest_zone_id || ""}
-          cityPlaceholder="جستجوی نام شهر مقصد..."
-          zonePlaceholder={
-            data.dest_city_id
-              ? "جستجو یا انتخاب محدوده..."
-              : "ابتدا شهر را انتخاب کنید"
-          }
-          cityOptions={cities.map((c) => ({
+      <div className="relative z-20 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <SearchableSelect
+          label="شهر مقصد"
+          required
+          accent="teal"
+          value={data.dest_city_id || ""}
+          placeholder="جستجوی نام شهر مقصد..."
+          options={cities.map((c) => ({
             value: c.id,
             key: cityOptionKey(c),
             label: c.name,
             subLabel: c.province ? `استان ${c.province}` : undefined,
             searchKey: `${c.name || ""} ${c.province || ""}`,
           }))}
-          zoneOptions={availableZones.map((z) => ({
-            value: z.id,
-            label: z.name,
-          }))}
-          zoneDisabled={!data.dest_city_id}
-          onCityChange={(cityId) => {
+          onChange={(cityId) => {
             const city = cities.find((item) => String(item.id) === String(cityId));
             onChange("dest_city_id", cityId ? Number(cityId) : "");
             onChange("dest_city_name", city?.name?.trim() || "");
             onChange("dest_zone_id", "");
           }}
-          onZoneChange={(zoneId) =>
+          noResultsText="شهری با این مشخصات یافت نشد"
+        />
+
+        <SearchableSelect
+          label={isTehran ? "محدوده مقصد" : "محدوده مقصد (اختیاری)"}
+          required={isTehran}
+          accent="teal"
+          disabled={!data.dest_city_id}
+          value={data.dest_zone_id || ""}
+          placeholder={
+            data.dest_city_id
+              ? "جستجو یا انتخاب محدوده..."
+              : "ابتدا شهر را انتخاب کنید"
+          }
+          options={availableZones.map((z) => ({
+            value: z.id,
+            label: z.name,
+          }))}
+          onChange={(zoneId) =>
             onChange("dest_zone_id", zoneId ? Number(zoneId) : "")
           }
+          noResultsText="محدوده‌ای برای این شهر یافت نشد"
         />
       </div>
       {isTehran && !data.dest_zone_id && (
