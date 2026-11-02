@@ -1,0 +1,51 @@
+{
+  "_note": "ظرفیت ابعادی هر ترکیب کشنده/گاری. مقادیر از بازه‌های فرم «ثبت‌نام راننده» (src/panels/driver/vehicleConfig.js) گرفته شده‌اند: بالاترین بازهٔ متناهی هر گزینه. مقدار null یعنی برای آن ترکیب محدودیت ابعادی ثبت نشده است. این فایل تنها منبع حقیقت برای تطبیق بار با خودرو در پنل صاحب کالا و در سرور است.",
+  "tractors": {
+    "khavar": {
+      "label": "خاور/۹۱۱",
+      "trailers": {
+        "open": { "lengthCm": 650, "widthCm": 220, "heightCm": null },
+        "side_open": { "lengthCm": 650, "widthCm": 220, "heightCm": null },
+        "covered": { "lengthCm": 650, "widthCm": 220, "heightCm": 300 },
+        "covered_big": { "lengthCm": 650, "widthCm": 220, "heightCm": 300 },
+        "dump": { "lengthCm": 650, "widthCm": 220, "heightCm": null },
+        "refrigerated": { "lengthCm": 650, "widthCm": 220, "heightCm": 300 }
+      }
+    },
+    "single_truck": {
+      "label": "کامیون تک",
+      "trailers": {
+        "open": { "lengthCm": 620, "widthCm": 250, "heightCm": null },
+        "side_open": { "lengthCm": 620, "widthCm": 250, "heightCm": null },
+        "covered": { "lengthCm": 620, "widthCm": 250, "heightCm": 300 },
+        "dump": { "lengthCm": 620, "widthCm": 250, "heightCm": null },
+        "refrigerated": { "lengthCm": 620, "widthCm": 250, "heightCm": 300 }
+      }
+    },
+    "tandem_truck": {
+      "label": "کامیون جفت",
+      "trailers": {
+        "open": { "lengthCm": 750, "widthCm": 250, "heightCm": null },
+        "side_open": { "lengthCm": 750, "widthCm": 250, "heightCm": null },
+        "covered": { "lengthCm": 750, "widthCm": 250, "heightCm": 300 },
+        "dump": { "lengthCm": 750, "widthCm": 250, "heightCm": null },
+        "refrigerated": { "lengthCm": 750, "widthCm": 250, "heightCm": 300 }
+      }
+    },
+    "trailer": {
+      "label": "تریلی",
+      "trailers": {
+        "flatbed": { "lengthCm": 1360, "widthCm": 260, "heightCm": null },
+        "half_edge": { "lengthCm": 1360, "widthCm": 260, "heightCm": null },
+        "edged": { "lengthCm": 1360, "widthCm": 260, "heightCm": null },
+        "transit_tent": { "lengthCm": 1360, "widthCm": 260, "heightCm": 300 },
+        "dump": { "lengthCm": null, "widthCm": null, "heightCm": null },
+        "blade_container": { "lengthCm": null, "widthCm": null, "heightCm": null },
+        "container": { "lengthCm": null, "widthCm": null, "heightCm": null },
+        "refrigerated": { "lengthCm": 1360, "widthCm": 260, "heightCm": 300 },
+        "lowboy": { "lengthCm": 1200, "widthCm": 400, "heightCm": null },
+        "bogie": { "lengthCm": null, "widthCm": null, "heightCm": null }
+      }
+    }
+  }
+}

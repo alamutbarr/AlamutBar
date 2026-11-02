@@ -483,6 +483,24 @@ router.post('/inspections/:id/decision', requirePermission('inspections'), async
   success(res, { message: 'تصمیم ثبت شد.', data: await orderOps.getOrder(shipment.id) });
 }));
 
+function presentCustomer(row) {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    fullName: `${row.first_name || ''} ${row.last_name || ''}`.trim(),
+    companyName: row.company_name,
+    phone: row.User?.phone_number,
+    nationalId: row.national_id,
+    requireInspector: row.require_inspector,
+    priceCeiling: row.price_ceiling != null ? Number(row.price_ceiling) : null,
+    postalCode: row.postal_code || null,
+    verificationStatus: row.verification_status,
+    verificationNote: row.verification_note,
+    createdAt: row.createdAt,
+    kyc: ownerKyc.present(row.kyc),
+  };
+}
+
 router.get('/customers', requirePermission('owners.read'), asyncHandler(async (req, res) => {
   const { page, limit, offset } = pageOf(req.query);
   const where = {};
@@ -492,8 +510,10 @@ router.get('/customers', requirePermission('owners.read'), asyncHandler(async (r
       { first_name: { [Op.like]: q } },
       { last_name: { [Op.like]: q } },
       { company_name: { [Op.like]: q } },
+      { national_id: { [Op.like]: q } },
     ];
   }
+  if (req.query.verification) where.verification_status = req.query.verification;
   const { rows, count } = await CargoOwner.findAndCountAll({
     where,
     include: [{ model: User }],
@@ -503,23 +523,34 @@ router.get('/customers', requirePermission('owners.read'), asyncHandler(async (r
   });
   success(res, {
     data: {
-      items: rows.map((row) => ({
-        id: row.id,
-        userId: row.user_id,
-        fullName: `${row.first_name} ${row.last_name}`.trim(),
-        companyName: row.company_name,
-        phone: row.User?.phone_number,
-        nationalId: row.national_id,
-        requireInspector: row.require_inspector,
-        priceCeiling: row.price_ceiling != null ? Number(row.price_ceiling) : null,
-        postalCode: row.postal_code || null,
-        verificationStatus: row.verification_status,
-        verificationNote: row.verification_note,
-        kyc: ownerKyc.present(row.kyc),
-      })),
+      items: rows.map(presentCustomer),
       total: count,
       page,
       limit,
+    },
+  });
+}));
+
+router.get('/customers/:id', requirePermission('owners.read'), asyncHandler(async (req, res) => {
+  const owner = await CargoOwner.findByPk(req.params.id, { include: [User] });
+  if (!owner) throw new AppError('مشتری پیدا نشد.', 404);
+  const shipments = owner.user_id
+    ? await Shipment.findAll({
+      where: { owner_id: owner.user_id },
+      order: [['createdAt', 'DESC']],
+      limit: 10,
+      attributes: ['id', 'tracking_code', 'workflow_status', 'status', 'createdAt'],
+    })
+    : [];
+  success(res, {
+    data: {
+      ...presentCustomer(owner),
+      shipments: shipments.map((item) => ({
+        id: item.id,
+        trackingCode: item.tracking_code,
+        workflowStatus: item.workflow_status || item.status,
+        createdAt: item.createdAt,
+      })),
     },
   });
 }));

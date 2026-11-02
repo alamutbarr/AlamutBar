@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Truck } from 'lucide-react';
 import { getVehicleTypes } from '../../api/shipment.api';
 import StepHeader from './StepHeader';
+import { cargoFitsCapacity, categoryCapacity, describeCapacity, variantCapacity } from '../../utils/vehicleCapacity';
 
 const VEHICLE_VARIANTS = {
   khavar911: ['روباز', 'بغل بازشو', 'مسقف', 'مسقف اتاق بزرگ', 'کمپرسی', 'یخچال‌دار'],
@@ -37,13 +38,27 @@ export default function Step9_Vehicle({ data, onChange }) {
   const selectedVariants = Array.isArray(data.vehicle_variants) ? data.vehicle_variants : [];
   const displayTitle = (vehicle) => vehicleCategory(vehicle.title) === 'flatbed' ? 'تریلی' : vehicle.title;
 
+  // ابعاد از همان بازه‌های ثبت‌نام راننده خوانده می‌شود؛ اعداد دیتابیس فقط
+  // زمانی به کار می‌رود که برای آن دسته ظرفیت اعلام‌شده‌ای وجود نداشته باشد.
+  const capacityOf = (v) => categoryCapacity(vehicleCategory(v.title));
+  const limitsOf = (v) => {
+    const capacity = capacityOf(v);
+    return {
+      lengthCm: capacity?.lengthCm ?? v.max_length_cm ?? null,
+      widthCm: capacity?.widthCm ?? v.max_width_cm ?? null,
+      heightCm: capacity?.heightCm ?? v.max_height_cm ?? null,
+    };
+  };
+
   const suitable = (v) => {
     if (data.weight_kg && v.max_weight_kg < Number(data.weight_kg)) return false;
-    if (data.length_cm && v.max_length_cm && v.max_length_cm < Number(data.length_cm)) return false;
-    if (data.width_cm && v.max_width_cm && v.max_width_cm < Number(data.width_cm)) return false;
-    if (data.height_cm && v.max_height_cm && v.max_height_cm < Number(data.height_cm)) return false;
-    return true;
+    return cargoFitsCapacity(limitsOf(v), data);
   };
+
+  const variantFits = (category, variant) => cargoFitsCapacity(
+    variantCapacity(category, variant),
+    data,
+  );
 
   return (
     <div className="space-y-5">
@@ -83,6 +98,7 @@ export default function Step9_Vehicle({ data, onChange }) {
                   <span className="block text-sm font-medium text-ink-900">{displayTitle(v)}</span>
                   <span className="tabular mt-0.5 block text-xs text-ink-300">
                     تا {v.max_weight_kg.toLocaleString('fa-IR')} کیلوگرم
+                    {describeCapacity(limitsOf(v)) && ` · ${describeCapacity(limitsOf(v))}`}
                     {!fits && ' · متناسب با بار شما نیست'}
                   </span>
                 </span>
@@ -102,19 +118,25 @@ export default function Step9_Vehicle({ data, onChange }) {
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {variants.map((variant) => {
               const active = selectedVariants.includes(variant);
+              const fits = variantFits(selectedCategory, variant);
+              const capacityText = describeCapacity(variantCapacity(selectedCategory, variant));
               return (
                 <button
                   type="button"
                   key={variant}
                   aria-pressed={active}
+                  aria-disabled={!fits}
+                  title={capacityText || undefined}
                   onClick={() => onChange('vehicle_variants', active ? selectedVariants.filter((item) => item !== variant) : [...selectedVariants, variant])}
                   className={`rounded-lg border px-3 py-2.5 text-right text-sm transition-colors ${
                     active
                       ? 'border-amber-500 bg-amber-50 text-amber-700'
                       : 'border-ink-100 bg-white text-ink-600 hover:border-ink-300'
-                  }`}
+                  } ${!fits ? 'opacity-50' : ''}`}
                 >
-                  {variant}
+                  <span className="block">{variant}</span>
+                  {capacityText && <span className="tabular mt-0.5 block text-[11px] text-ink-300">{capacityText}</span>}
+                  {!fits && <span className="mt-0.5 block text-[11px] text-amber-700">با ابعاد بار شما جا نمی‌شود</span>}
                 </button>
               );
             })}

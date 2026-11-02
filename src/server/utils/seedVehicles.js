@@ -1,37 +1,39 @@
 const { Op } = require("sequelize");
 const { VehicleType } = require("../models");
 
+// ابعاد مجاز این ردیف‌ها با بازه‌های فرم ثبت‌نام راننده هم‌تراز است
+// (shared/vehicleDimensions.json)؛ منبع حقیقت تطبیق بار همان فایل است.
 const DEFAULT_VEHICLE_TYPES = [
   {
     title: "خاور/۹۱۱",
     max_weight_kg: 5000,
-    max_length_cm: 430,
-    max_width_cm: 200,
-    max_height_cm: 210,
+    max_length_cm: 650,
+    max_width_cm: 220,
+    max_height_cm: 300,
     base_price: 4500000,
   },
   {
     title: "کامیون تک (۱۰ تن)",
     max_weight_kg: 10000,
-    max_length_cm: 600,
-    max_width_cm: 230,
-    max_height_cm: 230,
+    max_length_cm: 620,
+    max_width_cm: 250,
+    max_height_cm: 300,
     base_price: 7000000,
   },
   {
     title: "کامیون جفت (۱۵ تن)",
     max_weight_kg: 15000,
     max_length_cm: 750,
-    max_width_cm: 240,
-    max_height_cm: 240,
+    max_width_cm: 250,
+    max_height_cm: 300,
     base_price: 9500000,
   },
   {
     title: "تریلی",
     max_weight_kg: 27000,
-    max_length_cm: 1200,
-    max_width_cm: 245,
-    max_height_cm: 270,
+    max_length_cm: 1360,
+    max_width_cm: 260,
+    max_height_cm: 300,
     base_price: 14000000,
   },
 ];
