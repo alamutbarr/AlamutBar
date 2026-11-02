@@ -25,8 +25,8 @@ test('each document is reviewed on its own and one rejection blocks verification
   assert.equal(rejected.kyc.documents['shenasnameh:selfie'].note, 'تصویر تار است');
   assert.equal(rejected.kyc.documents['shenasnameh:front'].status, 'PENDING');
   assert.equal(rejected.verificationStatus, 'REJECTED');
-  assert.equal(rejected.verificationNote, 'سلفی: تصویر تار است');
-  assert.match(rejected.notice.message, /سلفی: تصویر تار است/);
+  assert.equal(rejected.verificationNote, 'سلفی با شناسنامه: تصویر تار است');
+  assert.match(rejected.notice.message, /سلفی با شناسنامه: تصویر تار است/);
 
   const approvedFront = reviewDocument(rejected.kyc, { key: 'shenasnameh:front', decision: 'APPROVED' }).kyc;
   assert.equal(overallStatus(approvedFront), 'REJECTED');
@@ -63,7 +63,11 @@ test('re-upload clears the rejection and verification needs every required docum
   );
   assert.equal(
     present(pack('shenasnameh')).documents.find((doc) => doc.key === 'shenasnameh:selfie').title,
-    'سلفی',
+    'سلفی با شناسنامه',
+  );
+  assert.equal(
+    present(pack('national_card')).documents.find((doc) => doc.key === 'national_card:selfie').title,
+    'سلفی با کارت ملی',
   );
 });
 

@@ -1,11 +1,11 @@
 const ID_TYPES = ['shenasnameh', 'national_card'];
 
 const SLOTS = {
-  'shenasnameh:selfie': { title: 'سلفی', idType: 'shenasnameh' },
+  'shenasnameh:selfie': { title: 'سلفی با شناسنامه', idType: 'shenasnameh' },
   'shenasnameh:holding': { title: 'سلفی به‌همراه شناسنامه', idType: 'shenasnameh', retired: true },
   'shenasnameh:front': { title: 'صفحه اول شناسنامه', idType: 'shenasnameh' },
   'shenasnameh:back': { title: 'پشت شناسنامه', idType: 'shenasnameh', retired: true },
-  'national_card:selfie': { title: 'سلفی', idType: 'national_card' },
+  'national_card:selfie': { title: 'سلفی با کارت ملی', idType: 'national_card' },
   'national_card:holding': { title: 'سلفی به‌همراه کارت ملی', idType: 'national_card', retired: true },
   'national_card:front': { title: 'کارت ملی', idType: 'national_card' },
   'national_card:back': { title: 'پشت کارت ملی', idType: 'national_card', retired: true },

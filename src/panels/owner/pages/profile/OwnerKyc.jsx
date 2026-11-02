@@ -103,7 +103,7 @@ export default function OwnerKyc({ profile, onChange }) {
           <h2 className="text-lg font-bold text-ink-900">احراز هویت</h2>
           <p className="mt-1 text-sm text-ink-300">
             انجام یکی از دو مدرک کافی است: یا شناسنامه یا کارت ملی. نیازی به بارگذاری هر دو نیست.
-            در هر بخش یک سلفی جدا بارگذاری کنید. سقف حجم هر عکس {KYC_MAX_LABEL} است.
+            سلفی هر بخش باید با همان مدرک باشد. سقف حجم هر عکس {KYC_MAX_LABEL} است.
           </p>
         </div>
         <span className="rounded-md bg-[#17383b] px-3 py-1 text-xs font-bold text-[#f7f6f0]">
