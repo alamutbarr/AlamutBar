@@ -103,7 +103,7 @@ export default function OwnerKyc({ profile, onChange }) {
           <h2 className="text-lg font-bold text-ink-900">احراز هویت</h2>
           <p className="mt-1 text-sm text-ink-300">
             انجام یکی از دو مدرک کافی است: یا شناسنامه یا کارت ملی. نیازی به بارگذاری هر دو نیست.
-            عکس‌های هر بخش جداست؛ حتی سلفی شناسنامه با سلفی کارت ملی یکی نیست. سقف حجم هر عکس {KYC_MAX_LABEL} است.
+            در هر بخش یک سلفی جدا بارگذاری کنید. سقف حجم هر عکس {KYC_MAX_LABEL} است.
           </p>
         </div>
         <span className="rounded-md bg-[#17383b] px-3 py-1 text-xs font-bold text-[#f7f6f0]">
@@ -119,7 +119,7 @@ export default function OwnerKyc({ profile, onChange }) {
           <button
             key={value}
             type="button"
-            disabled={busy === "type"}
+            disabled={busy === "type" || kyc.verificationStatus === "VERIFIED"}
             onClick={() => chooseType(value)}
             className={`rounded-md border px-3 py-2 text-sm font-bold ${
               kyc.idType === value
@@ -143,6 +143,7 @@ export default function OwnerKyc({ profile, onChange }) {
       <div className="grid gap-3">
         {documents.map((doc) => {
           const preview = previews[doc.key] || doc.url;
+          const locked = doc.status === "APPROVED";
           return (
             <article key={doc.key} className="rounded-md border border-ink-100 p-3">
               <div className="flex items-start gap-3">
@@ -161,22 +162,28 @@ export default function OwnerKyc({ profile, onChange }) {
                   {doc.status === "REJECTED" && doc.note && (
                     <p className="mt-1 text-sm text-red-600">دلیل رد: {doc.note}</p>
                   )}
-                  <p className="mt-1 text-[11px] text-ink-300">JPG، PNG یا WEBP — حداکثر {KYC_MAX_LABEL}</p>
-                  <label className="mt-2 inline-flex cursor-pointer items-center gap-2 rounded-md border border-[#087f8c] px-3 py-1.5 text-xs font-bold text-[#087f8c]">
-                    {busy === doc.key ? <Loader2 size={14} className="animate-spin" /> : null}
-                    {doc.url || preview ? "تغییر تصویر" : "انتخاب تصویر"}
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      hidden
-                      disabled={Boolean(busy)}
-                      onChange={(event) => {
-                        const file = event.target.files?.[0];
-                        event.target.value = "";
-                        upload(doc.key, file);
-                      }}
-                    />
-                  </label>
+                  {locked ? (
+                    <p className="mt-1 text-[11px] text-[#087f8c]">این تصویر تأیید شده و دیگر قابل تغییر نیست.</p>
+                  ) : (
+                    <>
+                      <p className="mt-1 text-[11px] text-ink-300">JPG، PNG یا WEBP — حداکثر {KYC_MAX_LABEL}</p>
+                      <label className="mt-2 inline-flex cursor-pointer items-center gap-2 rounded-md border border-[#087f8c] px-3 py-1.5 text-xs font-bold text-[#087f8c]">
+                        {busy === doc.key ? <Loader2 size={14} className="animate-spin" /> : null}
+                        {doc.url || preview ? "تغییر تصویر" : "انتخاب تصویر"}
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          hidden
+                          disabled={Boolean(busy)}
+                          onChange={(event) => {
+                            const file = event.target.files?.[0];
+                            event.target.value = "";
+                            upload(doc.key, file);
+                          }}
+                        />
+                      </label>
+                    </>
+                  )}
                   {slotErrors[doc.key] && (
                     <p className="mt-2 text-sm text-red-600">{slotErrors[doc.key]}</p>
                   )}

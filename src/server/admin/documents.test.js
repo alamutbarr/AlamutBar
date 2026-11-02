@@ -50,6 +50,25 @@ test('rejecting a document requires a reason and builds a driver notice', () => 
   assert.equal(result.documents.personal[0].status, 'REJECTED');
 });
 
+test('an approved driver document cannot be replaced', () => {
+  const docs = upsertDocument(null, {
+    group: 'personal',
+    key: 'driverLicense:front',
+    title: 'روی گواهینامه',
+    url: '/uploads/a.jpg',
+  });
+  const approved = reviewDocument(docs, { group: 'personal', index: 0, decision: 'APPROVED' });
+  assert.throws(
+    () => upsertDocument(approved.documents, {
+      group: 'personal',
+      key: 'driverLicense:front',
+      title: 'روی گواهینامه',
+      url: '/uploads/b.jpg',
+    }),
+    /قابل تغییر نیست/,
+  );
+});
+
 test('approving every document marks the driver verified', () => {
   let docs = upsertDocument(null, {
     group: 'vehicle',

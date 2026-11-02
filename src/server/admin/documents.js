@@ -27,6 +27,11 @@ function upsertDocument(raw, { group, key, title, url }) {
   const documents = normalizeDocuments(raw);
   const list = documents[group];
   const existing = list.find((item) => item.key === key);
+  if (existing?.status === 'APPROVED') {
+    const error = new Error('این مدرک تأیید شده و دیگر قابل تغییر نیست.');
+    error.statusCode = 403;
+    throw error;
+  }
   if (existing) {
     existing.title = title || existing.title;
     existing.url = url;

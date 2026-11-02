@@ -60,11 +60,15 @@ export function VerificationDocuments({ driverId, onVerifiedChange, onDriverUpda
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
+    const key = `${section.id}:${slot.id}`;
+    if (byKey.get(key)?.status === 'APPROVED') {
+      setError('این تصویر تأیید شده و دیگر قابل تغییر نیست.');
+      return;
+    }
     if (!file.type.startsWith('image/')) {
       setError('فقط تصویر مجاز است.');
       return;
     }
-    const key = `${section.id}:${slot.id}`;
     setPending((current) => ({ ...current, [key]: file }));
     setPreviews((current) => {
       if (current[key]) URL.revokeObjectURL(current[key]);
@@ -75,7 +79,7 @@ export function VerificationDocuments({ driverId, onVerifiedChange, onDriverUpda
   };
 
   const submit = async () => {
-    const entries = Object.entries(pending);
+    const entries = Object.entries(pending).filter(([key]) => byKey.get(key)?.status !== 'APPROVED');
     if (!entries.length) {
       setError('اول فایل مدارک را انتخاب کنید.');
       return;
@@ -150,10 +154,18 @@ export function VerificationDocuments({ driverId, onVerifiedChange, onDriverUpda
               const saved = byKey.get(key);
               const preview = previews[key] || saved?.url;
               const rejected = saved?.status === 'REJECTED';
+              const locked = saved?.status === 'APPROVED';
               return (
                 <div key={slot.id}>
-                  <input id={key} type="file" accept="image/*" className="hidden" onChange={(event) => chooseFile(section, slot, event)} />
-                  <label htmlFor={key} className="flex aspect-[8/5] cursor-pointer flex-col items-center justify-center overflow-hidden rounded-md border border-dashed border-[#d8e1dc] bg-[#f7f6f0] text-[#526d70]">
+                  {!locked && (
+                    <input id={key} type="file" accept="image/*" className="hidden" onChange={(event) => chooseFile(section, slot, event)} />
+                  )}
+                  <label
+                    htmlFor={locked ? undefined : key}
+                    className={`flex aspect-[8/5] flex-col items-center justify-center overflow-hidden rounded-md border bg-[#f7f6f0] text-[#526d70] ${
+                      locked ? 'border-[#d8e1dc]' : 'cursor-pointer border-dashed border-[#d8e1dc]'
+                    }`}
+                  >
                     {preview ? (
                       <img src={preview} alt={slot.label} className="h-full w-full object-contain" />
                     ) : (
@@ -164,10 +176,15 @@ export function VerificationDocuments({ driverId, onVerifiedChange, onDriverUpda
                     )}
                   </label>
                   <div className="mt-1 text-[11px] leading-5">
-                    {pending[key] && <span className="text-[#087f8c]">آماده ارسال</span>}
-                    {!pending[key] && saved && (
+                    {locked && (
+                      <span className="text-[#087f8c]">
+                        <CheckCircle2 className="ml-1 inline h-3.5 w-3.5" />
+                        تأیید شد — این تصویر دیگر قابل تغییر نیست.
+                      </span>
+                    )}
+                    {!locked && pending[key] && <span className="text-[#087f8c]">آماده ارسال</span>}
+                    {!locked && !pending[key] && saved && (
                       <span className={rejected ? 'text-rose-600' : 'text-[#17383b]'}>
-                        {saved.status === 'APPROVED' && <CheckCircle2 className="ml-1 inline h-3.5 w-3.5" />}
                         {STATUS_LABEL[saved.status] || saved.status}
                         {rejected && saved.note ? ` — ${saved.note}` : ''}
                         {rejected ? ' — می‌توانید دوباره بارگذاری کنید.' : ''}

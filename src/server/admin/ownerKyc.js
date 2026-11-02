@@ -1,12 +1,12 @@
 const ID_TYPES = ['shenasnameh', 'national_card'];
 
 const SLOTS = {
-  'shenasnameh:selfie': { title: 'سلفی برای شناسنامه', idType: 'shenasnameh' },
-  'shenasnameh:holding': { title: 'سلفی به‌همراه شناسنامه', idType: 'shenasnameh' },
+  'shenasnameh:selfie': { title: 'سلفی', idType: 'shenasnameh' },
+  'shenasnameh:holding': { title: 'سلفی به‌همراه شناسنامه', idType: 'shenasnameh', retired: true },
   'shenasnameh:front': { title: 'صفحه اول شناسنامه', idType: 'shenasnameh' },
   'shenasnameh:back': { title: 'پشت شناسنامه', idType: 'shenasnameh', retired: true },
-  'national_card:selfie': { title: 'سلفی برای کارت ملی', idType: 'national_card' },
-  'national_card:holding': { title: 'سلفی به‌همراه کارت ملی', idType: 'national_card' },
+  'national_card:selfie': { title: 'سلفی', idType: 'national_card' },
+  'national_card:holding': { title: 'سلفی به‌همراه کارت ملی', idType: 'national_card', retired: true },
   'national_card:front': { title: 'کارت ملی', idType: 'national_card' },
   'national_card:back': { title: 'پشت کارت ملی', idType: 'national_card', retired: true },
   selfie: { title: 'سلفی', retired: true },
@@ -60,8 +60,8 @@ function normalize(raw) {
 }
 
 function requiredKeys(idType) {
-  if (idType === 'shenasnameh') return ['shenasnameh:selfie', 'shenasnameh:holding', 'shenasnameh:front'];
-  if (idType === 'national_card') return ['national_card:selfie', 'national_card:holding', 'national_card:front'];
+  if (idType === 'shenasnameh') return ['shenasnameh:selfie', 'shenasnameh:front'];
+  if (idType === 'national_card') return ['national_card:selfie', 'national_card:front'];
   return [];
 }
 
@@ -143,6 +143,10 @@ function uploadDocument(raw, { key, url, idType }) {
     throw fail('این مدرک با نوع شناسایی انتخاب‌شده جور نیست.', 400);
   }
   if (slot.idType && !state.idType) state.idType = slot.idType;
+  const existing = state.documents[slotKey];
+  if (existing?.status === 'APPROVED') {
+    throw fail('این مدرک تأیید شده و دیگر قابل تغییر نیست.', 403);
+  }
   state.documents[slotKey] = { url: String(url), status: 'PENDING', note: null };
   return state;
 }
