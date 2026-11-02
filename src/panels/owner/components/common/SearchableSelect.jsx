@@ -87,6 +87,7 @@ export default function SearchableSelect({
   dropdownMaxHeight = 280,
   stickyOptionValue = null,
   accent = "amber",
+  embedded = false,
 }) {
   const tone =
     accent === "teal"
@@ -332,7 +333,7 @@ export default function SearchableSelect({
       className={`relative block text-right ${isOpen ? "z-30" : "z-0"}`}
       ref={wrapperRef}
     >
-      {label && (
+      {label && !embedded && (
         <span className="mb-1.5 flex items-baseline gap-1 text-sm font-medium text-ink-700">
           {label}
           {required && <span className={tone.required}>*</span>}
@@ -340,16 +341,22 @@ export default function SearchableSelect({
       )}
 
       <div
-        className={`relative flex w-full items-center rounded-lg border bg-white text-sm text-ink-900 transition-colors ${
+        className={`relative flex w-full items-center bg-white text-sm text-ink-900 transition-colors ${
+          embedded ? "rounded-none border-0 shadow-none ring-0" : "rounded-lg border"
+        } ${
           disabled
             ? "cursor-not-allowed bg-gray-100 opacity-60"
-            : "hover:border-ink-300"
+            : embedded
+              ? ""
+              : "hover:border-ink-300"
         } ${
-          isOpen
-            ? tone.open
-            : error
-              ? "border-red-300"
-              : "border-ink-100"
+          embedded
+            ? ""
+            : isOpen
+              ? tone.open
+              : error
+                ? "border-red-300"
+                : "border-ink-100"
         }`}
       >
         <input

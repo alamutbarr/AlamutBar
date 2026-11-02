@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Input from "../common/Input";
 import SearchableSelect from "../common/SearchableSelect";
+import CityZoneFields from "../common/CityZoneFields";
 import JalaliDatePicker from "../common/JalaliDatePicker";
 import { getCities, getZonesByCity } from "../../api/location.api";
 import { getVehicleTypes } from "../../api/shipment.api";
@@ -229,33 +230,26 @@ export default function ShipmentEditForm({ form, onChange }) {
   return (
     <div className="space-y-5">
       <Section title="مبدأ">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <SearchableSelect
-            label="شهر مبدأ"
-            required
-            value={form.origin_city_id}
-            options={options}
-            placeholder="جستجو یا انتخاب شهر..."
-            onChange={(cityId) => {
-              const city = cities.find((item) => String(item.id) === String(cityId));
-              onChange({
-                ...form,
-                origin_city_id: cityId ? Number(cityId) : "",
-                origin_city_name: city?.name?.trim() || "",
-                origin_zone_id: "",
-              });
-            }}
-          />
-          <SearchableSelect
-            label={originIsTehran ? "محدوده مبدأ" : "محدوده مبدأ (اختیاری)"}
-            required={originIsTehran}
-            disabled={!form.origin_city_id}
-            value={form.origin_zone_id}
-            options={originZoneOptions}
-            placeholder="انتخاب محدوده"
-            onChange={(zoneId) => set("origin_zone_id", zoneId ? Number(zoneId) : "")}
-          />
-        </div>
+        <CityZoneFields
+          cityLabel="شهر مبدأ"
+          zoneLabel={originIsTehran ? "محدوده مبدأ" : "محدوده مبدأ (اختیاری)"}
+          zoneRequired={originIsTehran}
+          cityValue={form.origin_city_id}
+          zoneValue={form.origin_zone_id}
+          cityOptions={options}
+          zoneOptions={originZoneOptions}
+          zoneDisabled={!form.origin_city_id}
+          onCityChange={(cityId) => {
+            const city = cities.find((item) => String(item.id) === String(cityId));
+            onChange({
+              ...form,
+              origin_city_id: cityId ? Number(cityId) : "",
+              origin_city_name: city?.name?.trim() || "",
+              origin_zone_id: "",
+            });
+          }}
+          onZoneChange={(zoneId) => set("origin_zone_id", zoneId ? Number(zoneId) : "")}
+        />
         <Input
           label="آدرس مبدأ"
           required
@@ -265,33 +259,26 @@ export default function ShipmentEditForm({ form, onChange }) {
       </Section>
 
       <Section title="مقصد">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <SearchableSelect
-            label="شهر مقصد"
-            required
-            value={form.dest_city_id}
-            options={options}
-            placeholder="جستجو یا انتخاب شهر..."
-            onChange={(cityId) => {
-              const city = cities.find((item) => String(item.id) === String(cityId));
-              onChange({
-                ...form,
-                dest_city_id: cityId ? Number(cityId) : "",
-                dest_city_name: city?.name?.trim() || "",
-                dest_zone_id: "",
-              });
-            }}
-          />
-          <SearchableSelect
-            label={destIsTehran ? "محدوده مقصد" : "محدوده مقصد (اختیاری)"}
-            required={destIsTehran}
-            disabled={!form.dest_city_id}
-            value={form.dest_zone_id}
-            options={destZoneOptions}
-            placeholder="انتخاب محدوده"
-            onChange={(zoneId) => set("dest_zone_id", zoneId ? Number(zoneId) : "")}
-          />
-        </div>
+        <CityZoneFields
+          cityLabel="شهر مقصد"
+          zoneLabel={destIsTehran ? "محدوده مقصد" : "محدوده مقصد (اختیاری)"}
+          zoneRequired={destIsTehran}
+          cityValue={form.dest_city_id}
+          zoneValue={form.dest_zone_id}
+          cityOptions={options}
+          zoneOptions={destZoneOptions}
+          zoneDisabled={!form.dest_city_id}
+          onCityChange={(cityId) => {
+            const city = cities.find((item) => String(item.id) === String(cityId));
+            onChange({
+              ...form,
+              dest_city_id: cityId ? Number(cityId) : "",
+              dest_city_name: city?.name?.trim() || "",
+              dest_zone_id: "",
+            });
+          }}
+          onZoneChange={(zoneId) => set("dest_zone_id", zoneId ? Number(zoneId) : "")}
+        />
         <Input
           label="آدرس مقصد"
           value={form.dest_address}
