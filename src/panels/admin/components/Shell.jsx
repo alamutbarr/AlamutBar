@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { Bell, ClipboardList, LayoutGrid, LogOut, Map, MessageCircle, Moon, Settings, Shield, Sun, Truck, Users } from 'lucide-react';
+import { Bell, ClipboardList, HardHat, LayoutGrid, LogOut, Map, MessageCircle, Moon, Settings, Shield, Sun, Truck, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import BrandMark from '../../owner/components/common/BrandMark';
 import LogoutConfirm from '../../../shared/components/LogoutConfirm';
@@ -20,6 +20,7 @@ const LINKS = [
   { to: '/admin/reports', label: 'گزارش‌ها', icon: ClipboardList, perm: 'reports.operations' },
   { to: '/admin/settings', label: 'تنظیمات', icon: Settings, perm: 'settings.manage' },
   { to: '/admin/admins', label: 'اپراتورها', icon: Users, perm: 'admins.manage' },
+  { to: '/admin/inspectors', label: 'متصدی‌ها', icon: HardHat, perm: 'inspectors.manage' },
   { to: '/admin/audit', label: 'اقدامات', icon: ClipboardList, perm: 'audit.read' },
 ];
 

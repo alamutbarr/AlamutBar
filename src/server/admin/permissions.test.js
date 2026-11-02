@@ -43,3 +43,10 @@ test('support verifies documents and tickets only', () => {
   assert.equal(can(['SUPPORT_AGENT'], 'complaints'), true);
   assert.equal(can(['SUPPORT_AGENT'], 'orders.price'), false);
 });
+
+test('inspection supervisor manages inspectors but not operators', () => {
+  assert.equal(can(['INSPECTION_SUPERVISOR'], 'inspectors.manage'), true);
+  assert.equal(can(['INSPECTION_SUPERVISOR'], 'inspections'), true);
+  assert.equal(can(['INSPECTION_SUPERVISOR'], 'admins.manage'), false);
+  assert.equal(can(['DISPATCH_OPERATOR'], 'inspectors.manage'), false);
+});

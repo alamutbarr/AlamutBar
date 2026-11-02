@@ -42,6 +42,7 @@ export default function AdminApp() {
           <Route path="reports" element={<OpsPages page="reports" />} />
           <Route path="settings" element={<OpsPages page="settings" />} />
           <Route path="admins" element={<OpsPages page="admins" />} />
+          <Route path="inspectors" element={<OpsPages page="inspectors" />} />
           <Route path="audit" element={<OpsPages page="audit" />} />
         </Route>
         <Route path="*" element={<Navigate to="/admin" replace />} />

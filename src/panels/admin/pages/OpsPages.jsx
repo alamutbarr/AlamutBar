@@ -36,38 +36,14 @@ function useLoad(loader, deps) {
 }
 
 function Inspections() {
-  const { can } = useAdmin();
-  const { data, error, reload } = useLoad(() => Promise.all([api('/inspectors'), api('/inspections')]), []);
-  const [form, setForm] = useState({ fullName: '', phone: '', notes: '' });
+  const { data, error, reload } = useLoad(() => api('/inspections'), []);
   const [notes, setNotes] = useState({});
   if (error) return <p className="muted">{error}</p>;
   if (!data) return <SkeletonRows />;
-  const [inspectors, reports] = data;
+  const reports = data;
 
   return (
     <Page title="بازرسی و کیفیت">
-      <article id="new-inspector" className="card" style={{ padding: 16, marginBottom: 12 }}>
-        <h2 style={{ marginTop: 0 }}>تعریف متصدی جدید</h2>
-        <p className="muted">نام و موبایل را بنویسید و «افزودن متصدی» را بزنید. ورود از مسیر /inspector با همان موبایل است. در حالت توسعه کد ۱۲۳۴۵ است.</p>
-        {can('inspectors.manage') ? (
-          <form style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', justifyContent: 'flex-start' }} onSubmit={async (event) => {
-            event.preventDefault();
-            try {
-              await api('/inspectors', { method: 'POST', body: form });
-              toast.success('متصدی ثبت شد');
-              setForm({ fullName: '', phone: '', notes: '' });
-              reload();
-            } catch (err) { toast.error(err.message); }
-          }}>
-            <input className="field" placeholder="نام متصدی" aria-label="نام متصدی" value={form.fullName} onChange={(event) => setForm({ ...form, fullName: event.target.value })} style={{ flex: '0 1 240px', width: '100%' }} />
-            <input className="field" placeholder="موبایل" aria-label="موبایل متصدی" value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} style={{ flex: '0 1 180px', width: '100%' }} />
-            <button type="submit" className="btn gold">افزودن متصدی</button>
-          </form>
-        ) : (
-          <p>ساخت متصدی برای نقش «مدیر سامانه» و «سرپرست بازرسی» باز است.</p>
-        )}
-        <p style={{ marginBottom: 0 }}>{inspectors.length ? inspectors.map((item) => `${item.fullName} — ${item.phone}${item.isActive ? '' : ' (غیرفعال)'}`).join(' · ') : 'هنوز متصدی ثبت نشده.'}</p>
-      </article>
       <div style={{ display: 'grid', gap: 10 }}>
         {reports.map((report) => (
             <article key={report.id} className="card" style={{ padding: 14 }}>
@@ -164,7 +140,7 @@ function Customers() {
                     </a>
                   ) : <p className="muted">ارسال نشده</p>}
                   {doc.note && <p>دلیل رد: {doc.note}</p>}
-                  {can('owners.documents') && doc.url && (
+                  {can('owners.documents') && doc.url && doc.status === 'PENDING' && (
                     <div style={{ display: 'grid', gap: 8, marginTop: 8 }}>
                       <button type="button" className="btn" onClick={() => review(owner.id, doc.key, 'APPROVED')}>تأیید این مدرک</button>
                       <textarea
@@ -445,12 +421,108 @@ function Admins() {
             } catch (err) { toast.error(err.message); }
           }}>
             <h3 style={{ margin: 0 }}>اپراتور جدید</h3>
-            <p className="muted">«سرپرست بازرسی» صفحهٔ بازرسی مرکز عملیات را باز می‌کند. برای خود پنل متصدی، در صفحهٔ بازرسی یک متصدی با موبایل بسازید.</p>
+            <p className="muted">«سرپرست بازرسی» صفحهٔ بازرسی مرکز عملیات را باز می‌کند. حساب متصدی میدان را از بخش «متصدی‌ها» بسازید.</p>
             <input className="field" placeholder="نام" value={form.fullName} onChange={(event) => setForm({ ...form, fullName: event.target.value })} />
             <input className="field" placeholder="نام کاربری" autoComplete="off" value={form.username} onChange={(event) => setForm({ ...form, username: event.target.value })} />
             <input className="field" type="password" placeholder="رمز عبور" autoComplete="new-password" value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} />
             <input className="field" placeholder="موبایل" value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} />
             <RoleChecks roles={form.roles} onToggle={toggleRole} />
+            <button type="submit" className="btn">ساخت حساب</button>
+          </form>
+        </div>
+      </div>
+    </Page>
+  );
+}
+
+function Inspectors() {
+  const { data, error, reload } = useLoad(() => api('/inspectors'), []);
+  const [form, setForm] = useState({ fullName: '', phone: '', notes: '' });
+  const [edit, setEdit] = useState(null);
+  const [pendingDelete, setPendingDelete] = useState(null);
+  if (error) return <p className="muted">{error}</p>;
+  if (!data) return <SkeletonRows />;
+
+  return (
+    <Page title="متصدی‌ها">
+      <div className="split">
+        <div className="card table-wrap">
+          <table className="data">
+            <thead><tr><th>نام</th><th>موبایل</th><th>یادداشت</th><th>وضعیت</th><th /></tr></thead>
+            <tbody>
+              {data.map((inspector) => (
+                <tr key={inspector.id}>
+                  <td>{inspector.fullName}</td>
+                  <td>{inspector.phone}</td>
+                  <td>{inspector.notes || '—'}</td>
+                  <td>{inspector.isActive ? 'فعال' : 'غیرفعال'}</td>
+                  <td style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    <button type="button" className="btn secondary" onClick={() => { setPendingDelete(null); setEdit({ id: inspector.id, fullName: inspector.fullName, phone: inspector.phone, notes: inspector.notes || '' }); }}>ویرایش</button>
+                    <button type="button" className="btn secondary" onClick={async () => {
+                      try {
+                        await api(`/inspectors/${inspector.id}`, { method: 'PATCH', body: { isActive: !inspector.isActive } });
+                        reload();
+                      } catch (err) { toast.error(err.message); }
+                    }}>{inspector.isActive ? 'غیرفعال' : 'فعال'}</button>
+                    {pendingDelete !== inspector.id && (
+                      <button type="button" className="btn secondary" onClick={() => setPendingDelete(inspector.id)}>حذف</button>
+                    )}
+                    {pendingDelete === inspector.id && (
+                      <>
+                        <button type="button" className="btn" onClick={async () => {
+                          try {
+                            await api(`/inspectors/${inspector.id}`, { method: 'DELETE' });
+                            toast.success('متصدی حذف شد');
+                            setPendingDelete(null);
+                            if (edit?.id === inspector.id) setEdit(null);
+                            reload();
+                          } catch (err) { toast.error(err.message); }
+                        }}>حذف شود</button>
+                        <button type="button" className="btn secondary" onClick={() => setPendingDelete(null)}>انصراف</button>
+                      </>
+                    )}
+                  </td>
+                </tr>
+              ))}
+              {data.length === 0 && (
+                <tr><td colSpan={5} className="muted">هنوز متصدی ثبت نشده.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        <div style={{ display: 'grid', gap: 12, alignContent: 'start' }}>
+          {edit && (
+            <form className="card" style={{ padding: 14, display: 'grid', gap: 8 }} onSubmit={async (event) => {
+              event.preventDefault();
+              try {
+                await api(`/inspectors/${edit.id}`, { method: 'PATCH', body: { fullName: edit.fullName, phone: edit.phone, notes: edit.notes } });
+                toast.success('متصدی به‌روز شد');
+                setEdit(null);
+                reload();
+              } catch (err) { toast.error(err.message); }
+            }}>
+              <h3 style={{ margin: 0 }}>ویرایش {edit.fullName}</h3>
+              <input className="field" placeholder="نام متصدی" value={edit.fullName} onChange={(event) => setEdit({ ...edit, fullName: event.target.value })} />
+              <input className="field" placeholder="موبایل" value={edit.phone} onChange={(event) => setEdit({ ...edit, phone: event.target.value })} />
+              <input className="field" placeholder="یادداشت" value={edit.notes} onChange={(event) => setEdit({ ...edit, notes: event.target.value })} />
+              <button type="submit" className="btn gold">ذخیره</button>
+              <button type="button" className="btn secondary" onClick={() => setEdit(null)}>انصراف</button>
+            </form>
+          )}
+          <form className="card" style={{ padding: 14, display: 'grid', gap: 8 }} onSubmit={async (event) => {
+            event.preventDefault();
+            try {
+              await api('/inspectors', { method: 'POST', body: form });
+              toast.success('متصدی ساخته شد');
+              setForm({ fullName: '', phone: '', notes: '' });
+              reload();
+            } catch (err) { toast.error(err.message); }
+          }}>
+            <h3 style={{ margin: 0 }}>متصدی جدید</h3>
+            <p className="muted">ورود متصدی از مسیر /inspector با همین موبایل است. در حالت توسعه کد ۱۲۳۴۵ است.</p>
+            <input className="field" placeholder="نام" value={form.fullName} onChange={(event) => setForm({ ...form, fullName: event.target.value })} />
+            <input className="field" placeholder="موبایل" value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} />
+            <input className="field" placeholder="یادداشت (اختیاری)" value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} />
             <button type="submit" className="btn">ساخت حساب</button>
           </form>
         </div>
@@ -496,6 +568,7 @@ const PAGES = {
   reports: Reports,
   settings: Settings,
   admins: Admins,
+  inspectors: Inspectors,
   audit: Audit,
 };
 

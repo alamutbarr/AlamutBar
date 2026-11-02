@@ -358,16 +358,58 @@ router.get('/inspections', requirePermission('inspections'), asyncHandler(async 
 
 router.get('/inspectors', requirePermission('inspections'), asyncHandler(async (req, res) => {
   const rows = await Inspector.findAll({ order: [['fullName', 'ASC']] });
-  success(res, { data: rows });
+  success(res, {
+    data: rows.map((row) => ({
+      id: row.id,
+      fullName: row.fullName,
+      phone: row.phone,
+      notes: row.notes,
+      isActive: row.isActive,
+      lastLoginAt: row.lastLoginAt,
+    })),
+  });
 }));
 
 router.post('/inspectors', requirePermission('inspectors.manage'), asyncHandler(async (req, res) => {
   const fullName = String(req.body.fullName || '').trim();
   const phone = normalizePhone(req.body.phone);
   if (fullName.length < 3) throw new AppError('نام متصدی را وارد کنید.', 400);
-  const inspector = await Inspector.create({ fullName, phone, notes: req.body.notes || null });
+  const existing = await Inspector.findOne({ where: { phone } });
+  if (existing) throw new AppError('این شماره قبلاً برای متصدی ثبت شده است.', 409);
+  const inspector = await Inspector.create({ fullName, phone, notes: req.body.notes || null, isActive: true });
   await audit(req.admin, 'inspector.create', 'inspector', inspector.id, { fullName });
   success(res, { message: 'متصدی ثبت شد.', data: inspector });
+}));
+
+router.patch('/inspectors/:id', requirePermission('inspectors.manage'), asyncHandler(async (req, res) => {
+  const inspector = await Inspector.findByPk(req.params.id);
+  if (!inspector) throw new AppError('متصدی پیدا نشد.', 404);
+  if (req.body.fullName) inspector.fullName = String(req.body.fullName).trim();
+  if (req.body.phone) {
+    const phone = normalizePhone(req.body.phone);
+    const taken = await Inspector.findOne({ where: { phone, id: { [Op.ne]: inspector.id } } });
+    if (taken) throw new AppError('این شماره قبلاً برای متصدی ثبت شده است.', 409);
+    inspector.phone = phone;
+  }
+  if (req.body.notes != null) inspector.notes = String(req.body.notes || '').trim() || null;
+  if (req.body.isActive != null) {
+    inspector.isActive = Boolean(req.body.isActive);
+    if (!inspector.isActive) inspector.refreshTokenHash = null;
+  }
+  await inspector.save();
+  await audit(req.admin, 'inspector.update', 'inspector', inspector.id, { isActive: inspector.isActive });
+  success(res, { message: 'متصدی به‌روز شد.', data: inspector });
+}));
+
+router.delete('/inspectors/:id', requirePermission('inspectors.manage'), asyncHandler(async (req, res) => {
+  const inspector = await Inspector.findByPk(req.params.id);
+  if (!inspector) throw new AppError('متصدی پیدا نشد.', 404);
+  const assigned = await Shipment.count({ where: { assigned_inspector_id: inspector.id } });
+  if (assigned) throw new AppError('این متصدی به مأموریت وصل است. ابتدا غیرفعالش کنید.', 400);
+  await InspectionReport.update({ inspectorId: null }, { where: { inspectorId: inspector.id } });
+  await audit(req.admin, 'inspector.delete', 'inspector', inspector.id, { phone: inspector.phone });
+  await inspector.destroy();
+  success(res, { message: 'متصدی حذف شد.' });
 }));
 
 router.post('/orders/:id/inspector', requirePermission('inspections'), asyncHandler(async (req, res) => {
