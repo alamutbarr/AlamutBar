@@ -72,8 +72,14 @@ async function applyLegacyDriverStatus({ missionId, driverId, status, deliveryOt
         ? await VehicleType.findByPk(mission.vehicle_type_id)
         : null);
       if (!driverMatchesOffer(
-        { tractorType: driver.tractorType, trailerType: driver.trailerType },
-        { vehicleTitle: vehicleType?.title, variants: mission.vehicle_variants },
+        { tractorType: driver.tractorType, trailerType: driver.trailerType, vehicleSpecs: driver.vehicleSpecs },
+        {
+          vehicleTitle: vehicleType?.title,
+          variants: mission.vehicle_variants,
+          lengthCm: mission.length_cm,
+          widthCm: mission.width_cm,
+          heightCm: mission.height_cm,
+        },
       )) {
         const error = new AppError(VEHICLE_MISMATCH, 400);
         error.code = 'VEHICLE_MISMATCH';
