@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
+import { useAdmin } from '../auth';
 import { DRIVER_STATUS_LABELS } from '../format';
 import { Badge, Page, SkeletonRows } from '../components/ui';
+import DriverDocuments, { hasPendingDriverDocuments } from '../components/DriverDocuments';
 
 function tone(status) {
   if (status === 'VERIFIED' || status === 'READY') return 'ok';
@@ -13,21 +15,29 @@ function tone(status) {
 
 export default function Drivers() {
   const navigate = useNavigate();
+  const { can } = useAdmin();
   const [query, setQuery] = useState({ page: 1, q: '', verification: '', availability: '' });
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
 
-  useEffect(() => {
+  const load = () => {
     const params = new URLSearchParams({ page: String(query.page), limit: '20' });
     if (query.q) params.set('q', query.q);
     if (query.verification) params.set('verification', query.verification);
     if (query.availability) params.set('availability', query.availability);
     setError('');
-    api(`/drivers?${params}`).then(setData).catch((err) => setError(err.message || 'فهرست رانندگان بارگذاری نشد.'));
+    return api(`/drivers?${params}`).then(setData);
+  };
+
+  useEffect(() => {
+    load().catch((err) => setError(err.message || 'فهرست رانندگان بارگذاری نشد.'));
   }, [query]);
 
   if (error) return <Page title="رانندگان و ناوگان"><p style={{ color: 'var(--alamut-crit)' }}>{error}</p></Page>;
   if (!data) return <SkeletonRows />;
+
+  const pending = (data.items || []).filter(hasPendingDriverDocuments);
+  const canReview = can('drivers.documents');
 
   return (
     <Page title="رانندگان و ناوگان">
@@ -46,6 +56,26 @@ export default function Drivers() {
           <option value="OFFLINE">آفلاین</option>
         </select>
       </div>
+
+      <section style={{ marginBottom: 20 }}>
+        <h2 style={{ marginTop: 0 }}>تأیید مدارک رانندگان</h2>
+        <p className="muted">مدارک بارگذاری‌شده را مثل احراز هویت صاحب کالا همین‌جا تأیید یا رد کنید.</p>
+        {pending.length === 0 && <p className="muted">در این صفحه مدرکی در انتظار تأیید نیست.</p>}
+        <div style={{ display: 'grid', gap: 10 }}>
+          {pending.map((driver) => (
+            <article key={driver.id} className="card" style={{ padding: 14 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                <strong>{driver.fullName}</strong>
+                <button type="button" className="btn secondary" onClick={() => navigate(`/admin/drivers/${driver.id}`)}>پرونده راننده</button>
+              </div>
+              <p className="muted">{driver.phone} — پلاک {driver.plate || '—'} — {[driver.tractorType, driver.trailerType].filter(Boolean).join(' / ') || 'بدون ناوگان'}</p>
+              <Badge tone={tone(driver.verificationStatus)}>{DRIVER_STATUS_LABELS[driver.verificationStatus] || driver.verificationStatus}</Badge>
+              <DriverDocuments driver={driver} canReview={canReview} onReviewed={() => load().catch((err) => setError(err.message))} />
+            </article>
+          ))}
+        </div>
+      </section>
+
       <div className="card table-wrap">
         <table className="data">
           <thead>
