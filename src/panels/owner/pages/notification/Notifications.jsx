@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Bell, BellRing } from 'lucide-react';
-import { getMyNotifications, markNotificationAsRead } from '../../api/notification.api';
+import { getMyNotifications, markAllNotificationsAsRead, markNotificationAsRead } from '../../api/notification.api';
 import { notificationPath } from '../../utils/notificationPath';
+import { countUnread, emitOwnerUnread } from '../../utils/notificationBadge';
 
 function timeAgo(dateStr) {
   const diffMs = Date.now() - new Date(dateStr).getTime();
@@ -18,11 +19,32 @@ export default function Notifications() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const load = () => {
-    getMyNotifications().then(setItems).catch(() => setItems([])).finally(() => setLoading(false));
-  };
-
-  useEffect(load, []);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const list = await getMyNotifications();
+        if (!alive) return;
+        if (countUnread(list) > 0) {
+          const updated = await markAllNotificationsAsRead().catch(() =>
+            list.map((item) => ({ ...item, is_read: true })),
+          );
+          if (!alive) return;
+          setItems(updated || list.map((item) => ({ ...item, is_read: true })));
+        } else {
+          setItems(list);
+        }
+        emitOwnerUnread(0);
+      } catch {
+        if (alive) setItems([]);
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const handleClick = async (n) => {
     if (!n.is_read) {
@@ -83,7 +105,6 @@ function NotificationRow({ n }) {
         <p className="mt-0.5 text-xs text-ink-400">{n.message}</p>
         <p className="tabular mt-1 text-[11px] text-ink-200">{timeAgo(n.createdAt)}</p>
       </div>
-      {!n.is_read && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-amber-500" />}
     </>
   );
 }

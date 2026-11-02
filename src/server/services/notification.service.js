@@ -19,4 +19,9 @@ async function markAsRead(userId, notificationId) {
   return notification;
 }
 
-module.exports = { notify, listForUser, markAsRead };
+async function markAllAsRead(userId) {
+  await Notification.update({ is_read: true }, { where: { user_id: userId, is_read: false } });
+  return listForUser(userId);
+}
+
+module.exports = { notify, listForUser, markAsRead, markAllAsRead };

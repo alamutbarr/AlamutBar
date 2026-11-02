@@ -5,6 +5,7 @@ const authenticate = require('../middleware/authMiddleware');
 
 router.use(authenticate);
 router.get('/', notificationController.getMine);
+router.patch('/read-all', notificationController.markAllAsRead);
 router.patch('/:id/read', notificationController.markAsRead);
 
 module.exports = router;

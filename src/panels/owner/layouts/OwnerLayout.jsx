@@ -7,12 +7,13 @@ import BrandMark from '../components/common/BrandMark';
 import { useAuth } from '../hooks/useAuth';
 import { ThemeToggle } from '../../../shared/theme/PanelTheme';
 import LogoutConfirm from '../../../shared/components/LogoutConfirm';
+import { useOwnerUnread } from '../utils/useOwnerUnread';
 
 const MOBILE = [
   { to: '/owner/dashboard', label: 'خانه', icon: LayoutGrid, end: true },
   { to: '/owner/create-shipment', label: 'ثبت بار', icon: PackagePlus },
   { to: '/owner/shipments', label: 'بارها', icon: History },
-  { to: '/owner/notifications', label: 'اعلان', icon: Bell },
+  { to: '/owner/notifications', label: 'اعلان', icon: Bell, badgeKey: 'unread' },
 ];
 
 const MORE = [
@@ -24,6 +25,7 @@ export default function OwnerLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const unread = useOwnerUnread();
   const [more, setMore] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const name = user?.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : user?.phone_number;
@@ -36,7 +38,7 @@ export default function OwnerLayout() {
 
   return (
     <div className="panel-canvas flex h-dvh overflow-hidden" dir="rtl">
-      <Sidebar />
+      <Sidebar unread={unread} />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <header className="z-30 flex items-center gap-3 bg-[#10282b] px-4 py-3 text-[#f7f6f0] lg:hidden">
         <BrandMark light subtitle="صاحب کالا" to="/owner/dashboard" />
@@ -61,13 +63,20 @@ export default function OwnerLayout() {
         </main>
       </div>
       <nav className="panel-dock fixed inset-x-3 bottom-3 z-40 flex gap-1 p-1 lg:hidden">
-        {MOBILE.map(({ to, label, icon: Icon }) => (
+        {MOBILE.map(({ to, label, icon: Icon, badgeKey }) => (
           <NavLink
             key={to}
             to={to}
             className={({ isActive }) => `flex flex-1 flex-col items-center gap-1 rounded-md py-2 text-[11px] font-bold ${isActive ? 'bg-[#e1f3f0] text-[#087f8c]' : 'text-[#526d70]'}`}
           >
-            <Icon size={18} />
+            <span className="relative">
+              <Icon size={18} />
+              {badgeKey === 'unread' && unread > 0 && (
+                <span className="tabular absolute -left-2.5 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#087f8c] px-1 text-[10px] font-bold text-[#f7f6f0]">
+                  {unread}
+                </span>
+              )}
+            </span>
             {label}
           </NavLink>
         ))}

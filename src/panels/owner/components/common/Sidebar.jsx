@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutGrid,
@@ -10,7 +10,6 @@ import {
   User,
 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
-import { getMyNotifications } from "../../api/notification.api";
 import Avatar from "./Avatar";
 import Modal from "./Modal";
 import Button from "./Button";
@@ -26,18 +25,11 @@ const links = [
   { to: "/owner/profile", label: "پروفایل", icon: User },
 ];
 
-export default function Sidebar({ onClose = () => {} }) {
+export default function Sidebar({ onClose = () => {}, unread = 0 }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [unread, setUnread] = useState(0);
   const [logoutOpen, setLogoutOpen] = useState(false);
-
-  useEffect(() => {
-    getMyNotifications()
-      .then((items) => setUnread(items.filter((i) => !i.is_read).length))
-      .catch(() => {});
-  }, []);
 
   // خروج واقعی فقط بعد از تأیید در Modal انجام می‌شود
   const handleLogout = () => {
