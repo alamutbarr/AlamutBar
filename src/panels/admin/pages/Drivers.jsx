@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { useAdmin } from '../auth';
-import { DRIVER_STATUS_LABELS } from '../format';
+import { DRIVER_STATUS_LABELS, when } from '../format';
 import { Badge, Page, SkeletonRows } from '../components/ui';
 import DriverDocuments, { hasPendingDriverDocuments } from '../components/DriverDocuments';
 
@@ -87,18 +87,20 @@ export default function Drivers() {
               <th>مدارک</th>
               <th>صف</th>
               <th>GPS</th>
+              <th>ثبت</th>
             </tr>
           </thead>
           <tbody>
             {data.items.map((driver) => (
               <tr key={driver.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/admin/drivers/${driver.id}`)}>
-                <td>{driver.fullName}</td>
+                <td>{driver.fullName || '—'}</td>
                 <td>{driver.phone}</td>
                 <td>{driver.plate || '—'}</td>
                 <td>{[driver.tractorType, driver.trailerType].filter(Boolean).join(' / ') || '—'}</td>
                 <td><Badge tone={tone(driver.verificationStatus)}>{DRIVER_STATUS_LABELS[driver.verificationStatus] || driver.verificationStatus}</Badge></td>
                 <td><Badge tone={tone(driver.availability)}>{DRIVER_STATUS_LABELS[driver.availability] || driver.availability}</Badge></td>
                 <td>{driver.isGpsActive ? 'فعال' : 'قطع'}</td>
+                <td>{when(driver.createdAt)}</td>
               </tr>
             ))}
           </tbody>
