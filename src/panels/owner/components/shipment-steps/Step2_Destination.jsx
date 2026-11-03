@@ -116,6 +116,7 @@ export default function Step2_Destination({ data, onChange }) {
             onChange("dest_city_name", city?.name?.trim() || "");
             onChange("dest_zone_id", "");
           }}
+          focusNextOnSelect={(option) => String(option?.label || "").trim() === "تهران"}
           noResultsText="شهری با این مشخصات یافت نشد"
         />
 

@@ -121,6 +121,7 @@ export default function Step1_Origin({ data, onChange }) {
             onChange("origin_city_name", city?.name?.trim() || "");
             onChange("origin_zone_id", "");
           }}
+          focusNextOnSelect={(option) => String(option?.label || "").trim() === "تهران"}
           noResultsText="شهری با این مشخصات یافت نشد"
         />
 

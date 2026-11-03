@@ -487,8 +487,11 @@ function presentCustomer(row) {
   return {
     id: row.id,
     userId: row.user_id,
+    firstName: row.first_name || null,
+    lastName: row.last_name || null,
     fullName: `${row.first_name || ''} ${row.last_name || ''}`.trim(),
     companyName: row.company_name,
+    avatarUrl: row.avatar_url || null,
     phone: row.User?.phone_number,
     nationalId: row.national_id,
     requireInspector: row.require_inspector,
@@ -497,6 +500,7 @@ function presentCustomer(row) {
     verificationStatus: row.verification_status,
     verificationNote: row.verification_note,
     createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
     kyc: ownerKyc.present(row.kyc),
   };
 }
@@ -531,24 +535,78 @@ router.get('/customers', requirePermission('owners.read'), asyncHandler(async (r
   });
 }));
 
+// پروندهٔ کامل مشتری: مشخصات هویتی، حساب کاربری، مدارک، آمار و بارهای اخیر
 router.get('/customers/:id', requirePermission('owners.read'), asyncHandler(async (req, res) => {
   const owner = await CargoOwner.findByPk(req.params.id, { include: [User] });
   if (!owner) throw new AppError('مشتری پیدا نشد.', 404);
-  const shipments = owner.user_id
+
+  const allShipments = owner.user_id
     ? await Shipment.findAll({
       where: { owner_id: owner.user_id },
+      attributes: [
+        'id', 'tracking_code', 'workflow_status', 'status', 'origin_city_id', 'dest_city_id',
+        'cargo_type', 'cargo_type_other', 'weight_kg', 'piece_count', 'length_cm', 'width_cm',
+        'height_cm', 'proposed_price', 'final_price', 'penalty_amount', 'waybill_number',
+        'loading_date', 'createdAt',
+      ],
       order: [['createdAt', 'DESC']],
-      limit: 10,
-      attributes: ['id', 'tracking_code', 'workflow_status', 'status', 'createdAt'],
     })
     : [];
+
+  const cityIds = new Set();
+  allShipments.forEach((item) => {
+    if (item.origin_city_id) cityIds.add(Number(item.origin_city_id));
+    if (item.dest_city_id) cityIds.add(Number(item.dest_city_id));
+  });
+  const cities = cityIds.size
+    ? await City.findAll({ where: { id: { [Op.in]: [...cityIds] } }, attributes: ['id', 'name'] })
+    : [];
+  const cityNames = new Map(cities.map((city) => [Number(city.id), city.name]));
+
+  const activeStatuses = new Set(ACTIVE_TRIP);
+  const stats = allShipments.reduce((acc, item) => {
+    const status = item.workflow_status || item.status;
+    acc.total += 1;
+    if (activeStatuses.has(status)) acc.active += 1;
+    if (status === 'COMPLETED') acc.completed += 1;
+    if (status === 'CANCELLED') acc.cancelled += 1;
+    acc.freight += Number(item.final_price || item.proposed_price || 0);
+    return acc;
+  }, { total: 0, active: 0, completed: 0, cancelled: 0, freight: 0 });
+
   success(res, {
     data: {
       ...presentCustomer(owner),
-      shipments: shipments.map((item) => ({
+      user: owner.User
+        ? {
+          id: owner.User.id,
+          phone: owner.User.phone_number,
+          role: owner.User.role,
+          isActive: owner.User.is_active,
+          phoneVerified: owner.User.is_phone_verified,
+          ratingAvg: owner.User.rating_avg != null ? Number(owner.User.rating_avg) : null,
+          createdAt: owner.User.createdAt,
+        }
+        : null,
+      stats,
+      shipments: allShipments.slice(0, 20).map((item) => ({
         id: item.id,
         trackingCode: item.tracking_code,
         workflowStatus: item.workflow_status || item.status,
+        originCity: item.origin_city_id ? cityNames.get(Number(item.origin_city_id)) || null : null,
+        destCity: item.dest_city_id ? cityNames.get(Number(item.dest_city_id)) || null : null,
+        cargoType: item.cargo_type,
+        cargoTypeOther: item.cargo_type_other,
+        weightKg: item.weight_kg != null ? Number(item.weight_kg) : null,
+        pieceCount: item.piece_count != null ? Number(item.piece_count) : null,
+        lengthCm: item.length_cm != null ? Number(item.length_cm) : null,
+        widthCm: item.width_cm != null ? Number(item.width_cm) : null,
+        heightCm: item.height_cm != null ? Number(item.height_cm) : null,
+        proposedPrice: item.proposed_price != null ? Number(item.proposed_price) : null,
+        finalPrice: item.final_price != null ? Number(item.final_price) : null,
+        penaltyAmount: item.penalty_amount != null ? Number(item.penalty_amount) : null,
+        waybillNumber: item.waybill_number || null,
+        loadingDate: item.loading_date || null,
         createdAt: item.createdAt,
       })),
     },

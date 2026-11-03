@@ -4,7 +4,7 @@ import { api } from '../api';
 import { useAdmin } from '../auth';
 import { DRIVER_STATUS_LABELS } from '../format';
 import { Badge, Page, SkeletonRows } from '../components/ui';
-import DriverDocuments, { flattenDriverDocuments, hasPendingDriverDocuments } from '../components/DriverDocuments';
+import DriverDocuments, { hasPendingDriverDocuments } from '../components/DriverDocuments';
 
 function tone(status) {
   if (status === 'VERIFIED' || status === 'READY') return 'ok';
@@ -18,7 +18,6 @@ export default function Drivers() {
   const { can } = useAdmin();
   const [query, setQuery] = useState({ page: 1, q: '', verification: '', availability: '' });
   const [data, setData] = useState(null);
-  const [pendingDrivers, setPendingDrivers] = useState(null);
   const [error, setError] = useState('');
 
   const load = () => {
@@ -30,29 +29,14 @@ export default function Drivers() {
     return api(`/drivers?${params}`).then(setData);
   };
 
-  // صف تأیید مدارک مستقل از صفحه‌بندی جدول خوانده می‌شود تا همیشه دیده شود.
-  const loadPending = () => api('/drivers?verification=PENDING_VERIFICATION&limit=50')
-    .then((result) => setPendingDrivers(result.items || []))
-    .catch((err) => setError(err.message || 'صف تأیید مدارک بارگذاری نشد.'));
-
   useEffect(() => {
     load().catch((err) => setError(err.message || 'فهرست رانندگان بارگذاری نشد.'));
   }, [query]);
 
-  useEffect(() => {
-    loadPending();
-  }, []);
-
   if (error) return <Page title="رانندگان و ناوگان"><p style={{ color: 'var(--alamut-crit)' }}>{error}</p></Page>;
   if (!data) return <SkeletonRows />;
 
-  const awaiting = (pendingDrivers || [])
-    .slice()
-    .sort((a, b) => Number(hasPendingDriverDocuments(b)) - Number(hasPendingDriverDocuments(a)));
-  const uploadedDocs = awaiting.reduce(
-    (total, driver) => total + flattenDriverDocuments(driver).filter((doc) => doc.url).length,
-    0,
-  );
+  const pending = (data.items || []).filter(hasPendingDriverDocuments);
   const canReview = can('drivers.documents');
 
   return (
@@ -73,42 +57,22 @@ export default function Drivers() {
         </select>
       </div>
 
-      <section className="card" style={{ padding: 16, marginBottom: 20 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          <h2 style={{ margin: 0 }}>تأیید مدارک رانندگان</h2>
-          <Badge tone={awaiting.length ? 'warn' : 'ok'}>
-            {awaiting.length.toLocaleString('fa-IR')} پرونده در انتظار · {uploadedDocs.toLocaleString('fa-IR')} تصویر
-          </Badge>
-        </div>
+      <section style={{ marginBottom: 20 }}>
+        <h2 style={{ marginTop: 0 }}>تأیید مدارک رانندگان</h2>
         <p className="muted">مدارک بارگذاری‌شده را مثل احراز هویت صاحب کالا همین‌جا تأیید یا رد کنید.</p>
-        {pendingDrivers === null && <p className="muted">در حال دریافت صف تأیید مدارک...</p>}
-        {pendingDrivers !== null && awaiting.length === 0 && <p className="muted">همهٔ مدارک بررسی شده‌اند؛ پرونده‌ای در انتظار تأیید نیست.</p>}
+        {pending.length === 0 && <p className="muted">در این صفحه مدرکی در انتظار تأیید نیست.</p>}
         <div style={{ display: 'grid', gap: 10 }}>
-          {awaiting.map((driver) => {
-            const docs = flattenDriverDocuments(driver);
-            const pendingDocs = docs.filter((doc) => doc.url && doc.status === 'PENDING').length;
-            return (
-              <article key={driver.id} className="card" style={{ padding: 14 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                  <strong>{driver.fullName}</strong>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <Badge tone={pendingDocs ? 'warn' : 'idle'}>{pendingDocs.toLocaleString('fa-IR')} تصویر در انتظار</Badge>
-                    <button type="button" className="btn secondary" onClick={() => navigate(`/admin/drivers/${driver.id}`)}>پرونده راننده</button>
-                  </div>
-                </div>
-                <p className="muted">{driver.phone} — پلاک {driver.plate || '—'} — {[driver.tractorType, driver.trailerType].filter(Boolean).join(' / ') || 'بدون ناوگان'}</p>
-                <Badge tone={tone(driver.verificationStatus)}>{DRIVER_STATUS_LABELS[driver.verificationStatus] || driver.verificationStatus}</Badge>
-                <DriverDocuments
-                  driver={driver}
-                  canReview={canReview}
-                  onReviewed={() => {
-                    loadPending().catch((err) => setError(err.message));
-                    load().catch((err) => setError(err.message));
-                  }}
-                />
-              </article>
-            );
-          })}
+          {pending.map((driver) => (
+            <article key={driver.id} className="card" style={{ padding: 14 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                <strong>{driver.fullName}</strong>
+                <button type="button" className="btn secondary" onClick={() => navigate(`/admin/drivers/${driver.id}`)}>پرونده راننده</button>
+              </div>
+              <p className="muted">{driver.phone} — پلاک {driver.plate || '—'} — {[driver.tractorType, driver.trailerType].filter(Boolean).join(' / ') || 'بدون ناوگان'}</p>
+              <Badge tone={tone(driver.verificationStatus)}>{DRIVER_STATUS_LABELS[driver.verificationStatus] || driver.verificationStatus}</Badge>
+              <DriverDocuments driver={driver} canReview={canReview} onReviewed={() => load().catch((err) => setError(err.message))} />
+            </article>
+          ))}
         </div>
       </section>
 

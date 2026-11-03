@@ -88,6 +88,8 @@ export default function SearchableSelect({
   stickyOptionValue = null,
   accent = "amber",
   embedded = false,
+  // پرش خودکار به فیلد بعدی پس از انتخاب؛ "boolean" یا تابعی از گزینهٔ انتخاب‌شده
+  focusNextOnSelect = true,
 }) {
   const tone =
     accent === "teal"
@@ -279,9 +281,16 @@ export default function SearchableSelect({
     setSearchTerm(opt.label);
     setIsOpen(false);
 
-    setTimeout(() => {
-      focusNextField(inputRef.current);
-    }, 50);
+    const shouldFocus =
+      typeof focusNextOnSelect === "function"
+        ? focusNextOnSelect(opt)
+        : focusNextOnSelect !== false;
+
+    if (shouldFocus) {
+      setTimeout(() => {
+        focusNextField(inputRef.current);
+      }, 50);
+    }
   };
 
   const handleKeyDown = (e) => {
