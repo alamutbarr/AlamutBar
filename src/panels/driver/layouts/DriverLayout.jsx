@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react';
-import { LayoutDashboard, ListTodo, User, LogOut, } from 'lucide-react';
+import { LayoutDashboard, ListTodo, User, LogOut, Bell, } from 'lucide-react';
 import { ThemeToggle } from '../../../shared/theme/PanelTheme';
 import BrandMark from '../../owner/components/common/BrandMark';
 import LogoutConfirm from '../../../shared/components/LogoutConfirm';
 const navItems = [
     { key: 'dashboard', label: 'داشبورد', icon: LayoutDashboard },
     { key: 'missions', label: 'مأموریت‌ها', icon: ListTodo },
+    { key: 'notifications', label: 'اعلان‌ها', icon: Bell },
     { key: 'profile', label: 'پروفایل', icon: User },
 ];
-export function DriverLayout({ current, onNavigate, onLogout, driverName, children, }) {
+export function DriverLayout({ current, onNavigate, onLogout, driverName, children, notificationCount = 0, }) {
     const [confirmLogout, setConfirmLogout] = useState(false);
 
     useEffect(() => {
@@ -35,11 +36,13 @@ export function DriverLayout({ current, onNavigate, onLogout, driverName, childr
           {navItems.map((item) => {
             const Icon = item.icon;
             const active = current === item.key;
+            const badge = item.key === 'notifications' ? notificationCount : 0;
             return (<button key={item.key} onClick={() => onNavigate(item.key)} className={`w-full flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors ${active
                     ? 'bg-white/10 font-bold text-[#f7f6f0]'
                     : 'text-[#f7f6f0]/75 hover:bg-white/5'}`}>
                 <Icon className="h-5 w-5"/>
-                {item.label}
+                <span className="flex-1 text-right">{item.label}</span>
+                {badge > 0 && (<span className="rounded-full bg-amber-400 px-1.5 py-0.5 text-[10px] font-bold text-[#10282b]">{new Intl.NumberFormat('fa-IR').format(badge)}</span>)}
               </button>);
         })}
         </nav>
@@ -69,12 +72,14 @@ export function DriverLayout({ current, onNavigate, onLogout, driverName, childr
         <main className="min-w-0 flex-1 overflow-y-auto pb-[calc(4.75rem+env(safe-area-inset-bottom))] lg:pb-6">{children}</main>
       </div>
 
-      <nav className="panel-dock lg:hidden fixed inset-x-3 bottom-3 z-30 grid grid-cols-3 p-1 pb-[max(0.4rem,env(safe-area-inset-bottom))]">
+      <nav className="panel-dock lg:hidden fixed inset-x-3 bottom-3 z-30 grid grid-cols-4 p-1 pb-[max(0.4rem,env(safe-area-inset-bottom))]">
         {navItems.map((item) => {
             const Icon = item.icon;
             const active = current === item.key;
-            return (<button key={item.key} onClick={() => onNavigate(item.key)} className={`flex flex-col items-center gap-1 rounded-md py-2.5 transition-colors ${active ? 'bg-[#e1f3f0] font-bold text-[#087f8c]' : 'text-[#526d70]'}`}>
+            const badge = item.key === 'notifications' ? notificationCount : 0;
+            return (<button key={item.key} onClick={() => onNavigate(item.key)} className={`relative flex flex-col items-center gap-1 rounded-md py-2.5 transition-colors ${active ? 'bg-[#e1f3f0] font-bold text-[#087f8c]' : 'text-[#526d70]'}`}>
               <Icon className="w-5 h-5"/>
+              {badge > 0 && (<span className="absolute left-1/2 top-1 -translate-x-1/2 translate-x-3 rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white">{new Intl.NumberFormat('fa-IR').format(badge)}</span>)}
               <span className="text-[11px] font-medium">{item.label}</span>
             </button>);
         })}

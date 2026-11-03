@@ -14,6 +14,7 @@ const { WORKFLOW_LABELS } = require('../admin/workflow');
 const authService = require('./authService');
 const policy = require('./policy');
 const { jsonList, photoList } = require('../utils/jsonList');
+const driverNotificationService = require('../services/driverNotification.service');
 
 const router = express.Router();
 
@@ -370,6 +371,13 @@ router.post('/missions/:id/report', asyncHandler(async (req, res) => {
         description: `مغایرت ثبت شد: ${discrepancies.map((item) => item.note).filter(Boolean).join(' ')}`,
         metadata: { inspectorId: req.inspector.id, reportId: report.id, discrepancies },
       });
+    }
+    if (shipment.driver_id) {
+      await driverNotificationService.notifyDriver(shipment.driver_id, {
+        title: report.decision === 'REJECTED' ? 'بازرسی بارگیری رد شد' : 'گزارش بازرسی بارگیری ثبت شد',
+        message: `متصدی برای بار ${shipment.tracking_code} گزارش بازرسی ثبت کرد${discrepancies.length ? ` (${discrepancies.length.toLocaleString('fa-IR')} مغایرت)` : ''}.`,
+        shipmentId: shipment.id,
+      }).catch((error) => console.error('driver notification failed:', error.message));
     }
   }
   const fresh = await loadVisible(shipment.id, req.inspector, settings);

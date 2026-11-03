@@ -12,6 +12,7 @@ const { isOfferedVisibleToDriver } = require('../services/vehicleOfferMatch');
 const { filterNearbyMissions, filterMissionsByRoute } = require('../services/missionSearch');
 const { resolveDriverProvince } = require('../services/geocoding');
 const { latestInspections } = require('../inspector/summary');
+const driverNotificationService = require('../services/driverNotification.service');
 
 const router = express.Router();
 
@@ -249,6 +250,29 @@ router.post('/documents', authMiddleware, (req, res, next) => {
 router.post('/notices/read', authMiddleware, async (req, res) => {
   await DriverNotice.update({ isRead: true }, { where: { driverId: req.user.id, isRead: false } });
   return res.json({ ok: true });
+});
+
+// اعلان‌های راننده (هم‌ساختار اعلان‌های صاحب کالا)
+router.get('/notifications', authMiddleware, async (req, res) => {
+  if (!req.user?.id) return res.status(401).json({ message: 'لطفاً ابتدا وارد شوید.' });
+  const notifications = await driverNotificationService.listForDriver(req.user.id);
+  return res.json({
+    notifications,
+    unread: notifications.filter((item) => !item.isRead).length,
+  });
+});
+
+router.patch('/notifications/read-all', authMiddleware, async (req, res) => {
+  if (!req.user?.id) return res.status(401).json({ message: 'لطفاً ابتدا وارد شوید.' });
+  const notifications = await driverNotificationService.markAllAsRead(req.user.id);
+  return res.json({ notifications, unread: 0 });
+});
+
+router.patch('/notifications/:id/read', authMiddleware, async (req, res) => {
+  if (!req.user?.id) return res.status(401).json({ message: 'لطفاً ابتدا وارد شوید.' });
+  const notification = await driverNotificationService.markAsRead(req.user.id, req.params.id);
+  if (!notification) return res.status(404).json({ message: 'اعلان پیدا نشد.' });
+  return res.json({ notification });
 });
 
 router.get('/missions', authMiddleware, async (req, res) => {

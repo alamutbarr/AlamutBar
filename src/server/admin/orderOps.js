@@ -12,6 +12,7 @@ const { needsInspector } = require('../inspector/policy');
 const { publish } = require('./realtime');
 const { parseRoles } = require('./permissions');
 const { jsonList, photoList } = require('../utils/jsonList');
+const driverNotificationService = require('../services/driverNotification.service');
 
 const includes = [
   { model: City, as: 'originCity' },
@@ -186,6 +187,44 @@ async function loadOrder(id) {
   return row;
 }
 
+// رویدادهایی که رانندهٔ مأموریت باید از آن‌ها اعلان بگیرد
+const DRIVER_WORKFLOW_NOTICES = {
+  WAYBILL_ISSUED: (shipment) => ({
+    title: 'بارنامه صادر شد',
+    message: `بارنامه ${shipment.waybill_number || ''} برای بار ${shipment.tracking_code} صادر شد؛ کد تحویل در جزئیات مأموریت است.`.replace('  ', ' '),
+  }),
+  AT_DESTINATION_UNLOADING: (shipment) => ({
+    title: 'رسیدن به مقصد ثبت شد',
+    message: `وضعیت بار ${shipment.tracking_code} روی «رسیدن و تخلیه» رفت. بعد از تخلیه، تحویل را ثبت کنید.`,
+  }),
+  COMPLETED: (shipment) => ({
+    title: 'مأموریت تکمیل شد',
+    message: `بار ${shipment.tracking_code} تکمیل شد. ممنون که مأموریت را به پایان رساندی.`,
+  }),
+  ON_HOLD: (shipment) => ({
+    title: 'مأموریت موقتاً متوقف شد',
+    message: `بار ${shipment.tracking_code} توسط اپراتور متوقف شد؛ تا اطلاع بعدی ادامه ندهید.`,
+  }),
+  CANCELLED: (shipment) => ({
+    title: 'مأموریت لغو شد',
+    message: `بار ${shipment.tracking_code} لغو شد.${shipment.cancel_reason ? ` دلیل: ${shipment.cancel_reason}` : ''}`,
+  }),
+};
+
+async function notifyDriverWorkflow(shipment, workflowStatus) {
+  const template = DRIVER_WORKFLOW_NOTICES[workflowStatus];
+  if (!template || !shipment.driver_id) return;
+  const notice = template(shipment);
+  try {
+    await driverNotificationService.notifyDriver(shipment.driver_id, {
+      ...notice,
+      shipmentId: shipment.id,
+    });
+  } catch (error) {
+    console.error('driver notification failed:', error.message);
+  }
+}
+
 async function setWorkflow(shipment, workflowStatus, { admin, reason, metadata, driverId }) {
   if (!isKnownStatus(workflowStatus)) throw new AppError('وضعیت نامعتبر است.', 400);
   const patch = legacyPatch(workflowStatus);
@@ -211,6 +250,7 @@ async function setWorkflow(shipment, workflowStatus, { admin, reason, metadata, 
     metadata: { from: previous, to: workflowStatus, driverId: driverId || shipment.driver_id, ...(metadata || {}) },
   });
   publish({ type: 'order', orderId: shipment.id, workflowStatus });
+  await notifyDriverWorkflow(shipment, workflowStatus);
   return shipment;
 }
 
@@ -397,6 +437,14 @@ async function updatePrice(admin, id, body) {
     metadata: { before, estimated: num(shipment.operator_price), final: num(shipment.final_price) },
   });
   await audit(admin, 'order.price', 'shipment', shipment.id, { reason, estimated: num(shipment.operator_price) });
+  if (shipment.driver_id) {
+    const freight = num(shipment.final_price) || num(shipment.operator_price);
+    await driverNotificationService.notifyDriver(shipment.driver_id, {
+      title: 'کرایه مأموریت به‌روزرسانی شد',
+      message: `کرایه بار ${shipment.tracking_code} بازبینی شد${freight ? ` و مبلغ ${freight.toLocaleString('fa-IR')} تومان ثبت شد` : ''}.`,
+      shipmentId: shipment.id,
+    }).catch((error) => console.error('driver notification failed:', error.message));
+  }
   return getOrder(shipment.id);
 }
 
@@ -420,6 +468,11 @@ async function assignDriver(admin, id, driverId, reasonText) {
     metadata: { driverId: driver.id },
   });
   await audit(admin, 'order.assign_driver', 'shipment', shipment.id, { driverId: driver.id, reason });
+  await driverNotificationService.notifyDriver(driver.id, {
+    title: 'مأموریت جدید به شما تخصیص یافت',
+    message: `بار ${shipment.tracking_code} از ${shipment.originCity?.name || 'مبدأ'} به ${shipment.destCity?.name || 'مقصد'} برای شما ثبت شد.${reason ? ` توضیح اپراتور: ${reason}` : ''}`,
+    shipmentId: shipment.id,
+  }).catch((error) => console.error('driver notification failed:', error.message));
   publish({ type: 'order', orderId: shipment.id, workflowStatus: 'DRIVER_ACCEPTED' });
   return getOrder(shipment.id);
 }
@@ -436,6 +489,13 @@ async function replaceDriver(admin, id, body) {
     }
   }
   shipment.replaced_from_driver_id = previousId;
+  if (previousId) {
+    await driverNotificationService.notifyDriver(previousId, {
+      title: 'مأموریت از شما گرفته شد',
+      message: `بار ${shipment.tracking_code} به رانندهٔ دیگری سپرده شد.${reason ? ` دلیل: ${reason}` : ''}`,
+      shipmentId: shipment.id,
+    }).catch((error) => console.error('driver notification failed:', error.message));
+  }
   let nextDriver = null;
   if (body.driverId) {
     nextDriver = await Driver.findByPk(body.driverId);
@@ -457,6 +517,13 @@ async function replaceDriver(admin, id, body) {
   });
   await setWorkflow(shipment, nextDriver ? 'DRIVER_ACCEPTED' : 'DRIVER_ASSIGNMENT', { admin, reason: `جایگزینی راننده: ${reason}` });
   await audit(admin, 'order.replace_driver', 'shipment', shipment.id, { from: previousId, to: nextDriver?.id || null, reason });
+  if (nextDriver) {
+    await driverNotificationService.notifyDriver(nextDriver.id, {
+      title: 'مأموریت جدید به شما تخصیص یافت',
+      message: `بار ${shipment.tracking_code} به‌عنوان رانندهٔ جایگزین برای شما ثبت شد.${reason ? ` دلیل: ${reason}` : ''}`,
+      shipmentId: shipment.id,
+    }).catch((error) => console.error('driver notification failed:', error.message));
+  }
   return getOrder(shipment.id);
 }
 
@@ -521,6 +588,15 @@ async function applyPenalty(admin, id, body) {
     metadata: result,
   });
   await audit(admin, 'order.penalty', 'shipment', shipment.id, { ...result, delayMinutes: shipment.delay_minutes });
+  if (shipment.driver_id) {
+    await driverNotificationService.notifyDriver(shipment.driver_id, {
+      title: result.amount > 0 ? 'جریمهٔ تأخیر ثبت شد' : 'جریمهٔ تأخیر صفر شد',
+      message: result.amount > 0
+        ? `برای بار ${shipment.tracking_code} جریمهٔ ${result.amount.toLocaleString('fa-IR')} تومان برای ${shipment.delay_minutes.toLocaleString('fa-IR')} دقیقه تأخیر ثبت شد.`
+        : `جریمهٔ بار ${shipment.tracking_code} صفر ثبت شد${shipment.force_majeure ? ' (فورس‌ماژور)' : ''}.`,
+      shipmentId: shipment.id,
+    }).catch((error) => console.error('driver notification failed:', error.message));
+  }
   return { order: await getOrder(shipment.id), penalty: result };
 }
 

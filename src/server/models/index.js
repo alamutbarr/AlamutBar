@@ -19,6 +19,7 @@ const SystemSetting = require('./SystemSetting');
 const AdminAuditLog = require('./AdminAuditLog');
 const DriverLocation = require('./DriverLocation');
 const DriverNotice = require('./DriverNotice');
+const DriverNotification = require('./DriverNotification');
 
 // User <-> CargoOwner (۱ به ۱)
 User.hasOne(CargoOwner, { foreignKey: 'user_id', onDelete: 'CASCADE' });
@@ -62,6 +63,9 @@ Rating.belongsTo(User, { foreignKey: 'owner_id' });
 
 Driver.hasMany(DriverNotice, { foreignKey: 'driverId', as: 'notices' });
 DriverNotice.belongsTo(Driver, { foreignKey: 'driverId' });
+
+Driver.hasMany(DriverNotification, { foreignKey: 'driverId', as: 'notifications' });
+DriverNotification.belongsTo(Driver, { foreignKey: 'driverId' });
 
 Driver.hasMany(Shipment, { foreignKey: 'driver_id', as: 'missions' });
 Shipment.belongsTo(Driver, { foreignKey: 'driver_id', as: 'driver' });
@@ -110,4 +114,5 @@ module.exports = {
   AdminAuditLog,
   DriverLocation,
   DriverNotice,
+  DriverNotification,
 };

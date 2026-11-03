@@ -25,6 +25,7 @@ const { buildWorkbook } = require('./reports');
 const { normalizePhone } = require('./phone');
 const { logEvent } = require('./audit');
 const { jsonList, photoList } = require('../utils/jsonList');
+const driverNotificationService = require('../services/driverNotification.service');
 
 const router = express.Router();
 
@@ -224,6 +225,10 @@ router.post('/drivers/:id/documents/review', requirePermission('drivers.document
       title: result.notice.title,
       message: result.notice.message,
     });
+    await driverNotificationService.notifyDriver(driver.id, {
+      title: result.notice.title,
+      message: result.notice.message,
+    }).catch((error) => console.error('driver notification failed:', error.message));
   }
   await audit(req.admin, 'driver.documents', 'driver', driver.id, {
     group: req.body.group,

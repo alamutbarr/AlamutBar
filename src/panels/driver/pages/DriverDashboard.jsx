@@ -3,6 +3,7 @@ import { api } from "@/services/api";
 import { MissionCard } from "@/components/MissionCard";
 import { GpsBadge } from "@/components/GpsBadge";
 import { SosButton } from "@/components/SosButton";
+import { DriverNotificationsCard } from "@/components/DriverNotificationsCard";
 import {
   isMissionActive,
   isOffered,
@@ -24,6 +25,11 @@ export function DriverDashboard({
   onNavigate,
   onMissionClick,
   onDriverUpdate,
+  notifications = [],
+  notificationsLoading = false,
+  notificationsUnread = 0,
+  onNotificationClick,
+  onMarkAllNotificationsRead,
 }) {
   useEffect(() => {
     let cancelled = false;
@@ -66,6 +72,15 @@ export function DriverDashboard({
           <GpsBadge status={gpsStatus} />
         </div>
       </div>
+
+      <DriverNotificationsCard
+        notifications={notifications}
+        loading={notificationsLoading}
+        unread={notificationsUnread}
+        onOpenAll={() => onNavigate("notifications")}
+        onNotificationClick={onNotificationClick}
+        onMarkAllRead={onMarkAllNotificationsRead}
+      />
 
       {/* Stats cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">

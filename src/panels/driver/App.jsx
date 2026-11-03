@@ -7,9 +7,11 @@ import { DriverDashboard } from "@/pages/DriverDashboard";
 import { DriverMissions } from "@/pages/DriverMissions";
 import { DriverMissionDetail } from "@/pages/DriverMissionDetail";
 import { DriverProfile } from "@/pages/DriverProfile";
+import { DriverNotifications } from "@/pages/DriverNotifications";
 import { DriverLayout } from "@/layouts/DriverLayout";
 import { driverAcceptIssue } from "@/driverAcceptGate";
 import { useDriverGps } from "@/hooks/useDriverGps";
+import { useDriverNotifications } from "@/hooks/useDriverNotifications";
 import LogoutConfirm from "../../shared/components/LogoutConfirm";
 
 const GPS_STATUSES = ["InTransit", "NearDestination", "WaybillIssued"];
@@ -106,6 +108,12 @@ export default function App() {
   const gpsMission = missions.find((mission) => GPS_STATUSES.includes(mission.status))
     || (selectedMission && GPS_STATUSES.includes(selectedMission.status) ? selectedMission : null);
   const gps = useDriverGps(Boolean(token && gpsMission), gpsMission?.id);
+  const notifications = useDriverNotifications(Boolean(token));
+
+  // با هر جابه‌جایی بین صفحه‌ها، اعلان‌ها تازه می‌شوند
+  useEffect(() => {
+    if (token) notifications.reload();
+  }, [token, location.pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!token) {
     return <DriverLogin />;
@@ -204,9 +212,31 @@ export default function App() {
     await handleMissionAction(mission, "Accepted");
   };
 
+  const handleNotificationClick = (item) => {
+    notifications.markRead(item.id);
+    const mission = item.shipmentId
+      ? missions.find((row) => String(row.id) === String(item.shipmentId))
+      : null;
+    if (mission) {
+      setSelectedMission(mission);
+      navigate("/driver/mission-detail");
+      return;
+    }
+    if (item.shipmentId) {
+      navigate("/driver/missions");
+      return;
+    }
+    if (/مدرک|هویت|احراز/.test(String(item.title || ""))) {
+      navigate("/driver/profile");
+      return;
+    }
+    navigate("/driver/notifications");
+  };
+
   return (
     <DriverLayout
       current={layoutCurrent}
+      notificationCount={notifications.unread}
       onNavigate={(path) => navigate(`/driver/${path}`)}
       onLogout={logout}
       driverName={driver.name}
@@ -226,6 +256,23 @@ export default function App() {
                 navigate("/driver/mission-detail");
               }}
               onDriverUpdate={setDriver}
+              notifications={notifications.items}
+              notificationsLoading={notifications.loading}
+              notificationsUnread={notifications.unread}
+              onNotificationClick={handleNotificationClick}
+              onMarkAllNotificationsRead={notifications.markAllRead}
+            />
+          }
+        />
+        <Route
+          path="notifications"
+          element={
+            <DriverNotifications
+              notifications={notifications.items}
+              loading={notifications.loading}
+              unread={notifications.unread}
+              onNotificationClick={handleNotificationClick}
+              onMarkAllRead={notifications.markAllRead}
             />
           }
         />

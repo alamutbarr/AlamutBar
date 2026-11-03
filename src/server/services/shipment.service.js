@@ -3,6 +3,7 @@ const AppError = require('../utils/AppError');
 const generateTrackingCode = require('../utils/generateTrackingCode');
 const vehicleMatchService = require('./vehicleMatch.service');
 const notificationService = require('./notification.service');
+const driverNotificationService = require('./driverNotification.service');
 const { assertPinInCity } = require('./cityBounds');
 const { attachInspectionSummaries } = require('../inspector/summary');
 
@@ -285,6 +286,14 @@ async function confirmDelivery(ownerId, shipmentId) {
     message: `تحویل بار ${shipment.tracking_code} توسط شما تأیید شد. خوشحال می‌شویم به راننده و متصدی امتیاز بدهید.`,
     shipmentId: shipment.id,
   });
+
+  if (shipment.driver_id) {
+    await driverNotificationService.notifyDriver(shipment.driver_id, {
+      title: 'تحویل بار تأیید شد',
+      message: `صاحب کالا تحویل بار ${shipment.tracking_code} را تأیید کرد و مأموریت بسته شد.`,
+      shipmentId: shipment.id,
+    }).catch((error) => console.error('driver notification failed:', error.message));
+  }
 
   return shipment;
 }
