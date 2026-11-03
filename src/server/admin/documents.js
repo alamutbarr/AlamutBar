@@ -1,11 +1,15 @@
+const { unwrapJson } = require('../utils/jsonList');
+
 const GROUPS = ['personal', 'vehicle', 'insurance'];
 
 function emptyDocuments() {
   return { personal: [], vehicle: [], insurance: [] };
 }
 
-function normalizeDocuments(raw) {
+function normalizeDocuments(input) {
   const base = emptyDocuments();
+  // MySQL/MariaDB may hand JSON columns back as (even double-encoded) strings.
+  const raw = unwrapJson(input);
   if (!raw || typeof raw !== 'object') return base;
   for (const group of GROUPS) {
     if (Array.isArray(raw[group])) base[group] = raw[group].map((item) => ({ ...item }));

@@ -42,4 +42,4 @@ function photoList(value) {
   }).filter(Boolean);
 }
 
-module.exports = { jsonList, photoList };
+module.exports = { unwrapJson, jsonList, photoList };

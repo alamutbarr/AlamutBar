@@ -81,3 +81,18 @@ test('approving every document marks the driver verified', () => {
   assert.equal(result.notice, null);
   assert.equal(result.availability, 'READY_IF_OFFLINE');
 });
+
+test('documents saved as a JSON string by the database are still readable by the operator', () => {
+  const { normalizeDocuments: norm } = require('./documents');
+  const stored = JSON.stringify({ personal: [{ key: 'id:front', title: 'کارت ملی', url: '/uploads/a.jpg', status: 'PENDING', note: '' }] });
+  assert.equal(norm(stored).personal.length, 1);
+  assert.equal(norm(JSON.stringify(stored)).personal[0].url, '/uploads/a.jpg');
+});
+
+test('a new upload keeps documents already stored as a JSON string', () => {
+  const { upsertDocument: up } = require('./documents');
+  const stored = JSON.stringify({ personal: [{ key: 'a', title: 'A', url: '/uploads/a.jpg', status: 'PENDING', note: '' }] });
+  const next = up(stored, { group: 'vehicle', key: 'b', title: 'B', url: '/uploads/b.jpg' });
+  assert.equal(next.personal.length, 1);
+  assert.equal(next.vehicle.length, 1);
+});

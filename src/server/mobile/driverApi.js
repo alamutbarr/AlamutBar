@@ -16,6 +16,7 @@ const { getSettings } = require('../admin/settingsStore');
 const { normalizePhone } = require('../admin/phone');
 const AppError = require('../utils/AppError');
 const asyncHandler = require('../utils/asyncHandler');
+const { normalizeDocuments } = require('../admin/documents');
 
 const router = express.Router();
 
@@ -183,7 +184,7 @@ router.get('/me', requireDriver, asyncHandler(async (req, res) => {
     plate: driver.plate,
     tractorType: driver.tractorType,
     trailerType: driver.trailerType,
-    documents: driver.documents || { personal: [], vehicle: [], insurance: [] },
+    documents: normalizeDocuments(driver.documents),
     push: { registered: Boolean(driver.expoPushToken), stub: driver.expoPushToken === 'stub' },
   });
 }));
@@ -296,7 +297,7 @@ router.post('/documents', requireDriver, asyncHandler(async (req, res, next) => 
   if (!req.file) throw new AppError('تصویر مدرک را انتخاب کنید.', 400);
   const group = ['personal', 'vehicle', 'insurance'].includes(req.body.group) ? req.body.group : 'personal';
   const driver = await Driver.findByPk(req.user.id);
-  const documents = driver.documents || { personal: [], vehicle: [], insurance: [] };
+  const documents = normalizeDocuments(driver.documents);
   documents[group] = documents[group] || [];
   documents[group].push({
     key: req.body.key || `doc-${Date.now()}`,

@@ -13,6 +13,7 @@ const { publish } = require('./realtime');
 const { parseRoles } = require('./permissions');
 const { jsonList, photoList } = require('../utils/jsonList');
 const driverNotificationService = require('../services/driverNotification.service');
+const { normalizeDocuments } = require('./documents');
 
 const includes = [
   { model: City, as: 'originCity' },
@@ -63,7 +64,7 @@ function presentDriver(driver) {
     licenseNumber: row.licenseNumber,
     smartCardNumber: row.smartCardNumber,
     vehicleSpecs: row.vehicleSpecs,
-    documents: row.documents || { personal: [], vehicle: [], insurance: [] },
+    documents: normalizeDocuments(row.documents),
     rejectionReason: row.rejectionReason,
     lastLocation: row.lastLat != null ? { lat: num(row.lastLat), lng: num(row.lastLng) } : null,
     lastLocationAt: row.lastLocationAt,

@@ -5,7 +5,7 @@ const multer = require('multer');
 const { Op } = require('sequelize');
 const { authMiddleware } = require('../middleware/auth');
 const { Shipment, Driver, City, VehicleType, Zone, DriverNotice } = require('../models');
-const { upsertDocument } = require('../admin/documents');
+const { upsertDocument, normalizeDocuments } = require('../admin/documents');
 const { canRevealExactDestination } = require('../mobile/missionPolicy');
 const { applyLegacyDriverStatus } = require('../mobile/driverActions');
 const { isOfferedVisibleToDriver } = require('../services/vehicleOfferMatch');
@@ -48,7 +48,7 @@ const documentUpload = multer({
 });
 
 function flatDocuments(raw) {
-  const groups = raw && typeof raw === 'object' ? raw : {};
+  const groups = normalizeDocuments(raw);
   return ['personal', 'vehicle', 'insurance'].flatMap((group) => (
     Array.isArray(groups[group]) ? groups[group].map((item) => ({ ...item, group })) : []
   ));
