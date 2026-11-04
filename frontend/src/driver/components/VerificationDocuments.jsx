@@ -17,6 +17,9 @@ import {
   sectionStatus,
   isVerificationComplete,
   fileToDocumentPhoto,
+  fetchVerificationFromServer,
+  uploadVerificationPhoto,
+  deleteVerificationPhotoOnServer,
 } from '@/driver/verification';
 
 const SECTION_ICONS = {
@@ -41,8 +44,39 @@ export function VerificationDocuments({ driverId, onVerifiedChange }) {
   }, [verified, docs]);
 
   useEffect(() => {
+    let cancelled = false;
     setDocs(readVerification(driverId));
     setError('');
+
+    // مدارک ذخیره‌شده روی سرور را بارگیری و با نسخه‌ی محلی همگام می‌کند تا اگر
+    // کاربر با مرورگر/دستگاه دیگری وارد شده بود، عکس‌های قبلی را ببیند.
+    fetchVerificationFromServer()
+      .then((server) => {
+        if (cancelled) return;
+        const serverDocs = server?.documents || {};
+        if (!Object.keys(serverDocs).length) return;
+
+        const merged = readVerification(driverId);
+        for (const [section, slots] of Object.entries(serverDocs)) {
+          for (const [slot, url] of Object.entries(slots || {})) {
+            merged[section] = merged[section] || {};
+            merged[section][slot] = url;
+          }
+        }
+        try {
+          localStorage.setItem(`driver_verification_${driverId}`, JSON.stringify(merged));
+        } catch {
+          /* نادیده گرفتن */
+        }
+        setDocs(merged);
+      })
+      .catch((err) => {
+        console.warn('Could not load verification from server:', err);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [driverId]);
 
   const reload = useCallback(() => setDocs(readVerification(driverId)), [driverId]);
@@ -60,8 +94,27 @@ export function VerificationDocuments({ driverId, onVerifiedChange }) {
     setError('');
     try {
       const dataUrl = await fileToDocumentPhoto(file);
-      saveVerificationPhoto(driverId, section.id, slot.id, dataUrl);
+
+      // ۱) ذخیره‌ی محلی برای نمایش فوری (اگر حافظه‌ی مرورگر پر بود، متوقف نمی‌شویم)
+      let localOk = true;
+      try {
+        saveVerificationPhoto(driverId, section.id, slot.id, dataUrl);
+      } catch (localErr) {
+        localOk = false;
+        console.warn('Local storage save failed:', localErr);
+      }
       reload();
+
+      // ۲) ذخیره‌ی دائمی روی سرور تا با ریلود صفحه یا تغییر دستگاه از بین نرود
+      try {
+        await uploadVerificationPhoto(driverId, section.id, slot.id, dataUrl);
+      } catch (uploadErr) {
+        console.error('Server upload failed:', uploadErr);
+        if (!localOk) {
+          throw new Error('ذخیره‌ی عکس ممکن نشد. اتصال اینترنت و حافظه‌ی مرورگر را بررسی کنید.');
+        }
+        setError('عکس به‌صورت محلی ذخیره شد اما ارسال به سرور ناموفق بود. اینترنت را بررسی کنید.');
+      }
     } catch (err) {
       setError(err?.message || 'بارگذاری عکس ناموفق بود.');
     } finally {
@@ -72,6 +125,10 @@ export function VerificationDocuments({ driverId, onVerifiedChange }) {
   const handleRemove = (section, slot) => {
     removeVerificationPhoto(driverId, section.id, slot.id);
     reload();
+    deleteVerificationPhotoOnServer(driverId, section.id, slot.id).catch((err) => {
+      console.warn('Server delete failed:', err);
+      setError('از مرورگر حذف شد اما از سرور حذف نشد. دوباره تلاش کنید.');
+    });
   };
 
   // اولین بخشِ ناقص بعد از ایندکس داده‌شده (برای راهنمایی به بخش بعدی)

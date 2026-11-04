@@ -1,6 +1,7 @@
 const sequelize = require('../config/database');
 const Owner = require('./Owner');
 const Driver = require('./Driver');
+const DriverDocument = require('./DriverDocument');
 const Shipment = require('./Shipment');
 
 // owners 1---* shipments
@@ -10,6 +11,10 @@ Shipment.belongsTo(Owner, { foreignKey: 'ownerId', as: 'owner' });
 
 Driver.hasMany(Shipment, { foreignKey: 'driverId', as: 'missions' });
 Shipment.belongsTo(Driver, { foreignKey: 'driverId', as: 'driver' });
+
+// drivers 1---* driver_documents (مدارک احراز هویت)
+Driver.hasMany(DriverDocument, { foreignKey: 'driverId', as: 'documents' });
+DriverDocument.belongsTo(Driver, { foreignKey: 'driverId', as: 'driver' });
 
 // Create missing tables only. alter:true rewrites indexes on every boot and
 // was the source of the duplicate-index failures.
@@ -31,6 +36,7 @@ module.exports = {
   sequelize,
   Owner,
   Driver,
+  DriverDocument,
   Shipment,
   syncModels,
 };

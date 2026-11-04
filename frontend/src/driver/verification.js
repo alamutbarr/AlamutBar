@@ -5,6 +5,8 @@
 // بخش‌های نیمه‌اجباری (کارت ملی، کارت خودرو) پس از آن. عکس‌ها در
 // localStorage با کلید مبتنی بر شناسه‌ی راننده ذخیره می‌شوند.
 
+import { api } from '@/services/api';
+
 const KEY_PREFIX = 'driver_verification_';
 const MAX_FILE_BYTES = 8 * 1024 * 1024; // ۸ مگابایت
 const MAX_EDGE = 1000; // بزرگ‌ترین ضلع خروجی (پیکسل)
@@ -92,6 +94,32 @@ export function removeVerificationPhoto(driverId, sectionId, slotId) {
   } catch {
     /* نادیده گرفتن */
   }
+}
+
+// ---------------------------------------------------------------------------
+// همگام‌سازی با سرور
+//
+// نسخه‌ی قبلی مدارک را فقط در localStorage مرورگر راننده نگه می‌داشت؛ در نتیجه
+// پنل اپراتور (که از دیتابیس می‌خواند) هیچ مدرکی نمی‌دید. توابع زیر همان عکس‌ها
+// را روی سرور ذخیره/خوانده/حذف می‌کنند تا اپراتور بتواند آن‌ها را بررسی کند.
+// ---------------------------------------------------------------------------
+
+// مدارک ذخیره‌شده روی سرور را برمی‌گرداند: { documents, verificationStatus, verificationNote }
+export async function fetchVerificationFromServer() {
+  const res = await api.get('/driver/verification');
+  return res.data || {};
+}
+
+export async function uploadVerificationPhoto(driverId, sectionId, slotId, dataUrl) {
+  await api.post('/driver/verification/documents', {
+    section: sectionId,
+    slot: slotId,
+    dataUrl,
+  });
+}
+
+export async function deleteVerificationPhotoOnServer(driverId, sectionId, slotId) {
+  await api.delete(`/driver/verification/documents/${sectionId}/${slotId}`);
 }
 
 // وضعیت تکمیل یک بخش: تعداد عکس‌های بارگذاری‌شده نسبت به تعداد موردنیاز

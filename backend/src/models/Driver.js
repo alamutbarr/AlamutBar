@@ -49,6 +49,14 @@ const Driver = sequelize.define('Driver', {
       );
     },
   },
+  // وضعیت بررسی مدارک توسط اپراتور: pending | approved | rejected
+  verificationStatus: {
+    type: DataTypes.STRING(20),
+    allowNull: false,
+    defaultValue: 'pending',
+  },
+  // توضیح اپراتور هنگام رد/تأیید مدارک
+  verificationNote: { type: DataTypes.TEXT },
 }, { tableName: 'drivers' });
 
 module.exports = Driver;

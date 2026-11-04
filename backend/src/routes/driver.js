@@ -4,7 +4,7 @@ const { authMiddleware } = require('../middleware/auth');
 // IMPORTANT: exact file-name casing (Driver.js). '../models/driver' breaks on Linux/macOS
 // and can load the model twice on Windows.
 const Driver = require('../models/Driver');
-const { Shipment } = require('../models');
+const { Shipment, DriverDocument } = require('../models');
 const { toMissionDto } = require('../utils/missionMapper');
 const { filterNearbyMissions, filterMissionsByRoute } = require('../services/missionSearch');
 const { findNearestProvinceByCoords } = require('../services/geoData');
@@ -26,7 +26,8 @@ function toPanelDriver(row) {
     plate: d.plate || '',
     tractorType: d.tractorType || '',
     trailerType: d.trailerType || '',
-    verifiedStatus: 'pending',
+    verifiedStatus: d.verificationStatus || 'pending',
+    verificationNote: d.verificationNote || null,
     rating: 5.0,
     totalMissions: 0,
     joinedDate: d.createdAt
@@ -169,6 +170,69 @@ router.get('/missions/search', authMiddleware, async (req, res) => {
   } catch (error) {
     console.error('Mission Route Search Error:', error);
     return res.status(500).json({ error: 'خطای سرور در جست‌وجوی مسیر' });
+  }
+});
+
+// GET /api/driver/verification
+// مدارک احراز هویتِ راننده‌ی جاری به‌همراه وضعیت بررسی توسط اپراتور.
+router.get('/verification', authMiddleware, async (req, res) => {
+  try {
+    const docs = await DriverDocument.findAll({ where: { driverId: req.user.id } });
+    const documents = {};
+    for (const doc of docs) {
+      documents[doc.section] = documents[doc.section] || {};
+      documents[doc.section][doc.slot] = doc.imageData;
+    }
+
+    const driver = await Driver.findByPk(req.user.id);
+    return res.json({
+      documents,
+      verificationStatus: driver ? driver.verificationStatus || 'pending' : 'pending',
+      verificationNote: driver ? driver.verificationNote || null : null,
+    });
+  } catch (error) {
+    console.error('Verification Fetch Error:', error);
+    return res.status(500).json({ error: 'خطای سرور در دریافت مدارک.' });
+  }
+});
+
+// POST /api/driver/verification/documents
+// ذخیره‌ی یک عکس مدرک (ایجاد یا به‌روزرسانی) روی سرور.
+router.post('/verification/documents', authMiddleware, async (req, res) => {
+  try {
+    const { section, slot, dataUrl, mimeType } = req.body || {};
+    if (!section || !slot || !dataUrl) {
+      return res.status(400).json({ error: 'بخش، جایگاه و تصویر مدرک الزامی است.' });
+    }
+    if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image/')) {
+      return res.status(400).json({ error: 'تصویر مدرک نامعتبر است.' });
+    }
+
+    const [doc, created] = await DriverDocument.findOrCreate({
+      where: { driverId: req.user.id, section, slot },
+      defaults: { imageData: dataUrl, mimeType: mimeType || 'image/jpeg' },
+    });
+    if (!created) {
+      await doc.update({ imageData: dataUrl, mimeType: mimeType || 'image/jpeg' });
+    }
+
+    return res.json({ message: 'مدرک ذخیره شد.', section, slot });
+  } catch (error) {
+    console.error('Verification Upload Error:', error);
+    return res.status(500).json({ error: 'خطای سرور در ذخیره مدرک.' });
+  }
+});
+
+// DELETE /api/driver/verification/documents/:section/:slot
+// حذف یک عکس مدرک از سرور.
+router.delete('/verification/documents/:section/:slot', authMiddleware, async (req, res) => {
+  try {
+    const { section, slot } = req.params;
+    await DriverDocument.destroy({ where: { driverId: req.user.id, section, slot } });
+    return res.json({ message: 'مدرک حذف شد.', section, slot });
+  } catch (error) {
+    console.error('Verification Delete Error:', error);
+    return res.status(500).json({ error: 'خطای سرور در حذف مدرک.' });
   }
 });
 
