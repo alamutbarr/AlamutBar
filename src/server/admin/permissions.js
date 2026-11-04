@@ -1,3 +1,5 @@
+// src/server/admin/permissions.js
+
 const ROLES = [
   'SUPER_ADMIN',
   'DISPATCH_OPERATOR',
@@ -7,11 +9,11 @@ const ROLES = [
 ];
 
 const ROLE_LABELS = {
-  SUPER_ADMIN: 'مدیر سامانه',
+  SUPER_ADMIN: 'مدیر ارشد',
   DISPATCH_OPERATOR: 'اپراتور دیسپچ',
   SECURITY_OPERATOR: 'اپراتور امنیت',
   INSPECTION_SUPERVISOR: 'سرپرست بازرسی',
-  SUPPORT_AGENT: 'پشتیبان مدارک',
+  SUPPORT_AGENT: 'پشتیبانی',
 };
 
 const PERMISSIONS = {
@@ -27,6 +29,7 @@ const PERMISSIONS = {
     'orders.penalty',
     'drivers.read',
     'drivers.queue',
+    'drivers.documents', // <--- این مورد اضافه شد تا اپراتور بتواند مدارک را تایید کند
     'alerts.read',
     'reports.operations',
   ],

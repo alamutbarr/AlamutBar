@@ -1,24 +1,32 @@
-import { Navigate, Route, Routes } from 'react-router-dom';
-import { Toaster } from 'sonner';
-import { useAdmin } from './auth';
-import Shell from './components/Shell';
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import Orders from './pages/Orders';
-import OrderDetail from './pages/OrderDetail';
-import MapPage from './pages/MapPage';
-import Alerts from './pages/Alerts';
-import Drivers from './pages/Drivers';
-import DriverDetail from './pages/DriverDetail';
-import Customers from './pages/Customers';
-import CustomerDetail from './pages/CustomerDetail';
-import Chats from './pages/Chats';
-import OpsPages from './pages/OpsPages';
-import './admin.css';
+import { Navigate, Route, Routes } from "react-router-dom";
+import { Toaster } from "sonner";
+import { useAdmin } from "./auth";
+import Shell from "./components/Shell";
+import Login from "./pages/Login";
+import Dashboard from "./pages/Dashboard";
+import Orders from "./pages/Orders";
+import OrderDetail from "./pages/OrderDetail";
+import MapPage from "./pages/MapPage";
+import Alerts from "./pages/Alerts";
+import Drivers from "./pages/Drivers";
+import DriverDetail from "./pages/DriverDetail";
+import Customers from "./pages/Customers";
+import CustomerDetail from "./pages/CustomerDetail";
+import Chats from "./pages/Chats";
+import OpsPages from "./pages/OpsPages";
+import "./admin.css";
 
 function Guard() {
   const { user, loading } = useAdmin();
-  if (loading) return <div className="admin-app" style={{ display: 'grid', placeItems: 'center' }}>در حال آماده‌سازی مرکز عملیات...</div>;
+  if (loading)
+    return (
+      <div
+        className="admin-app"
+        style={{ display: "grid", placeItems: "center" }}
+      >
+        در حال آماده‌سازی مرکز عملیات...
+      </div>
+    );
   if (!user) return <Navigate to="/admin/login" replace />;
   return <Shell />;
 }
@@ -35,8 +43,11 @@ export default function AdminApp() {
           <Route path="orders/:id" element={<OrderDetail />} />
           <Route path="map" element={<MapPage />} />
           <Route path="alerts" element={<Alerts />} />
+
+          {/* مسیرهای رانندگان با فایل‌های موجود در پروژه */}
           <Route path="drivers" element={<Drivers />} />
           <Route path="drivers/:id" element={<DriverDetail />} />
+
           <Route path="chats" element={<Chats />} />
           <Route path="inspections" element={<OpsPages page="inspections" />} />
           <Route path="customers" element={<Customers />} />
