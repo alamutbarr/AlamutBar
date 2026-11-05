@@ -29,9 +29,15 @@ export const flagStyles = {
 export const vehicleTypeLabels = {
   truck: 'کامیون',
   trailer: 'تریلی',
-  khavar: 'خاور',
+  khavar: 'خاور/۹۱۱',
+  single_truck: 'کامیون تک',
+  tandem_truck: 'کامیون جفت',
   other: 'سایر',
 };
+
+export function vehicleTypeLabel(value) {
+  return vehicleTypeLabels[value] || value || '—';
+}
 
 export function formatPrice(toman) {
   if (toman == null) return '—';

@@ -181,7 +181,6 @@ export default function App() {
     <DriverLayout
       current={layoutCurrent}
       onNavigate={(path) => navigate(`/driver/${path}`)}
-      onLogout={logout}
       driverName={driver.name}
     >
       <Routes>

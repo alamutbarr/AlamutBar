@@ -4,6 +4,7 @@ const { Inspector } = require('../models');
 const AppError = require('../utils/AppError');
 const otpService = require('../services/otp.service');
 const { normalizePhone } = require('../admin/phone');
+const avatarStore = require('../utils/avatarStore');
 
 const DEV_INSPECTOR_OTP = process.env.INSPECTOR_DEV_OTP || '12345';
 
@@ -12,10 +13,14 @@ function hashToken(token) {
 }
 
 function presentInspector(inspector) {
+  const names = avatarStore.splitName(inspector.fullName);
   return {
     id: inspector.id,
     phone: inspector.phone,
     fullName: inspector.fullName,
+    firstName: names.firstName,
+    lastName: names.lastName,
+    avatarUrl: avatarStore.publicUrl('inspector', inspector.id),
     isActive: inspector.isActive,
     lastLoginAt: inspector.lastLoginAt,
   };

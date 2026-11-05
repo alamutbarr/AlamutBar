@@ -7,5 +7,12 @@ export const getMyNotifications = async () => {
 
 export const markNotificationAsRead = async (id) => {
   const res = await api.patch(`/notifications/${id}/read`);
+  window.dispatchEvent(new Event('alamut:notifications'));
+  return res.data.data;
+};
+
+export const markAllNotificationsRead = async () => {
+  const res = await api.patch('/notifications/read-all');
+  window.dispatchEvent(new Event('alamut:notifications'));
   return res.data.data;
 };

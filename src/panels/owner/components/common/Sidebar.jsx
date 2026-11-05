@@ -1,19 +1,16 @@
 import { useEffect, useState } from "react";
-import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import {
   LayoutGrid,
   PackagePlus,
   History,
   Bell,
   ShieldAlert,
-  LogOut,
   User,
 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { getMyNotifications } from "../../api/notification.api";
 import Avatar from "./Avatar";
-import Modal from "./Modal";
-import Button from "./Button";
 import BrandMark from "./BrandMark";
 
 const links = [
@@ -26,24 +23,20 @@ const links = [
 ];
 
 export default function Sidebar({ onClose = () => {} }) {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
+  const { user } = useAuth();
   const location = useLocation();
   const [unread, setUnread] = useState(0);
-  const [logoutOpen, setLogoutOpen] = useState(false);
 
   useEffect(() => {
-    getMyNotifications()
-      .then((items) => setUnread(items.filter((i) => !i.is_read).length))
-      .catch(() => {});
-  }, []);
-
-  // خروج واقعی فقط بعد از تأیید در Modal انجام می‌شود
-  const handleLogout = () => {
-    setLogoutOpen(false);
-    logout();
-    navigate("/owner/login");
-  };
+    const refreshUnread = () => {
+      getMyNotifications()
+        .then((items) => setUnread((items || []).filter((item) => !item.is_read).length))
+        .catch(() => {});
+    };
+    refreshUnread();
+    window.addEventListener('alamut:notifications', refreshUnread);
+    return () => window.removeEventListener('alamut:notifications', refreshUnread);
+  }, [location.pathname]);
 
   return (
     <>
@@ -80,7 +73,7 @@ export default function Sidebar({ onClose = () => {} }) {
         </nav>
 
         <div className="border-t border-white/10 p-3">
-          <div className="mb-2 flex items-center gap-3 rounded-md px-3 py-2">
+          <NavLink to="/owner/profile" onClick={onClose} className="mb-2 flex items-center gap-3 rounded-md px-3 py-2">
             <Avatar
               avatarUrl={user?.avatar_url}
               firstName={user?.first_name}
@@ -93,38 +86,9 @@ export default function Sidebar({ onClose = () => {} }) {
                   : user?.phone_number}
               </p>
             </div>
-          </div>
-          <button
-            onClick={() => setLogoutOpen(true)}
-            className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm text-[#f7f6f0]/70 transition-colors hover:bg-white/5 hover:text-[#f7f6f0]"
-          >
-            <LogOut size={18} strokeWidth={2} />
-            خروج از حساب
-          </button>
+          </NavLink>
         </div>
       </aside>
-
-      <Modal
-        open={logoutOpen}
-        onClose={() => setLogoutOpen(false)}
-        title="خروج از حساب"
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setLogoutOpen(false)}>
-              انصراف
-            </Button>
-            <Button
-              variant="danger"
-              className="!bg-red-50 hover:!bg-red-100"
-              onClick={handleLogout}
-            >
-              خروج از حساب
-            </Button>
-          </>
-        }
-      >
-        آیا مطمئنی که می‌خواهی از اکانتت خارج شوی؟
-      </Modal>
     </>
   );
 }

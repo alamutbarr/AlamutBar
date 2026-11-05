@@ -12,6 +12,7 @@ import Drivers from './pages/Drivers';
 import DriverDetail from './pages/DriverDetail';
 import Chats from './pages/Chats';
 import OpsPages from './pages/OpsPages';
+import Profile from './pages/Profile';
 import './admin.css';
 
 function Guard() {
@@ -43,6 +44,7 @@ export default function AdminApp() {
           <Route path="settings" element={<OpsPages page="settings" />} />
           <Route path="admins" element={<OpsPages page="admins" />} />
           <Route path="audit" element={<OpsPages page="audit" />} />
+          <Route path="profile" element={<Profile />} />
         </Route>
         <Route path="*" element={<Navigate to="/admin" replace />} />
       </Routes>

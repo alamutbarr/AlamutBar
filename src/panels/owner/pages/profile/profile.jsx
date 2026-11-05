@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { Camera, Loader2, Save } from "lucide-react";
+import { Camera, Loader2, LogOut, Save } from "lucide-react";
 import { nationalIdIssue } from "../../utils/nationalId";
 import { getProfile, updateProfile } from "../../api/auth.api";
 import { uploadShipmentPhotos } from "../../api/upload.api";
 import { useAuth } from "../../hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 import { useToast } from "../../hooks/useToast";
 import Input from "../../components/common/Input";
 import Button from "../../components/common/Button";
@@ -13,7 +14,8 @@ import { getErrorMessage } from "../../utils/errorMessage";
 import OwnerKyc from "./OwnerKyc";
 
 export default function Profile() {
-  const { updateUser } = useAuth();
+  const { updateUser, logout } = useAuth();
+  const navigate = useNavigate();
   const toast = useToast();
 
   const [profile, setProfile] = useState(null);
@@ -291,6 +293,15 @@ export default function Profile() {
       </div>
 
       <OwnerKyc profile={profile} onChange={applyProfile} />
+
+      <button
+        type="button"
+        onClick={() => { logout(); navigate("/owner/login"); }}
+        className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-red-200 bg-red-50 px-4 py-3.5 text-base font-bold text-red-600"
+      >
+        <LogOut size={18} />
+        خروج از حساب
+      </button>
     </div>
   );
 }

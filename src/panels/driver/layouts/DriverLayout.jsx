@@ -1,24 +1,14 @@
-import { useEffect, useState } from 'react';
-import { LayoutDashboard, ListTodo, User, LogOut, AlertTriangle, } from 'lucide-react';
+import { LayoutDashboard, ListTodo, User } from 'lucide-react';
+
 const navItems = [
-    { key: 'dashboard', label: 'داشبورد', icon: LayoutDashboard },
-    { key: 'missions', label: 'مأموریت‌ها', icon: ListTodo },
-    { key: 'profile', label: 'پروفایل', icon: User },
+  { key: 'dashboard', label: 'داشبورد', icon: LayoutDashboard },
+  { key: 'missions', label: 'مأموریت‌ها', icon: ListTodo },
+  { key: 'profile', label: 'پروفایل', icon: User },
 ];
-export function DriverLayout({ current, onNavigate, onLogout, driverName, children, }) {
-    const [confirmLogout, setConfirmLogout] = useState(false);
 
-    // بستن پنجره‌ی تأیید با کلید Escape
-    useEffect(() => {
-        if (!confirmLogout) return undefined;
-        const onKeyDown = (event) => {
-            if (event.key === 'Escape') setConfirmLogout(false);
-        };
-        window.addEventListener('keydown', onKeyDown);
-        return () => window.removeEventListener('keydown', onKeyDown);
-    }, [confirmLogout]);
-
-    return (<div className="panel-canvas isolate relative min-h-screen lg:grid lg:grid-cols-[16rem_minmax(0,1fr)]" dir="rtl">
+export function DriverLayout({ current, onNavigate, driverName, children }) {
+  return (
+    <div className="panel-canvas isolate relative min-h-screen lg:grid lg:grid-cols-[16rem_minmax(0,1fr)]" dir="rtl">
       <aside className="brand-rail hidden lg:sticky lg:top-0 lg:flex lg:h-screen w-full flex-col">
         <div className="px-5 pb-2 pt-6">
           <div className="flex items-center gap-3 text-[#f7f6f0]">
@@ -40,21 +30,20 @@ export function DriverLayout({ current, onNavigate, onLogout, driverName, childr
           {navItems.map((item) => {
             const Icon = item.icon;
             const active = current === item.key;
-            return (<button key={item.key} onClick={() => onNavigate(item.key)} className={`w-full flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors ${active
-                    ? 'bg-white/10 font-bold text-[#f7f6f0]'
-                    : 'text-[#f7f6f0]/75 hover:bg-white/5'}`}>
-                <Icon className="h-5 w-5"/>
+            return (
+              <button
+                key={item.key}
+                onClick={() => onNavigate(item.key)}
+                className={`w-full flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors ${
+                  active ? 'bg-white/10 font-bold text-[#f7f6f0]' : 'text-[#f7f6f0]/75 hover:bg-white/5'
+                }`}
+              >
+                <Icon className="h-5 w-5" />
                 {item.label}
-              </button>);
-        })}
+              </button>
+            );
+          })}
         </nav>
-
-        <div className="border-t border-white/10 p-3">
-          <button onClick={() => setConfirmLogout(true)} className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-[#f7f6f0]/70 transition-colors hover:bg-white/5 hover:text-[#f7f6f0]">
-            <LogOut className="w-5 h-5"/>
-            خروج از حساب کاربری
-          </button>
-        </div>
       </aside>
 
       <div className="min-w-0 w-full">
@@ -71,9 +60,6 @@ export function DriverLayout({ current, onNavigate, onLogout, driverName, childr
               <span className="text-[11px] text-[#f7f6f0]/80">{driverName || 'پنل راننده'}</span>
             </div>
           </div>
-          <button onClick={() => setConfirmLogout(true)} title="خروج از حساب کاربری" className="rounded-md border border-white/30 p-2 text-[#f7f6f0]">
-            <LogOut className="w-5 h-5"/>
-          </button>
         </header>
 
         <main className="pb-[calc(4.75rem+env(safe-area-inset-bottom))] lg:pb-6">{children}</main>
@@ -81,36 +67,22 @@ export function DriverLayout({ current, onNavigate, onLogout, driverName, childr
 
       <nav className="panel-dock lg:hidden fixed inset-x-3 bottom-3 z-30 grid grid-cols-3 p-1 pb-[max(0.4rem,env(safe-area-inset-bottom))]">
         {navItems.map((item) => {
-            const Icon = item.icon;
-            const active = current === item.key;
-            return (<button key={item.key} onClick={() => onNavigate(item.key)} className={`flex flex-col items-center gap-1 rounded-md py-2.5 transition-colors ${active ? 'bg-[#e1f3f0] font-bold text-[#087f8c]' : 'text-[#526d70]'}`}>
-              <Icon className="w-5 h-5"/>
+          const Icon = item.icon;
+          const active = current === item.key;
+          return (
+            <button
+              key={item.key}
+              onClick={() => onNavigate(item.key)}
+              className={`flex flex-col items-center gap-1 rounded-md py-2.5 transition-colors ${
+                active ? 'bg-[#e1f3f0] font-bold text-[#087f8c]' : 'text-[#526d70]'
+              }`}
+            >
+              <Icon className="w-5 h-5" />
               <span className="text-[11px] font-medium">{item.label}</span>
-            </button>);
+            </button>
+          );
         })}
       </nav>
-
-      {/* تأیید خروج از حساب کاربری */}
-      {confirmLogout && (<div className="glass-overlay fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setConfirmLogout(false)} role="dialog" aria-modal="true">
-          <div className="glass-strong anim-pop w-full max-w-sm rounded-2xl p-5 shadow-2xl" onClick={(event) => event.stopPropagation()}>
-            <div className="mb-3 flex items-center gap-3">
-              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-red-50 text-red-600">
-                <AlertTriangle className="w-5 h-5"/>
-              </span>
-              <h3 className="text-base font-bold text-slate-800">خروج از حساب کاربری</h3>
-            </div>
-            <p className="mb-5 text-sm leading-7 text-slate-600">
-              آیا مطمئن هستید که می‌خواهید از حساب کاربری خود خارج شوید؟
-            </p>
-            <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-              <button type="button" onClick={() => setConfirmLogout(false)} className="anim-text d-1 order-2 rounded-md border border-[#d8e1dc] bg-white px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-[#f7f6f0] sm:order-1">
-                انصراف
-              </button>
-              <button type="button" onClick={() => { setConfirmLogout(false); onLogout(); }} className="anim-text d-2 order-1 rounded-md bg-red-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-red-700 sm:order-2">
-                بله، خارج می‌شوم
-              </button>
-            </div>
-          </div>
-        </div>)}
-    </div>);
+    </div>
+  );
 }

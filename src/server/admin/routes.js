@@ -1,4 +1,5 @@
 const express = require('express');
+const multer = require('multer');
 const { Op } = require('sequelize');
 const asyncHandler = require('../utils/asyncHandler');
 const { success } = require('../utils/apiResponse');
@@ -25,6 +26,26 @@ const { buildWorkbook } = require('./reports');
 const { normalizePhone } = require('./phone');
 const { logEvent } = require('./audit');
 const { jsonList, photoList } = require('../utils/jsonList');
+const avatarStore = require('../utils/avatarStore');
+
+const avatarUpload = multer({
+  dest: avatarStore.ROOT,
+  limits: { fileSize: 4 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)) {
+      cb(new Error('فقط تصویر JPG، PNG یا WEBP مجاز است.'));
+      return;
+    }
+    cb(null, true);
+  },
+});
+
+function handleAvatarUpload(req, res, next) {
+  avatarUpload.single('file')(req, res, (error) => {
+    if (error) return res.status(400).json({ success: false, message: error.message || 'آپلود تصویر ناموفق بود.' });
+    return next();
+  });
+}
 
 const router = express.Router();
 
@@ -48,6 +69,19 @@ router.post('/auth/logout', asyncHandler(async (req, res) => {
 router.get('/auth/me', asyncHandler(async (req, res) => {
   const openAlerts = await Alert.count({ where: { isResolved: false } });
   success(res, { data: { ...authService.presentAdmin(req.admin), openAlerts } });
+}));
+
+router.post('/auth/avatar', handleAvatarUpload, asyncHandler(async (req, res) => {
+  if (!req.file) throw new AppError('تصویر را انتخاب کنید.', 400);
+  avatarStore.saveAvatar('admin', req.admin.id, req.file);
+  const openAlerts = await Alert.count({ where: { isResolved: false } });
+  success(res, { message: 'تصویر پروفایل ذخیره شد.', data: { ...authService.presentAdmin(req.admin), openAlerts } });
+}));
+
+router.delete('/auth/avatar', asyncHandler(async (req, res) => {
+  avatarStore.removeAvatar('admin', req.admin.id);
+  const openAlerts = await Alert.count({ where: { isResolved: false } });
+  success(res, { message: 'تصویر پروفایل حذف شد.', data: { ...authService.presentAdmin(req.admin), openAlerts } });
 }));
 
 router.get('/dashboard', requirePermission('dashboard'), asyncHandler(async (req, res) => {
@@ -189,9 +223,21 @@ router.get('/drivers/:id', requirePermission('drivers.read'), asyncHandler(async
         id: item.id,
         trackingCode: item.tracking_code,
         workflowStatus: item.workflow_status,
+        workflowLabel: WORKFLOW_LABELS[item.workflow_status] || item.workflow_status,
         origin: item.originCity?.name,
         destination: item.destCity?.name,
         createdAt: item.createdAt,
+        isActive: ['DRIVER_ACCEPTED', ...ACTIVE_TRIP].includes(item.workflow_status),
+        cargo: {
+          type: item.cargo_type === 'other' ? (item.cargo_type_other || 'سایر') : item.cargo_type,
+          weightKg: item.weight_kg != null ? Number(item.weight_kg) : null,
+          pieceCount: item.piece_count != null ? Number(item.piece_count) : null,
+          packaging: item.packaging_type || '',
+          lengthCm: item.length_cm,
+          widthCm: item.width_cm,
+          heightCm: item.height_cm,
+          value: item.cargo_value != null ? Number(item.cargo_value) : null,
+        },
       })),
     },
   });
@@ -204,7 +250,8 @@ router.post('/drivers/:id/documents/review', requirePermission('drivers.document
   try {
     result = reviewDocument(driver.documents, {
       group: req.body.group,
-      index: Number(req.body.index),
+      index: req.body.index != null ? Number(req.body.index) : undefined,
+      key: req.body.key,
       decision: req.body.decision,
       reason: req.body.reason,
     });
@@ -368,6 +415,56 @@ router.post('/inspectors', requirePermission('inspectors.manage'), asyncHandler(
   const inspector = await Inspector.create({ fullName, phone, notes: req.body.notes || null });
   await audit(req.admin, 'inspector.create', 'inspector', inspector.id, { fullName });
   success(res, { message: 'متصدی ثبت شد.', data: inspector });
+}));
+
+const OPEN_INSPECTOR_MISSIONS = { [Op.notIn]: ['CANCELLED', 'COMPLETED', 'DRIVER_REPLACED'] };
+
+async function unassignInspectorMissions(inspectorId, adminId = null) {
+  const rows = await Shipment.findAll({
+    where: { assigned_inspector_id: inspectorId, workflow_status: OPEN_INSPECTOR_MISSIONS },
+  });
+  for (const shipment of rows) {
+    shipment.assigned_inspector_id = null;
+    await shipment.save();
+    await logEvent(shipment.id, {
+      type: 'INSPECTION_UNASSIGNED',
+      description: 'متصدی از مأموریت باز برداشته شد تا بتوان او را غیرفعال کرد.',
+      adminId,
+      metadata: { inspectorId },
+    });
+  }
+  return rows.length;
+}
+
+router.patch('/inspectors/:id', requirePermission('inspectors.manage'), asyncHandler(async (req, res) => {
+  const inspector = await Inspector.findByPk(req.params.id);
+  if (!inspector) throw new AppError('متصدی پیدا نشد.', 404);
+  const nextActive = req.body.isActive;
+  if (typeof nextActive !== 'boolean') throw new AppError('وضعیت فعال بودن متصدی را مشخص کنید.', 400);
+  let unassigned = 0;
+  if (nextActive === false && inspector.isActive) {
+    unassigned = await unassignInspectorMissions(inspector.id, req.admin.id);
+  }
+  inspector.isActive = nextActive;
+  await inspector.save();
+  await audit(req.admin, nextActive ? 'inspector.activate' : 'inspector.deactivate', 'inspector', inspector.id, { unassigned });
+  success(res, {
+    message: nextActive ? 'متصدی فعال شد.' : (unassigned ? 'متصدی غیرفعال شد و مأموریت‌های باز از او برداشته شد.' : 'متصدی غیرفعال شد.'),
+    data: { ...inspector.toJSON(), unassigned },
+  });
+}));
+
+router.delete('/inspectors/:id', requirePermission('inspectors.manage'), asyncHandler(async (req, res) => {
+  const inspector = await Inspector.findByPk(req.params.id);
+  if (!inspector) throw new AppError('متصدی پیدا نشد.', 404);
+  if (inspector.isActive) {
+    throw new AppError('برای حذف متصدی ابتدا او را غیرفعال کنید.', 409);
+  }
+  await unassignInspectorMissions(inspector.id, req.admin.id);
+  await InspectionReport.update({ inspectorId: null }, { where: { inspectorId: inspector.id } });
+  await inspector.destroy();
+  await audit(req.admin, 'inspector.delete', 'inspector', inspector.id, {});
+  success(res, { message: 'متصدی حذف شد.' });
 }));
 
 router.post('/orders/:id/inspector', requirePermission('inspections'), asyncHandler(async (req, res) => {
@@ -695,6 +792,9 @@ async function buildReport(query, financial) {
     limit: 1000,
   });
   const items = rows.map((row) => {
+    const jalaliDate = row.createdAt
+      ? new Date(row.createdAt).toLocaleString('fa-IR', { timeZone: 'Asia/Tehran' })
+      : '';
     const base = {
       trackingCode: row.tracking_code,
       status: WORKFLOW_LABELS[row.workflow_status] || row.workflow_status,
@@ -702,6 +802,7 @@ async function buildReport(query, financial) {
       destination: row.destCity?.name,
       driver: orderOps.driverName(row.driver),
       createdAt: row.createdAt,
+      jalaliDate,
     };
     if (!financial) return base;
     return {

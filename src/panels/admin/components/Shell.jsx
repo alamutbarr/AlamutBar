@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { Bell, ClipboardList, LayoutGrid, LogOut, Map, MessageCircle, Moon, Settings, Shield, Sun, Truck, Users } from 'lucide-react';
+import { Bell, ClipboardList, LayoutGrid, Map, MessageCircle, Moon, Settings, Shield, Sun, Truck, User, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import BrandMark from '../../owner/components/common/BrandMark';
 import { api, getAccess } from '../api';
@@ -20,15 +20,16 @@ const LINKS = [
   { to: '/admin/settings', label: 'تنظیمات', icon: Settings, perm: 'settings.manage' },
   { to: '/admin/admins', label: 'اپراتورها', icon: Users, perm: 'admins.manage' },
   { to: '/admin/audit', label: 'اقدامات', icon: ClipboardList, perm: 'audit.read' },
+  { to: '/admin/profile', label: 'پروفایل', icon: User },
 ];
 
 export default function Shell() {
-  const { user, can, logout } = useAdmin();
+  const { user, can } = useAdmin();
   const navigate = useNavigate();
   const [theme, setTheme] = useState(localStorage.getItem('alamut_admin_theme') || 'light');
   const [alerts, setAlerts] = useState(user?.openAlerts || 0);
   const [more, setMore] = useState(false);
-  const visible = LINKS.filter((item) => can(item.perm));
+  const visible = LINKS.filter((item) => !item.perm || can(item.perm));
 
   useEffect(() => {
     const token = getAccess();
@@ -69,7 +70,9 @@ export default function Shell() {
           ))}
         </nav>
         <div className="admin-side-foot">
-          <strong>{user?.fullName}</strong>
+          <NavLink to="/admin/profile" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`} style={{ paddingInlineStart: 8 }}>
+            <strong>{user?.fullName}</strong>
+          </NavLink>
           <div className="muted">{user?.roleLabels?.join(' · ')}</div>
           <div className="admin-side-actions">
             <button type="button" className="btn secondary bell" onClick={() => navigate('/admin/alerts')} aria-label="هشدارها">
@@ -79,7 +82,6 @@ export default function Shell() {
             <button type="button" className="btn secondary" onClick={toggleTheme} aria-label="تغییر تم">
               {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
             </button>
-            <button type="button" className="btn secondary" onClick={async () => { await logout(); navigate('/admin/login'); }}>خروج</button>
           </div>
         </div>
       </aside>
@@ -94,7 +96,6 @@ export default function Shell() {
           <button type="button" className="btn secondary admin-mobile-brand" onClick={toggleTheme} aria-label="تغییر تم">
             {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
           </button>
-          <button type="button" className="btn secondary admin-mobile-brand" onClick={async () => { await logout(); navigate('/admin/login'); }} aria-label="خروج"><LogOut size={18} /></button>
         </header>
         <main className="admin-main"><Outlet /></main>
       </div>

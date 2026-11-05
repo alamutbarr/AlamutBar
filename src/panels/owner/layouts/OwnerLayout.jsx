@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Bell, History, LayoutGrid, LogOut, PackagePlus, ShieldAlert, User } from 'lucide-react';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { Bell, History, LayoutGrid, PackagePlus, ShieldAlert, User } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import Sidebar from '../components/common/Sidebar';
 import BrandMark from '../components/common/BrandMark';
@@ -20,8 +20,7 @@ const MORE = [
 
 export default function OwnerLayout() {
   const location = useLocation();
-  const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [more, setMore] = useState(false);
   const name = user?.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : user?.phone_number;
 
@@ -74,13 +73,6 @@ export default function OwnerLayout() {
                 <Icon size={18} /> {label}
               </NavLink>
             ))}
-            <button
-              type="button"
-              className="flex w-full items-center gap-3 rounded-md px-3 py-3 text-sm font-bold text-[#b42318]"
-              onClick={() => { setMore(false); logout(); navigate('/owner/login'); }}
-            >
-              <LogOut size={18} /> خروج
-            </button>
           </div>
         </div>
       )}

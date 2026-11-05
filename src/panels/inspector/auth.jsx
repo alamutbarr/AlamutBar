@@ -35,6 +35,7 @@ export function InspectorAuthProvider({ children }) {
       clearSession();
       setUser(null);
     },
+    setUser,
   }), [user, loading]);
 
   return <InspectorAuth.Provider value={value}>{children}</InspectorAuth.Provider>;

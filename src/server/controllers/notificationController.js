@@ -12,4 +12,9 @@ const markAsRead = asyncHandler(async (req, res) => {
   success(res, { data: notification });
 });
 
-module.exports = { getMine, markAsRead };
+const markAllRead = asyncHandler(async (req, res) => {
+  const result = await notificationService.markAllRead(req.user.id);
+  success(res, { data: result });
+});
+
+module.exports = { getMine, markAsRead, markAllRead };

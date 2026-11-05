@@ -65,7 +65,7 @@ export default function Drivers() {
                 <td>{driver.fullName}</td>
                 <td>{driver.phone}</td>
                 <td>{driver.plate || '—'}</td>
-                <td>{[driver.tractorType, driver.trailerType].filter(Boolean).join(' / ') || '—'}</td>
+                <td>{driver.vehicleSummary || [driver.tractorLabel, driver.trailerLabel].filter(Boolean).join(' / ') || '—'}</td>
                 <td><Badge tone={tone(driver.verificationStatus)}>{DRIVER_STATUS_LABELS[driver.verificationStatus] || driver.verificationStatus}</Badge></td>
                 <td><Badge tone={tone(driver.availability)}>{DRIVER_STATUS_LABELS[driver.availability] || driver.availability}</Badge></td>
                 <td>{driver.isGpsActive ? 'فعال' : 'قطع'}</td>

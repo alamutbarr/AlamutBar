@@ -19,4 +19,19 @@ async function markAsRead(userId, notificationId) {
   return notification;
 }
 
-module.exports = { notify, listForUser, markAsRead };
+async function unreadCount(userId) {
+  return Notification.count({ where: { user_id: userId, is_read: false } });
+}
+
+async function markAllRead(userId) {
+  const unread = await unreadCount(userId);
+  if (unread) {
+    await Notification.update(
+      { is_read: true },
+      { where: { user_id: userId, is_read: false } },
+    );
+  }
+  return { marked: unread, unread: 0 };
+}
+
+module.exports = { notify, listForUser, markAsRead, markAllRead, unreadCount };

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Bell, BellRing } from 'lucide-react';
-import { getMyNotifications, markNotificationAsRead } from '../../api/notification.api';
+import { getMyNotifications, markAllNotificationsRead, markNotificationAsRead } from '../../api/notification.api';
 
 function timeAgo(dateStr) {
   const diffMs = Date.now() - new Date(dateStr).getTime();
@@ -18,7 +18,14 @@ export default function Notifications() {
   const [loading, setLoading] = useState(true);
 
   const load = () => {
-    getMyNotifications().then(setItems).catch(() => setItems([])).finally(() => setLoading(false));
+    getMyNotifications().then(async (list) => {
+      setItems(list);
+      const unread = (list || []).filter((item) => !item.is_read).length;
+      if (unread) {
+        await markAllNotificationsRead().catch(() => {});
+        setItems((current) => current.map((item) => ({ ...item, is_read: true })));
+      }
+    }).catch(() => setItems([])).finally(() => setLoading(false));
   };
 
   useEffect(load, []);

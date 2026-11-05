@@ -12,6 +12,8 @@ const { needsInspector } = require('../inspector/policy');
 const { publish } = require('./realtime');
 const { parseRoles } = require('./permissions');
 const { jsonList, photoList } = require('../utils/jsonList');
+const { describeVehicle } = require('../utils/vehicleLabels');
+const { normalizeDocuments, flatDocuments } = require('./documents');
 
 const includes = [
   { model: City, as: 'originCity' },
@@ -48,9 +50,13 @@ function combinedDriverStatus(driver) {
 function presentDriver(driver) {
   if (!driver) return null;
   const row = driver.toJSON ? driver.toJSON() : driver;
+  const vehicle = describeVehicle(row.tractorType, row.trailerType, row.vehicleSpecs);
+  const documents = normalizeDocuments(row.documents);
   return {
     id: row.id,
     fullName: driverName(row),
+    firstName: row.firstName || '',
+    lastName: row.lastName || '',
     phone: row.phoneNumber,
     status: combinedDriverStatus(row),
     verificationStatus: row.verificationStatus,
@@ -58,11 +64,16 @@ function presentDriver(driver) {
     plate: row.plate,
     tractorType: row.tractorType,
     trailerType: row.trailerType,
+    tractorLabel: vehicle.tractorLabel,
+    trailerLabel: vehicle.trailerLabel,
+    vehicleSummary: vehicle.summary,
+    vehicleFields: vehicle.fields,
     nationalId: row.nationalId,
     licenseNumber: row.licenseNumber,
     smartCardNumber: row.smartCardNumber,
     vehicleSpecs: row.vehicleSpecs,
-    documents: row.documents || { personal: [], vehicle: [], insurance: [] },
+    documents,
+    documentList: flatDocuments(documents),
     rejectionReason: row.rejectionReason,
     lastLocation: row.lastLat != null ? { lat: num(row.lastLat), lng: num(row.lastLng) } : null,
     lastLocationAt: row.lastLocationAt,
@@ -255,9 +266,9 @@ async function listOrders(query) {
     cityInclude.where = { name: { [Op.like]: `%${String(query.city).trim()}%` } };
     cityInclude.required = true;
   }
-  const order = query.sort === 'newest'
-    ? [['createdAt', 'DESC']]
-    : [['priority_score', 'DESC'], ['createdAt', 'ASC']];
+  const order = query.sort === 'priority'
+    ? [['priority_score', 'DESC'], ['createdAt', 'ASC']]
+    : [['createdAt', 'DESC']];
   const { rows, count } = await Shipment.findAndCountAll({
     where,
     include: includes.map((item) => (item.as === 'originCity' ? cityInclude : item)),

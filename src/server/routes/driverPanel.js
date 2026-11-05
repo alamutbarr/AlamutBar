@@ -5,7 +5,8 @@ const multer = require('multer');
 const { Op } = require('sequelize');
 const { authMiddleware } = require('../middleware/auth');
 const { Shipment, Driver, City, VehicleType, Zone, DriverNotice } = require('../models');
-const { upsertDocument } = require('../admin/documents');
+const { upsertDocument, SLOT_META, flatDocuments } = require('../admin/documents');
+const { describeVehicle } = require('../utils/vehicleLabels');
 const { canRevealExactDestination } = require('../mobile/missionPolicy');
 const { applyLegacyDriverStatus } = require('../mobile/driverActions');
 const { filterNearbyMissions, filterMissionsByRoute } = require('../services/missionSearch');
@@ -16,16 +17,6 @@ const router = express.Router();
 
 const uploadDir = path.join(__dirname, '..', '..', 'uploads');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-
-const SLOT_META = {
-  'driverLicense:front': { group: 'personal', title: 'روی گواهینامه' },
-  'driverLicense:back': { group: 'personal', title: 'پشت گواهینامه' },
-  'selfie:selfie': { group: 'personal', title: 'عکس شخصی با کارت' },
-  'nationalCard:front': { group: 'personal', title: 'روی کارت ملی' },
-  'nationalCard:back': { group: 'personal', title: 'پشت کارت ملی' },
-  'vehicleCard:front': { group: 'vehicle', title: 'روی کارت خودرو' },
-  'vehicleCard:back': { group: 'vehicle', title: 'پشت کارت خودرو' },
-};
 
 const documentUpload = multer({
   storage: multer.diskStorage({
@@ -44,13 +35,6 @@ const documentUpload = multer({
     cb(null, true);
   },
 });
-
-function flatDocuments(raw) {
-  const groups = raw && typeof raw === 'object' ? raw : {};
-  return ['personal', 'vehicle', 'insurance'].flatMap((group) => (
-    Array.isArray(groups[group]) ? groups[group].map((item) => ({ ...item, group })) : []
-  ));
-}
 
 async function driverNotices(driverId) {
   const rows = await DriverNotice.findAll({
@@ -78,16 +62,25 @@ const includes = [
 function toPanelDriver(row, extras = {}) {
   const d = row.toJSON();
   const name = [d.firstName, d.lastName].filter(Boolean).join(' ').trim();
+  const vehicle = describeVehicle(d.tractorType, d.trailerType, d.vehicleSpecs);
   return {
     id: d.id,
     name: name || 'راننده',
+    firstName: d.firstName || '',
+    lastName: d.lastName || '',
     mobile: d.phoneNumber,
     phone_number: d.phoneNumber,
     nationalCode: d.nationalId || '',
     licenseNumber: d.licenseNumber || '',
+    smartCardNumber: d.smartCardNumber || '',
     plate: d.plate || '',
     tractorType: d.tractorType || '',
     trailerType: d.trailerType || '',
+    tractorLabel: vehicle.tractorLabel,
+    trailerLabel: vehicle.trailerLabel,
+    vehicleSummary: vehicle.summary,
+    vehicleSpecs: d.vehicleSpecs || {},
+    vehicleFields: vehicle.fields,
     verifiedStatus: d.verificationStatus === 'VERIFIED' ? 'verified' : d.verificationStatus === 'REJECTED' ? 'rejected' : 'pending',
     verificationStatus: d.verificationStatus,
     rejectionReason: d.rejectionReason || '',

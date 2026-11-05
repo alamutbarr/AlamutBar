@@ -54,7 +54,7 @@ export function api(path, options) {
   return withAuth(path, options);
 }
 
-export function upload(path, file, fields) {
+export function upload(path, file, fields = {}) {
   const form = new FormData();
   form.append('file', file);
   Object.entries(fields).forEach(([key, value]) => form.append(key, value));

@@ -4,6 +4,7 @@ import { api, download } from '../api';
 import { useAdmin } from '../auth';
 import { money, when } from '../format';
 import { Badge, Page, SkeletonRows } from '../components/ui';
+import JalaliDatePicker from '../../owner/components/common/JalaliDatePicker';
 
 const ROLES = [
   ['SUPER_ADMIN', 'مدیر سامانه'],
@@ -66,7 +67,78 @@ function Inspections() {
         ) : (
           <p>ساخت متصدی برای نقش «مدیر سامانه» و «سرپرست بازرسی» باز است.</p>
         )}
-        <p style={{ marginBottom: 0 }}>{inspectors.length ? inspectors.map((item) => `${item.fullName} — ${item.phone}${item.isActive ? '' : ' (غیرفعال)'}`).join(' · ') : 'هنوز متصدی ثبت نشده.'}</p>
+        <div className="card table-wrap" style={{ marginTop: 12 }}>
+          <table className="data">
+            <thead>
+              <tr>
+                <th>متصدی</th>
+                <th>موبایل</th>
+                <th>وضعیت</th>
+                <th>اقدام</th>
+              </tr>
+            </thead>
+            <tbody>
+              {inspectors.map((item) => (
+                <tr key={item.id}>
+                  <td>{item.fullName}</td>
+                  <td>{item.phone}</td>
+                  <td><Badge tone={item.isActive ? 'ok' : 'idle'}>{item.isActive ? 'فعال' : 'غیرفعال'}</Badge></td>
+                  <td>
+                    {can('inspectors.manage') && (
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        {item.isActive ? (
+                          <button
+                            type="button"
+                            className="btn secondary"
+                            onClick={async () => {
+                              try {
+                                await api(`/inspectors/${item.id}`, { method: 'PATCH', body: { isActive: false } });
+                                toast.success('متصدی غیرفعال شد. اگر مأموریت باز داشت از او برداشته شد.');
+                                reload();
+                              } catch (err) { toast.error(err.message); }
+                            }}
+                          >
+                            غیرفعال کردن
+                          </button>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              className="btn secondary"
+                              onClick={async () => {
+                                try {
+                                  await api(`/inspectors/${item.id}`, { method: 'PATCH', body: { isActive: true } });
+                                  toast.success('متصدی دوباره فعال شد');
+                                  reload();
+                                } catch (err) { toast.error(err.message); }
+                              }}
+                            >
+                              فعال‌سازی
+                            </button>
+                            <button
+                              type="button"
+                              className="btn secondary"
+                              onClick={async () => {
+                                try {
+                                  await api(`/inspectors/${item.id}`, { method: 'DELETE' });
+                                  toast.success('متصدی حذف شد');
+                                  reload();
+                                } catch (err) { toast.error(err.message); }
+                              }}
+                            >
+                              حذف
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {inspectors.length === 0 && <p className="muted" style={{ padding: 12 }}>هنوز متصدی ثبت نشده.</p>}
+        </div>
       </article>
       <div style={{ display: 'grid', gap: 10 }}>
         {reports.map((report) => (
@@ -248,8 +320,8 @@ function Reports() {
           <option value="operations">عملیاتی</option>
           {can('reports.financial') && <option value="financial">مالی</option>}
         </select>
-        <input className="field" type="date" value={range.from} onChange={(event) => setRange({ ...range, from: event.target.value })} />
-        <input className="field" type="date" value={range.to} onChange={(event) => setRange({ ...range, to: event.target.value })} />
+        <JalaliDatePicker label="از تاریخ" value={range.from} onChange={(from) => setRange({ ...range, from })} allowPast />
+        <JalaliDatePicker label="تا تاریخ" value={range.to} onChange={(to) => setRange({ ...range, to })} allowPast />
       </div>
       {error && <p className="muted">{error}</p>}
       {!data && !error && <SkeletonRows />}
@@ -265,7 +337,7 @@ function Reports() {
             <table className="data">
               <thead>
                 <tr>
-                  <th>پیگیری</th><th>وضعیت</th><th>مسیر</th><th>راننده</th>
+                  <th>پیگیری</th><th>وضعیت</th><th>مسیر</th><th>راننده</th><th>تاریخ</th>
                   {financial && <th>قیمت نهایی</th>}
                   {financial && <th>جریمه</th>}
                 </tr>
@@ -277,6 +349,7 @@ function Reports() {
                     <td>{item.status}</td>
                     <td>{item.origin} ← {item.destination}</td>
                     <td>{item.driver || '—'}</td>
+                    <td>{item.jalaliDate || when(item.createdAt)}</td>
                     {financial && <td>{money(item.finalPrice)}</td>}
                     {financial && <td>{money(item.penalty)}</td>}
                   </tr>
