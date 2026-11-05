@@ -72,6 +72,7 @@ export default function Drivers() {
               <th className="p-4 text-right font-medium">نام راننده</th>
               <th className="p-4 text-right font-medium">تلفن</th>
               <th className="p-4 text-right font-medium">پلاک</th>
+              <th className="p-4 text-right font-medium">ناوگان</th>
               <th className="p-4 text-right font-medium">وضعیت تأیید</th>
               <th className="p-4 text-right font-medium">وضعیت</th>
               <th className="p-4 text-right font-medium">عملیات</th>
@@ -80,13 +81,13 @@ export default function Drivers() {
           <tbody>
             {loading && data.items.length === 0 ? (
               <tr>
-                <td colSpan="6" className="p-8 text-center text-slate-500">
+                <td colSpan="7" className="p-8 text-center text-slate-500">
                   در حال بارگذاری...
                 </td>
               </tr>
             ) : data.items.length === 0 ? (
               <tr>
-                <td colSpan="6" className="p-8 text-center text-slate-500">
+                <td colSpan="7" className="p-8 text-center text-slate-500">
                   راننده‌ای یافت نشد.
                 </td>
               </tr>
@@ -106,6 +107,11 @@ export default function Drivers() {
                   </td>
                   <td className="p-4 font-mono">{driver.phone}</td>
                   <td className="p-4 font-mono">{driver.plate || "—"}</td>
+                  <td className="p-4">
+                    {driver.vehicleSummary ||
+                      [driver.tractorLabel, driver.trailerLabel].filter(Boolean).join(" / ") ||
+                      "—"}
+                  </td>
                   <td className="p-4">
                     <span
                       className={`px-2 py-1 rounded-full text-xs font-bold ${

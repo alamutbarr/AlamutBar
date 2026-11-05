@@ -17,7 +17,7 @@ const keyOf = (jy, jm, jd) => jy * 10000 + jm * 100 + jd;
 // انتخاب تاریخ شمسی. ورودی/خروجی (value / onChange) تاریخ میلادی ISO به‌شکل YYYY-MM-DD است
 // تا Backend و Database بدون تغییر کار کنند؛ کاربر فقط تاریخ شمسی می‌بیند.
 // تقویم داخل جریان صفحه باز می‌شود (نه شناور) چون کارت اصلی overflow-hidden دارد.
-export default function JalaliDatePicker({ label, value, onChange, required }) {
+export default function JalaliDatePicker({ label, value, onChange, required, allowPast = false }) {
   const today = todayJalali();
   const selected = isoToJalali(value);
   const [open, setOpen] = useState(false);
@@ -28,7 +28,7 @@ export default function JalaliDatePicker({ label, value, onChange, required }) {
     setOpen((o) => !o);
   };
 
-  const canGoPrev = keyOf(view.jy, view.jm, 1) > keyOf(today.jy, today.jm, 1);
+  const canGoPrev = allowPast || keyOf(view.jy, view.jm, 1) > keyOf(today.jy, today.jm, 1);
   const goPrev = () => {
     if (!canGoPrev) return;
     setView((v) =>
@@ -126,7 +126,7 @@ export default function JalaliDatePicker({ label, value, onChange, required }) {
                 <button
                   type="button"
                   key={jd}
-                  disabled={isPast}
+                  disabled={isPast && !allowPast}
                   onClick={() => pick(jd)}
                   className={`rounded-lg py-1.5 text-sm transition-colors ${
                     isSelected

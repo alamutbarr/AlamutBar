@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { Bell, ClipboardList, HardHat, LayoutGrid, LogOut, Map, MessageCircle, Moon, Settings, Shield, Sun, Truck, Users } from 'lucide-react';
+import { Bell, ClipboardList, HardHat, LayoutGrid, Map, MessageCircle, Moon, Settings, Shield, Sun, Truck, User, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import BrandMark from '../../owner/components/common/BrandMark';
-import LogoutConfirm from '../../../shared/components/LogoutConfirm';
-import { api, getAccess } from '../api';
+import { getAccess } from '../api';
 import { useAdmin } from '../auth';
 
 const LINKS = [
@@ -22,22 +21,16 @@ const LINKS = [
   { to: '/admin/admins', label: 'اپراتورها', icon: Users, perm: 'admins.manage' },
   { to: '/admin/inspectors', label: 'متصدی‌ها', icon: HardHat, perm: 'inspectors.manage' },
   { to: '/admin/audit', label: 'اقدامات', icon: ClipboardList, perm: 'audit.read' },
+  { to: '/admin/profile', label: 'پروفایل', icon: User },
 ];
 
 export default function Shell() {
-  const { user, can, logout } = useAdmin();
+  const { user, can } = useAdmin();
   const navigate = useNavigate();
   const [theme, setTheme] = useState(localStorage.getItem('alamut_admin_theme') || 'light');
   const [alerts, setAlerts] = useState(user?.openAlerts || 0);
   const [more, setMore] = useState(false);
-  const [confirmLogout, setConfirmLogout] = useState(false);
-  const visible = LINKS.filter((item) => can(item.perm));
-
-  async function leave() {
-    setConfirmLogout(false);
-    await logout();
-    navigate('/admin/login');
-  }
+  const visible = LINKS.filter((item) => !item.perm || can(item.perm));
 
   useEffect(() => {
     const token = getAccess();
@@ -78,7 +71,9 @@ export default function Shell() {
           ))}
         </nav>
         <div className="admin-side-foot">
-          <strong>{user?.fullName}</strong>
+          <NavLink to="/admin/profile" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`} style={{ paddingInlineStart: 8 }}>
+            <strong>{user?.fullName}</strong>
+          </NavLink>
           <div className="muted">{user?.roleLabels?.join(' · ')}</div>
           <div className="admin-side-actions">
             <button type="button" className="btn secondary bell" onClick={() => navigate('/admin/alerts')} aria-label="هشدارها">
@@ -88,7 +83,6 @@ export default function Shell() {
             <button type="button" className="btn secondary" onClick={toggleTheme} aria-label="تغییر تم">
               {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
             </button>
-            <button type="button" className="btn secondary" onClick={() => setConfirmLogout(true)}>خروج</button>
           </div>
         </div>
       </aside>
@@ -103,7 +97,6 @@ export default function Shell() {
           <button type="button" className="btn secondary admin-mobile-brand" onClick={toggleTheme} aria-label="تغییر تم">
             {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
           </button>
-          <button type="button" className="btn secondary admin-mobile-brand" onClick={() => setConfirmLogout(true)} aria-label="خروج"><LogOut size={18} /></button>
         </header>
         <main className="admin-main"><Outlet /></main>
       </div>
@@ -122,16 +115,9 @@ export default function Shell() {
             {visible.map((item) => (
               <NavLink key={item.to} to={item.to} end={item.end} className="nav-link" onClick={() => setMore(false)}>{item.label}</NavLink>
             ))}
-            <button type="button" className="btn secondary" style={{ marginTop: 12, width: '100%' }} onClick={() => { setMore(false); setConfirmLogout(true); }}>خروج از حساب</button>
           </div>
         </div>
       )}
-      <LogoutConfirm
-        open={confirmLogout}
-        onCancel={() => setConfirmLogout(false)}
-        onConfirm={leave}
-        message="آیا مطمئن هستید که می‌خواهید از مرکز عملیات خارج شوید؟ برای ادامه کار باید دوباره وارد شوید."
-      />
     </div>
   );
 }

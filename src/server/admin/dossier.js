@@ -65,22 +65,23 @@ function buildHtml(order) {
     * { font-family: Vazirmatn, sans-serif; font-variant-ligatures: none; font-feature-settings: "liga" 0; }
     body { color: #17383b; background: #fff; margin: 0; direction: rtl; }
     header { background: #10282b; color: #f7f6f0; padding: 24px 28px; }
-    h1 { margin: 0; font-size: 22px; }
-    header p { color: #d7b56d; }
-    main { padding: 24px 28px; }
-    h2 { font-size: 16px; border-bottom: 2px solid #d7b56d; padding-bottom: 6px; }
+    h1 { margin: 0; font-size: 24px; }
+    header p { color: #d7b56d; font-size: 15px; }
+    main { padding: 24px 28px; font-size: 15px; line-height: 1.9; }
+    h2 { font-size: 18px; border-bottom: 2px solid #d7b56d; padding-bottom: 6px; }
     .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .card { border: 1px solid #d8e1dc; border-radius: 8px; padding: 12px; }
+    .card { border: 1px solid #d8e1dc; border-radius: 8px; padding: 14px; }
+    p { margin: 6px 0; }
     li { margin: 8px 0; }
-    span { color: #526d70; font-size: 12px; }
+    span { color: #526d70; font-size: 13px; }
   </style></head><body>
     <header><h1>پرونده پایان مأموریت الموت</h1><p>${escapeHtml(order.trackingCode)} — ${escapeHtml(order.workflowLabel)}</p></header>
     <main>
       <div class="grid">
-        <div class="card"><h2>بار</h2><p>${escapeHtml(order.cargo?.type)} — ${escapeHtml(order.cargo?.weightKg)} کیلوگرم</p><p>ارزش: ${money(order.cargo?.value)}</p><p>${escapeHtml(order.loading?.city)} به ${escapeHtml(order.unloading?.city)}</p></div>
+        <div class="card"><h2>بار</h2><p>نوع: ${escapeHtml(order.cargo?.type)}</p><p>وزن: ${escapeHtml(order.cargo?.weightKg)} کیلوگرم</p>${order.cargo?.packaging ? `<p>بسته‌بندی: ${escapeHtml(order.cargo.packaging)}</p>` : ''}<p>ارزش: ${money(order.cargo?.value)}</p><p>از ${escapeHtml(order.loading?.city)} به ${escapeHtml(order.unloading?.city)}</p></div>
         <div class="card"><h2>مبالغ</h2><p>تخمینی: ${money(order.estimatedPrice)}</p><p>نهایی: ${money(order.finalPrice)}</p><p>جریمه: ${money(order.penaltyAmount)}</p><p>بارنامه: ${escapeHtml(order.waybillNumber)}</p></div>
         <div class="card"><h2>صاحب کالا</h2><p>${escapeHtml(ownerName)}</p><p>${escapeHtml(order.owner?.phone)}</p></div>
-        <div class="card"><h2>راننده</h2><p>${escapeHtml(order.driver?.fullName)}</p><p>${escapeHtml(order.driver?.phone)} — ${escapeHtml(order.driver?.plate)}</p></div>
+        <div class="card"><h2>راننده و ناوگان</h2><p>${escapeHtml(order.driver?.fullName)}</p><p>${escapeHtml(order.driver?.phone)} — ${escapeHtml(order.driver?.plate)}</p>${order.driver?.vehicleSummary ? `<p>${escapeHtml(order.driver.vehicleSummary)}</p>` : ''}</div>
       </div>
       ${inspections}
       <h2>تایم‌لاین</h2>
@@ -97,15 +98,17 @@ function shown(value) {
 }
 
 function writeLine(doc, text, raw = false) {
-  doc.fillColor('#17383b').fontSize(11).text(raw ? text : protectNumbers(text), {
+  if (text == null || text === '' || /: —$/.test(String(text)) || String(text).includes('undefined')) return;
+  doc.fillColor('#17383b').fontSize(12).text(raw ? text : protectNumbers(text), {
     align: 'right',
     width: doc.page.width - 72,
+    lineGap: 2,
   });
 }
 
 function writeSection(doc, title) {
   doc.moveDown(0.7);
-  doc.fillColor('#17383b').fontSize(14).text(title, {
+  doc.fillColor('#17383b').fontSize(16).text(title, {
     align: 'right',
     width: doc.page.width - 72,
   });
@@ -132,30 +135,53 @@ function renderDossier(order) {
       doc.registerFont('Vazir', FONT_PATH);
       const width = doc.page.width;
       doc.rect(0, 0, width, 88).fill('#10282b');
-      doc.fillColor('#f7f6f0').font('Vazir').fontSize(18).text('پرونده پایان مأموریت الموت', 36, 24, {
+      doc.fillColor('#f7f6f0').font('Vazir').fontSize(20).text('پرونده پایان مأموریت الموت', 36, 22, {
         align: 'right',
         width: width - 72,
       });
-      doc.fillColor('#d7b56d').fontSize(12).text(`${ltr(shown(order.trackingCode))} — ${shown(order.workflowLabel)}`, 36, 52, {
+      doc.fillColor('#d7b56d').fontSize(13).text(`${ltr(shown(order.trackingCode))} — ${shown(order.workflowLabel)}`, 36, 50, {
         align: 'right',
         width: width - 72,
       });
       doc.y = 108;
       doc.x = 36;
       const ownerName = order.owner?.companyName || `${order.owner?.firstName || ''} ${order.owner?.lastName || ''}`.trim();
+      const cargoDims = [
+        order.cargo?.lengthCm != null ? `طول ${shown(order.cargo.lengthCm)} سانتی‌متر` : null,
+        order.cargo?.widthCm != null ? `عرض ${shown(order.cargo.widthCm)} سانتی‌متر` : null,
+        order.cargo?.heightCm != null ? `ارتفاع ${shown(order.cargo.heightCm)} سانتی‌متر` : null,
+      ].filter(Boolean).join('، ');
       writeSection(doc, 'بار');
-      writeLine(doc, `${shown(order.cargo?.type)} — ${shown(order.cargo?.weightKg)} کیلوگرم`);
+      writeLine(doc, `نوع بار: ${shown(order.cargo?.type)}`);
+      writeLine(doc, `وزن: ${shown(order.cargo?.weightKg)} کیلوگرم${order.cargo?.pieceCount ? ` — تعداد ${shown(order.cargo.pieceCount)}` : ''}`);
+      if (order.cargo?.packaging) writeLine(doc, `بسته‌بندی: ${shown(order.cargo.packaging)}`);
+      if (cargoDims) writeLine(doc, `ابعاد: ${cargoDims}`);
       writeLine(doc, `ارزش: ${pdfMoney(order.cargo?.value)}`, true);
+      if (order.createdAt) writeLine(doc, `تاریخ ثبت: ${pdfWhen(order.createdAt)}`, true);
+      writeSection(doc, 'مسیر');
       writeLine(doc, `${shown(order.loading?.city)} به ${shown(order.unloading?.city)}`);
+      if (order.loading?.address) writeLine(doc, `نشانی بارگیری: ${shown(order.loading.address)}`);
+      if (order.loading?.date) writeLine(doc, `تاریخ بارگیری: ${ltr(shown(order.loading.date))} ${shown(order.loading?.from || '')} تا ${shown(order.loading?.to || '')}`, true);
+      if (order.unloading?.address) writeLine(doc, `نشانی تخلیه: ${shown(order.unloading.address)}`);
+      if (order.unloading?.receiverName || order.unloading?.receiverPhone) {
+        writeLine(doc, `گیرنده: ${shown(order.unloading?.receiverName)} — ${shown(order.unloading?.receiverPhone)}`);
+      }
       writeSection(doc, 'مبالغ');
       writeLine(doc, `تخمینی: ${pdfMoney(order.estimatedPrice)}`, true);
       writeLine(doc, `نهایی: ${pdfMoney(order.finalPrice)}`, true);
       writeLine(doc, `جریمه: ${pdfMoney(order.penaltyAmount)}`, true);
       writeLine(doc, `بارنامه: ${ltr(shown(order.waybillNumber))}`, true);
-      writeSection(doc, 'طرف‌ها');
-      writeLine(doc, `صاحب کالا: ${shown(ownerName)} — ${shown(order.owner?.phone)}`);
-      writeLine(doc, `راننده: ${shown(order.driver?.fullName)} — ${shown(order.driver?.phone)}`);
+      writeSection(doc, 'صاحب کالا');
+      writeLine(doc, `نام: ${shown(ownerName)}`);
+      writeLine(doc, `موبایل: ${shown(order.owner?.phone)}`);
+      writeSection(doc, 'راننده و ناوگان');
+      writeLine(doc, `نام: ${shown(order.driver?.fullName)}`);
+      writeLine(doc, `موبایل: ${shown(order.driver?.phone)}`);
       writeLine(doc, `پلاک: ${pdfPlate(order.driver?.plate)}`, true);
+      writeLine(doc, `ناوگان: ${shown(order.driver?.vehicleSummary || [order.driver?.tractorLabel, order.driver?.trailerLabel].filter(Boolean).join(' / '))}`);
+      (order.driver?.vehicleFields || []).forEach((field) => {
+        writeLine(doc, `${shown(field.title)}: ${shown(field.value)}`);
+      });
       for (const item of order.inspections || []) {
         writeSection(doc, 'بازرسی');
         writeLine(doc, `متصدی: ${shown(item.inspector?.fullName)}`);

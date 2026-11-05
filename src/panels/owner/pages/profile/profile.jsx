@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { Camera, Loader2, Save } from "lucide-react";
+import { Camera, Loader2, LogOut, Save } from "lucide-react";
 import { nationalIdIssue } from "../../utils/nationalId";
 import { getProfile, updateProfile } from "../../api/auth.api";
 import { uploadShipmentPhotos } from "../../api/upload.api";
 import { useAuth } from "../../hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 import { useToast } from "../../hooks/useToast";
 import Input from "../../components/common/Input";
 import Button from "../../components/common/Button";
@@ -11,9 +12,11 @@ import Avatar from "../../components/common/Avatar";
 import { toEnglishDigits } from "../../utils/digits";
 import { getErrorMessage } from "../../utils/errorMessage";
 import OwnerKyc from "./OwnerKyc";
+import LogoutConfirm from "../../../../shared/components/LogoutConfirm";
 
 export default function Profile() {
-  const { updateUser } = useAuth();
+  const { updateUser, logout } = useAuth();
+  const navigate = useNavigate();
   const toast = useToast();
 
   const [profile, setProfile] = useState(null);
@@ -29,6 +32,7 @@ export default function Profile() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
+  const [confirmLogout, setConfirmLogout] = useState(false);
 
   const applyProfile = (data) => {
     setProfile(data);
@@ -303,6 +307,21 @@ export default function Profile() {
       </div>
 
       <OwnerKyc profile={profile} onChange={applyProfile} />
+
+      <button
+        type="button"
+        onClick={() => setConfirmLogout(true)}
+        className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-red-200 bg-red-50 px-4 py-3.5 text-base font-bold text-red-600"
+      >
+        <LogOut size={18} />
+        خروج از حساب
+      </button>
+      <LogoutConfirm
+        open={confirmLogout}
+        onCancel={() => setConfirmLogout(false)}
+        onConfirm={() => { setConfirmLogout(false); logout(); navigate("/owner/login"); }}
+        message="آیا مطمئن هستید که می‌خواهید از پنل صاحب کالا خارج شوید؟ برای ادامه کار باید دوباره وارد شوید."
+      />
     </div>
   );
 }

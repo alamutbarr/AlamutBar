@@ -17,14 +17,14 @@ export function clearSession() {
   localStorage.removeItem(REFRESH);
 }
 
-async function raw(path, { method = 'GET', body, token } = {}) {
+async function raw(path, { method = 'GET', body, token, form } = {}) {
   return fetch(`/api/admin${path}`, {
     method,
     headers: {
-      ...(body ? { 'Content-Type': 'application/json' } : {}),
+      ...(body && !form ? { 'Content-Type': 'application/json' } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: body ? JSON.stringify(body) : undefined,
+    body: form || (body ? JSON.stringify(body) : undefined),
   });
 }
 
@@ -51,6 +51,15 @@ export async function api(path, options = {}) {
     throw error;
   }
   return json.data;
+}
+
+export function upload(path, file, fields = {}) {
+  const form = new FormData();
+  form.append('file', file);
+  Object.entries(fields).forEach(([key, value]) => {
+    if (value != null) form.append(key, value);
+  });
+  return api(path, { method: 'POST', form });
 }
 
 async function chooseSaveHandle(filename) {

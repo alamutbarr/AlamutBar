@@ -4,6 +4,7 @@ import { api, download } from '../api';
 import { useAdmin } from '../auth';
 import { money, when } from '../format';
 import { Badge, Page, SkeletonRows } from '../components/ui';
+import JalaliDatePicker from '../../owner/components/common/JalaliDatePicker';
 
 const ROLES = [
   ['SUPER_ADMIN', 'مدیر سامانه'],
@@ -141,8 +142,8 @@ function Reports() {
           <option value="operations">عملیاتی</option>
           {can('reports.financial') && <option value="financial">مالی</option>}
         </select>
-        <input className="field" type="date" value={range.from} onChange={(event) => setRange({ ...range, from: event.target.value })} />
-        <input className="field" type="date" value={range.to} onChange={(event) => setRange({ ...range, to: event.target.value })} />
+        <JalaliDatePicker label="از تاریخ" value={range.from} onChange={(from) => setRange({ ...range, from })} allowPast />
+        <JalaliDatePicker label="تا تاریخ" value={range.to} onChange={(to) => setRange({ ...range, to })} allowPast />
       </div>
       {error && <p className="muted">{error}</p>}
       {!data && !error && <SkeletonRows />}
@@ -158,7 +159,7 @@ function Reports() {
             <table className="data">
               <thead>
                 <tr>
-                  <th>پیگیری</th><th>وضعیت</th><th>مسیر</th><th>راننده</th>
+                  <th>پیگیری</th><th>وضعیت</th><th>مسیر</th><th>راننده</th><th>تاریخ</th>
                   {financial && <th>قیمت نهایی</th>}
                   {financial && <th>جریمه</th>}
                 </tr>
@@ -170,6 +171,7 @@ function Reports() {
                     <td>{item.status}</td>
                     <td>{item.origin} ← {item.destination}</td>
                     <td>{item.driver || '—'}</td>
+                    <td>{item.jalaliDate || when(item.createdAt)}</td>
                     {financial && <td>{money(item.finalPrice)}</td>}
                     {financial && <td>{money(item.penalty)}</td>}
                   </tr>
@@ -378,11 +380,17 @@ function Inspectors() {
                     <button type="button" className="btn secondary" onClick={async () => {
                       try {
                         await api(`/inspectors/${inspector.id}`, { method: 'PATCH', body: { isActive: !inspector.isActive } });
+                        toast.success(inspector.isActive
+                          ? 'متصدی غیرفعال شد. اگر مأموریت باز داشت از او برداشته شد.'
+                          : 'متصدی دوباره فعال شد');
                         reload();
                       } catch (err) { toast.error(err.message); }
                     }}>{inspector.isActive ? 'غیرفعال' : 'فعال'}</button>
-                    {pendingDelete !== inspector.id && (
+                    {!inspector.isActive && pendingDelete !== inspector.id && (
                       <button type="button" className="btn secondary" onClick={() => setPendingDelete(inspector.id)}>حذف</button>
+                    )}
+                    {inspector.isActive && (
+                      <span className="muted">برای حذف ابتدا غیرفعال کنید</span>
                     )}
                     {pendingDelete === inspector.id && (
                       <>

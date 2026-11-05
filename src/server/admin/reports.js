@@ -11,6 +11,7 @@ async function buildWorkbook(report, financial) {
       { header: 'مبدأ', key: 'origin', width: 16 },
       { header: 'مقصد', key: 'destination', width: 16 },
       { header: 'راننده', key: 'driver', width: 20 },
+      { header: 'تاریخ', key: 'jalaliDate', width: 22 },
       { header: 'قیمت پیشنهادی', key: 'proposedPrice', width: 18 },
       { header: 'قیمت تخمینی', key: 'estimatedPrice', width: 18 },
       { header: 'قیمت نهایی', key: 'finalPrice', width: 18 },
@@ -23,12 +24,12 @@ async function buildWorkbook(report, financial) {
       { header: 'مبدأ', key: 'origin', width: 16 },
       { header: 'مقصد', key: 'destination', width: 16 },
       { header: 'راننده', key: 'driver', width: 20 },
-      { header: 'تاریخ', key: 'createdAt', width: 22 },
+      { header: 'تاریخ', key: 'jalaliDate', width: 22 },
     ];
   sheet.columns = columns;
   sheet.addRows(report.items.map((item) => ({
     ...item,
-    createdAt: item.createdAt ? new Date(item.createdAt).toLocaleString('fa-IR') : '',
+    jalaliDate: item.jalaliDate || (item.createdAt ? new Date(item.createdAt).toLocaleString('fa-IR', { timeZone: 'Asia/Tehran' }) : ''),
   })));
   sheet.getRow(1).font = { bold: true };
   return workbook.xlsx.writeBuffer();

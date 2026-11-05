@@ -14,6 +14,7 @@ import Customers from "./pages/Customers";
 import CustomerDetail from "./pages/CustomerDetail";
 import Chats from "./pages/Chats";
 import OpsPages from "./pages/OpsPages";
+import Profile from "./pages/Profile";
 import "./admin.css";
 
 function Guard() {
@@ -58,6 +59,7 @@ export default function AdminApp() {
           <Route path="admins" element={<OpsPages page="admins" />} />
           <Route path="inspectors" element={<OpsPages page="inspectors" />} />
           <Route path="audit" element={<OpsPages page="audit" />} />
+          <Route path="profile" element={<Profile />} />
         </Route>
         <Route path="*" element={<Navigate to="/admin" replace />} />
       </Routes>

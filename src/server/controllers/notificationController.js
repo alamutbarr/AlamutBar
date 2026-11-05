@@ -17,4 +17,4 @@ const markAllAsRead = asyncHandler(async (req, res) => {
   success(res, { data: notifications });
 });
 
-module.exports = { getMine, markAsRead, markAllAsRead };
+module.exports = { getMine, markAsRead, markAllAsRead, markAllRead: markAllAsRead };

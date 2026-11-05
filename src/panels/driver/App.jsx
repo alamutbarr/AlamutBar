@@ -238,7 +238,6 @@ export default function App() {
       current={layoutCurrent}
       notificationCount={notifications.unread}
       onNavigate={(path) => navigate(`/driver/${path}`)}
-      onLogout={logout}
       driverName={driver.name}
     >
       <Routes>

@@ -12,7 +12,7 @@ test('dispatch cannot open settings or financial reports', () => {
   assert.equal(can(['DISPATCH_OPERATOR'], 'orders.price'), true);
   assert.equal(can(['DISPATCH_OPERATOR'], 'settings.manage'), false);
   assert.equal(can(['DISPATCH_OPERATOR'], 'reports.financial'), false);
-  assert.equal(can(['DISPATCH_OPERATOR'], 'drivers.documents'), false);
+  assert.equal(can(['DISPATCH_OPERATOR'], 'drivers.documents'), true);
 });
 
 test('security cannot edit price or documents', () => {

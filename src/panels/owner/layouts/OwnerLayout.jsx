@@ -1,12 +1,11 @@
 import { useState } from 'react';
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Bell, History, LayoutGrid, LogOut, PackagePlus, ShieldAlert, User } from 'lucide-react';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { Bell, History, LayoutGrid, PackagePlus, ShieldAlert, User } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import Sidebar from '../components/common/Sidebar';
 import BrandMark from '../components/common/BrandMark';
 import { useAuth } from '../hooks/useAuth';
 import { ThemeToggle } from '../../../shared/theme/PanelTheme';
-import LogoutConfirm from '../../../shared/components/LogoutConfirm';
 import { useOwnerUnread } from '../utils/useOwnerUnread';
 
 const MOBILE = [
@@ -23,18 +22,10 @@ const MORE = [
 
 export default function OwnerLayout() {
   const location = useLocation();
-  const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const unread = useOwnerUnread();
   const [more, setMore] = useState(false);
-  const [confirmLogout, setConfirmLogout] = useState(false);
   const name = user?.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : user?.phone_number;
-
-  function leave() {
-    setConfirmLogout(false);
-    logout();
-    navigate('/owner/login');
-  }
 
   return (
     <div className="panel-canvas flex h-dvh overflow-hidden" dir="rtl">
@@ -96,22 +87,9 @@ export default function OwnerLayout() {
             <div className="px-1 py-1">
               <ThemeToggle />
             </div>
-            <button
-              type="button"
-              className="flex w-full items-center gap-3 rounded-md px-3 py-3 text-sm font-bold text-[#b42318]"
-              onClick={() => { setMore(false); setConfirmLogout(true); }}
-            >
-              <LogOut size={18} /> خروج
-            </button>
           </div>
         </div>
       )}
-      <LogoutConfirm
-        open={confirmLogout}
-        onCancel={() => setConfirmLogout(false)}
-        onConfirm={leave}
-        message="آیا مطمئن هستید که می‌خواهید از پنل صاحب کالا خارج شوید؟ برای ادامه کار باید دوباره وارد شوید."
-      />
     </div>
   );
 }

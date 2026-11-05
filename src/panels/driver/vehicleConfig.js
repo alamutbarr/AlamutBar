@@ -345,3 +345,32 @@ export function getVehicleFields(tractorType, trailerType) {
 
   return [];
 }
+
+export function tractorLabel(value) {
+  return TRACTOR_TYPES.find((item) => item.value === value)?.label || value || '';
+}
+
+export function trailerLabel(tractorType, trailerType) {
+  return (TRAILER_TYPES[tractorType] || []).find((item) => item.value === trailerType)?.label
+    || trailerType
+    || '';
+}
+
+export function describeVehicle(tractorType, trailerType, specs = {}) {
+  const tractor = tractorLabel(tractorType);
+  const trailer = trailerLabel(tractorType, trailerType);
+  const fields = getVehicleFields(tractorType, trailerType).map((field) => {
+    const option = (field.options || []).find((item) => item.value === specs?.[field.key]);
+    return {
+      key: field.key,
+      title: field.title,
+      value: option?.label || specs?.[field.key] || '—',
+    };
+  });
+  return {
+    tractor,
+    trailer,
+    summary: [tractor, trailer].filter(Boolean).join(' / ') || '—',
+    fields,
+  };
+}

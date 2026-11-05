@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const { Admin } = require('../models');
 const AppError = require('../utils/AppError');
 const { ROLES, ROLE_LABELS, listPermissions, parseRoles } = require('./permissions');
+const avatarStore = require('../utils/avatarStore');
 
 function hashToken(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
@@ -28,11 +29,15 @@ function checkPassword(password, passwordHash) {
 
 function presentAdmin(admin) {
   const roles = parseRoles(admin.roles);
+  const names = avatarStore.splitName(admin.fullName);
   return {
     id: admin.id,
     phone: admin.phone,
     username: admin.username,
     fullName: admin.fullName,
+    firstName: names.firstName,
+    lastName: names.lastName,
+    avatarUrl: avatarStore.publicUrl('admin', admin.id),
     roles,
     roleLabels: roles.map((role) => ROLE_LABELS[role] || role),
     permissions: listPermissions(roles),

@@ -12,6 +12,7 @@ const { getSettings } = require('../admin/settingsStore');
 const { logEvent } = require('../admin/audit');
 const { WORKFLOW_LABELS } = require('../admin/workflow');
 const authService = require('./authService');
+const avatarStore = require('../utils/avatarStore');
 const policy = require('./policy');
 const { jsonList, photoList } = require('../utils/jsonList');
 const driverNotificationService = require('../services/driverNotification.service');
@@ -208,6 +209,31 @@ router.post('/auth/logout', asyncHandler(async (req, res) => {
 
 router.get('/me', asyncHandler(async (req, res) => {
   ok(res, authService.presentInspector(req.inspector));
+}));
+
+const profileAvatarUpload = multer({
+  dest: avatarStore.ROOT,
+  limits: { fileSize: 4 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)) {
+      cb(new AppError('فقط تصاویر JPG، PNG و WEBP مجاز هستند.', 400));
+      return;
+    }
+    cb(null, true);
+  },
+});
+
+router.post('/me/avatar', (req, res, next) => {
+  profileAvatarUpload.single('file')(req, res, (error) => (error ? next(error) : next()));
+}, asyncHandler(async (req, res) => {
+  if (!req.file) throw new AppError('تصویر را انتخاب کنید.', 400);
+  avatarStore.saveAvatar('inspector', req.inspector.id, req.file);
+  ok(res, authService.presentInspector(req.inspector), 'تصویر پروفایل ذخیره شد.');
+}));
+
+router.delete('/me/avatar', asyncHandler(async (req, res) => {
+  avatarStore.removeAvatar('inspector', req.inspector.id);
+  ok(res, authService.presentInspector(req.inspector), 'تصویر پروفایل حذف شد.');
 }));
 
 router.get('/missions', asyncHandler(async (req, res) => {

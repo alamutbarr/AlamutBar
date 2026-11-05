@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { User, Phone, CreditCard, Award, Calendar, ShieldCheck, ShieldAlert, Star, X, Camera, Trash2, Loader2, } from 'lucide-react';
+import { User, Phone, CreditCard, Award, Calendar, ShieldCheck, ShieldAlert, Star, X, Camera, Trash2, Loader2, Truck, } from 'lucide-react';
 import { getInitials, readAvatar, saveAvatar, removeAvatar, fileToAvatarDataUrl, } from '@/avatar';
 import { isVerificationComplete } from '@/verification';
 import { VerificationDocuments } from '@/components/VerificationDocuments';
 import LogoutConfirm from '../../../shared/components/LogoutConfirm';
+import { describeVehicle } from '@/vehicleConfig';
 export function DriverProfile({ driver, onLogout, onDriverUpdate }) {
     const location = useLocation();
     const verificationRef = useRef(null);
@@ -160,9 +161,9 @@ export function DriverProfile({ driver, onLogout, onDriverUpdate }) {
         </div>
       </div>
 
-      {/* Verification documents */}
-      <div ref={verificationRef} className="glass-card anim-text d-3 rounded-2xl p-4">
-        <h3 className="text-sm font-bold text-slate-700 mb-3">وضعیت مدارک</h3>
+      <VehicleCard driver={driver} />
+
+      <div ref={verificationRef} className="anim-text d-3">
         <VerificationDocuments driverId={driver.id} onVerifiedChange={setVerified} onDriverUpdate={onDriverUpdate} />
       </div>
 
@@ -189,6 +190,24 @@ function StatBox({ icon, label, value, color }) {
       <p className="text-xs text-slate-500 mt-0.5">{label}</p>
     </div>);
 }
+function VehicleCard({ driver }) {
+  const vehicle = describeVehicle(driver.tractorType, driver.trailerType, driver.vehicleSpecs);
+  const fields = driver.vehicleFields?.length ? driver.vehicleFields : vehicle.fields;
+  return (
+    <div className="glass-card anim-text d-2 rounded-2xl p-4">
+      <h3 className="mb-3 text-sm font-bold text-slate-700">مشخصات ناوگان</h3>
+      <div className="space-y-2">
+        <InfoRow icon={<Truck className="w-4 h-4"/>} label="نوع کشنده" value={driver.tractorLabel || vehicle.tractor || '—'}/>
+        <InfoRow icon={<Truck className="w-4 h-4"/>} label="نوع گاری" value={driver.trailerLabel || vehicle.trailer || '—'}/>
+        <InfoRow icon={<CreditCard className="w-4 h-4"/>} label="پلاک" value={driver.plate || '—'} ltr/>
+        {fields.map((field) => (
+          <InfoRow key={field.key} icon={<Award className="w-4 h-4"/>} label={field.title} value={field.value || '—'}/>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function InfoRow({ icon, label, value, ltr }) {
     return (<div className="flex items-center justify-between rounded-xl border border-white/60 bg-white/55 px-4 py-2.5">
       <span className="flex items-center gap-2 text-sm text-slate-500">

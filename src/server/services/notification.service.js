@@ -19,9 +19,16 @@ async function markAsRead(userId, notificationId) {
   return notification;
 }
 
+async function unreadCount(userId) {
+  return Notification.count({ where: { user_id: userId, is_read: false } });
+}
+
 async function markAllAsRead(userId) {
-  await Notification.update({ is_read: true }, { where: { user_id: userId, is_read: false } });
+  const unread = await unreadCount(userId);
+  if (unread) {
+    await Notification.update({ is_read: true }, { where: { user_id: userId, is_read: false } });
+  }
   return listForUser(userId);
 }
 
-module.exports = { notify, listForUser, markAsRead, markAllAsRead };
+module.exports = { notify, listForUser, markAsRead, markAllAsRead, markAllRead: markAllAsRead, unreadCount };

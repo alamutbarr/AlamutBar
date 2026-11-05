@@ -41,11 +41,20 @@ function nationalId(nine) {
 }
 
 function docs(status = 'PENDING') {
-  const item = (key, title) => ({ key, title, status, note: '', url: null });
+  const item = (key, title, group) => ({ key, title, status, note: '', url: null, group });
   return {
-    personal: [item('license', 'گواهینامه'), item('national_card', 'کارت ملی')],
-    vehicle: [item('smart_card', 'کارت هوشمند ناوگان'), item('vehicle_card', 'کارت خودرو')],
-    insurance: [item('third_party', 'بیمه شخص ثالث')],
+    personal: [
+      item('driverLicense:front', 'روی گواهینامه', 'personal'),
+      item('driverLicense:back', 'پشت گواهینامه', 'personal'),
+      item('selfie:selfie', 'عکس شخصی با کارت', 'personal'),
+      item('nationalCard:front', 'روی کارت ملی', 'personal'),
+      item('nationalCard:back', 'پشت کارت ملی', 'personal'),
+    ],
+    vehicle: [
+      item('vehicleCard:front', 'روی کارت خودرو', 'vehicle'),
+      item('vehicleCard:back', 'پشت کارت خودرو', 'vehicle'),
+    ],
+    insurance: [],
   };
 }
 
