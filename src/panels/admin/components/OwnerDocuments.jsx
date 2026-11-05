@@ -18,16 +18,29 @@ export function hasPendingOwnerDocuments(owner) {
   return ownerDocuments(owner).some((doc) => doc.url && doc.status === 'PENDING');
 }
 
-export default function OwnerDocuments({ owner, canReview, onReviewed }) {
+export function hasPendingDriverDocuments(driver) {
+  const docs = Array.isArray(driver?.kyc?.documents) ? driver.kyc.documents : (driver?.documentList || []);
+  return docs.some((doc) => doc.url && doc.status === 'PENDING');
+}
+
+export default function OwnerDocuments({
+  owner,
+  canReview,
+  onReviewed,
+  reviewUrl,
+  emptyWithType = 'مدرکی برای این مشتری ثبت نشده است.',
+  emptyWithoutType = 'مشتری هنوز نوع مدرک شناسایی (شناسنامه یا کارت ملی) را انتخاب نکرده است.',
+  lockedLabel = 'این تصویر تأیید شده و دیگر از پنل مشتری قابل تغییر نیست.',
+}) {
   const [reasons, setReasons] = useState({});
   const docs = ownerDocuments(owner);
   const idType = owner?.kyc?.idType;
 
   async function review(key, decision) {
     try {
-      await api(`/customers/${owner.id}/kyc/review`, {
+      await api(reviewUrl || `/customers/${owner.id}/kyc/review`, {
         method: 'POST',
-        body: { key, decision, note: reasons[key] || '' },
+        body: { key, decision, note: reasons[key] || '', reason: reasons[key] || '' },
       });
       toast.success(decision === 'APPROVED' ? 'مدرک تأیید شد' : 'دلیل رد برای مشتری ارسال شد');
       onReviewed?.();
@@ -39,9 +52,7 @@ export default function OwnerDocuments({ owner, canReview, onReviewed }) {
   if (!docs.length) {
     return (
       <p className="muted" style={{ marginBottom: 0 }}>
-        {idType
-          ? 'مدرکی برای این مشتری ثبت نشده است.'
-          : 'مشتری هنوز نوع مدرک شناسایی (شناسنامه یا کارت ملی) را انتخاب نکرده است.'}
+        {idType ? emptyWithType : emptyWithoutType}
       </p>
     );
   }
@@ -78,7 +89,7 @@ export default function OwnerDocuments({ owner, canReview, onReviewed }) {
             </div>
           )}
           {doc.status === 'APPROVED' && (
-            <p className="muted" style={{ marginBottom: 0 }}>این تصویر تأیید شده و دیگر از پنل مشتری قابل تغییر نیست.</p>
+            <p className="muted" style={{ marginBottom: 0 }}>{lockedLabel}</p>
           )}
         </div>
       ))}

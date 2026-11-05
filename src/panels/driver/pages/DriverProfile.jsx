@@ -2,14 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { User, Phone, CreditCard, Award, Calendar, ShieldCheck, ShieldAlert, Star, X, Camera, Trash2, Loader2, Truck, } from 'lucide-react';
 import { getInitials, readAvatar, saveAvatar, removeAvatar, fileToAvatarDataUrl, } from '@/avatar';
-import { isVerificationComplete } from '@/verification';
 import { VerificationDocuments } from '@/components/VerificationDocuments';
 import LogoutConfirm from '../../../shared/components/LogoutConfirm';
 import { describeVehicle } from '@/vehicleConfig';
 export function DriverProfile({ driver, onLogout, onDriverUpdate }) {
     const location = useLocation();
     const verificationRef = useRef(null);
-    const [verified, setVerified] = useState(() => isVerificationComplete(driver.id));
+    const [verified, setVerified] = useState(() => driver.verificationStatus === 'VERIFIED');
     const [confirmLogout, setConfirmLogout] = useState(false);
     const [showVerifyNotice, setShowVerifyNotice] = useState(false);
     const initials = getInitials(driver.name);
@@ -21,8 +20,8 @@ export function DriverProfile({ driver, onLogout, onDriverUpdate }) {
     useEffect(() => {
         setAvatar(readAvatar(driver.id));
         setAvatarError('');
-        setVerified(isVerificationComplete(driver.id));
-    }, [driver.id]);
+        setVerified(driver.verificationStatus === 'VERIFIED');
+    }, [driver.id, driver.verificationStatus]);
 
     // اگر از مسیر «قبول مأموریت» بدون احراز هویت به این صفحه منتقل شده باشیم،
     // اعلان اجباری‌بودن احراز هویت را نمایش می‌دهیم و به بخش مدارک می‌رویم.
@@ -77,7 +76,7 @@ export function DriverProfile({ driver, onLogout, onDriverUpdate }) {
           <div className="flex-1">
             <p className="text-sm font-bold text-rose-700">تأیید مدارک از پنل ادمین لازم است</p>
             <p className="mt-1 text-xs leading-6 text-slate-600">
-              تا وقتی مدارک ارسالی از پنل ادمین تأیید نشده، نمی‌توانید باری را قبول کنید. گواهینامه و عکس شخصی را بارگذاری کنید و منتظر تأیید ادمین بمانید.
+              تا وقتی مدارک ارسالی از پنل ادمین تأیید نشده، نمی‌توانید باری را قبول کنید. یکی از دو مدرک کافی است: شناسنامه یا کارت ملی؛ هر کدام فقط سلفی با همان مدرک و عکس خود مدرک. عکس به‌محض انتخاب ارسال می‌شود.
             </p>
           </div>
           {showVerifyNotice && (
@@ -164,7 +163,7 @@ export function DriverProfile({ driver, onLogout, onDriverUpdate }) {
       <VehicleCard driver={driver} />
 
       <div ref={verificationRef} className="anim-text d-3">
-        <VerificationDocuments driverId={driver.id} onVerifiedChange={setVerified} onDriverUpdate={onDriverUpdate} />
+        <VerificationDocuments driver={driver} onVerifiedChange={setVerified} onDriverUpdate={onDriverUpdate} />
       </div>
 
       {/* Logout */}

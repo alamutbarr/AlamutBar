@@ -250,11 +250,9 @@ router.post('/drivers/:id/documents/review', requirePermission('drivers.document
   let result;
   try {
     result = reviewDocument(driver.documents, {
-      group: req.body.group,
-      index: req.body.index != null ? Number(req.body.index) : undefined,
       key: req.body.key,
       decision: req.body.decision,
-      reason: req.body.reason,
+      reason: req.body.reason || req.body.note,
     });
   } catch (error) {
     throw new AppError(error.message, error.statusCode || 400);

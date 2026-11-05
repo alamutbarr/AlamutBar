@@ -40,21 +40,15 @@ function nationalId(nine) {
   return `${digits}${remainder < 2 ? remainder : 11 - remainder}`;
 }
 
-function docs(status = 'PENDING') {
-  const item = (key, title, group) => ({ key, title, status, note: '', url: null, group });
+function docs(status) {
+  if (!status) return { idType: null, documents: {} };
+  const note = status === 'REJECTED' ? 'تصویر خوانا نیست' : null;
   return {
-    personal: [
-      item('driverLicense:front', 'روی گواهینامه', 'personal'),
-      item('driverLicense:back', 'پشت گواهینامه', 'personal'),
-      item('selfie:selfie', 'عکس شخصی با کارت', 'personal'),
-      item('nationalCard:front', 'روی کارت ملی', 'personal'),
-      item('nationalCard:back', 'پشت کارت ملی', 'personal'),
-    ],
-    vehicle: [
-      item('vehicleCard:front', 'روی کارت خودرو', 'vehicle'),
-      item('vehicleCard:back', 'پشت کارت خودرو', 'vehicle'),
-    ],
-    insurance: [],
+    idType: 'national_card',
+    documents: {
+      'national_card:selfie': { url: '/uploads/seed-driver-selfie.jpg', status, note },
+      'national_card:front': { url: '/uploads/seed-driver-card.jpg', status, note },
+    },
   };
 }
 

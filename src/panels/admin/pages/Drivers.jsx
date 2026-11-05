@@ -2,6 +2,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api";
+import { useAdmin } from "../auth";
+import OwnerDocuments, { hasPendingDriverDocuments } from "../components/OwnerDocuments";
 
 // تبدیل وضعیت‌ها به فارسی
 const VERIFY_LABELS = {
@@ -19,6 +21,7 @@ const AVAILABILITY_LABELS = {
 
 export default function Drivers() {
   const navigate = useNavigate();
+  const { can } = useAdmin();
   const [data, setData] = useState({ items: [], total: 0 });
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
@@ -44,6 +47,9 @@ export default function Drivers() {
     load();
   }, [load]);
 
+  const pending = (data.items || []).filter(hasPendingDriverDocuments);
+  const canReview = can("drivers.documents");
+
   return (
     <div className="p-4 md:p-6" dir="rtl">
       <div className="flex flex-col md:flex-row items-center justify-between mb-6 gap-4">
@@ -64,6 +70,42 @@ export default function Drivers() {
           {error}
         </div>
       )}
+
+      <section className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6">
+        <h2 className="text-lg font-bold text-slate-800 mb-1">تأیید مدارک رانندگان</h2>
+        <p className="text-sm text-slate-500 mb-3">
+          مدارک بارگذاری‌شده از پنل راننده همین‌جا دیده می‌شود. یکی از دو مدرک کافی است: شناسنامه یا کارت ملی.
+        </p>
+        {pending.length === 0 && (
+          <p className="text-sm text-slate-500">در این صفحه مدرکی در انتظار تأیید نیست.</p>
+        )}
+        <div className="space-y-3">
+          {pending.map((driver) => (
+            <article key={driver.id} className="border border-slate-200 rounded-lg p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                <strong>{driver.fullName}</strong>
+                <button
+                  type="button"
+                  className="text-sm border border-teal-600 text-teal-700 rounded-lg px-3 py-1.5"
+                  onClick={() => navigate(`/admin/drivers/${driver.id}`)}
+                >
+                  پرونده راننده
+                </button>
+              </div>
+              <p className="text-sm text-slate-500 mb-2">{driver.phone} — {driver.plate || "بدون پلاک"}</p>
+              <OwnerDocuments
+                owner={{ id: driver.id, kyc: driver.kyc }}
+                canReview={canReview}
+                reviewUrl={`/drivers/${driver.id}/documents/review`}
+                emptyWithType="مدرکی برای این راننده ثبت نشده است."
+                emptyWithoutType="راننده هنوز نوع مدرک شناسایی را انتخاب نکرده است."
+                lockedLabel="این تصویر تأیید شده و دیگر از پنل راننده قابل تغییر نیست."
+                onReviewed={() => load()}
+              />
+            </article>
+          ))}
+        </div>
+      </section>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <table className="w-full border-collapse text-sm">

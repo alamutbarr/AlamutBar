@@ -4,32 +4,14 @@ import { CircleMarker, MapContainer, Popup, TileLayer } from "react-leaflet";
 import { api } from "../api";
 import { useAdmin } from "../auth";
 import { DRIVER_STATUS_LABELS, WORKFLOW_LABELS, money, when } from "../format";
-import { VERIFICATION_SECTIONS } from "../../driver/verification";
 import { describeVehicle } from "../../driver/vehicleConfig";
-
-const DOC_STATUS_LABELS = {
-  APPROVED: "تأیید شده",
-  REJECTED: "رد شده",
-  PENDING: "در انتظار بررسی",
-  MISSING: "آپلود نشده",
-};
+import OwnerDocuments from "../components/OwnerDocuments";
 
 const VERIFY_LABELS = {
   VERIFIED: "تأیید شده",
   PENDING_VERIFICATION: "در انتظار تأیید",
   REJECTED: "رد شده",
 };
-
-function docsByKey(driver) {
-  const map = new Map();
-  (driver.documentList || []).forEach((doc) => map.set(doc.key, doc));
-  ["personal", "vehicle", "insurance"].forEach((group) => {
-    (driver.documents?.[group] || []).forEach((doc) => {
-      if (!map.has(doc.key)) map.set(doc.key, { ...doc, group });
-    });
-  });
-  return map;
-}
 
 function dim(value, label) {
   if (value == null || value === "") return null;
@@ -44,9 +26,6 @@ export default function DriverDetail() {
   const [driver, setDriver] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
-  const [rejecting, setRejecting] = useState(null);
-  const [reason, setReason] = useState("");
 
   const load = useCallback(async () => {
     setError("");
@@ -66,28 +45,6 @@ export default function DriverDetail() {
   useEffect(() => {
     load();
   }, [load]);
-
-  async function handleReview(doc, decision, note = "") {
-    if (decision === "REJECTED" && String(note).trim().length < 3) {
-      setError("دلیل رد باید حداقل ۳ کاراکتر باشد.");
-      return;
-    }
-    setBusy(true);
-    setError("");
-    try {
-      await api(`/drivers/${id}/documents/review`, {
-        method: "POST",
-        body: { key: doc.key, group: doc.group, decision, reason: note },
-      });
-      setRejecting(null);
-      setReason("");
-      await load();
-    } catch (err) {
-      setError(err.message || "خطا در ثبت بررسی مدرک");
-    } finally {
-      setBusy(false);
-    }
-  }
 
   if (loading && !driver) {
     return (
@@ -113,7 +70,6 @@ export default function DriverDetail() {
 
   const vehicle = describeVehicle(driver.tractorType, driver.trailerType, driver.vehicleSpecs);
   const fields = driver.vehicleFields?.length ? driver.vehicleFields : vehicle.fields;
-  const byKey = docsByKey(driver);
   const activeCargo = (driver.missions || []).find((mission) => mission.isActive);
 
   return (
@@ -287,102 +243,22 @@ export default function DriverDetail() {
       )}
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="bg-slate-100 px-6 py-3 border-b border-slate-200 flex justify-between items-center">
-          <div>
-            <h2 className="font-bold text-slate-800">احراز هویت راننده</h2>
-            <p className="text-xs text-slate-500 mt-1">همان مدارکی که راننده در پنل خود بارگذاری و ارسال کرده است.</p>
-          </div>
+        <div className="bg-slate-100 px-6 py-3 border-b border-slate-200">
+          <h2 className="font-bold text-slate-800">احراز هویت راننده</h2>
+          <p className="text-xs text-slate-500 mt-1">
+            همان مدارکی که راننده در پنل خود بارگذاری کرده است. یکی از دو مدرک کافی است: شناسنامه یا کارت ملی.
+          </p>
         </div>
-        <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-          {VERIFICATION_SECTIONS.flatMap((section) =>
-            section.slots.map((slot) => {
-              const key = `${section.id}:${slot.id}`;
-              const doc = byKey.get(key);
-              const open = rejecting === key;
-              return (
-                <div
-                  key={key}
-                  className="border border-slate-200 rounded-lg p-4 flex flex-col justify-between bg-slate-50"
-                >
-                  <div>
-                    <div className="font-bold text-slate-800 mb-1">{slot.label}</div>
-                    <div className="text-xs text-slate-500 mb-3">
-                      {section.title}
-                      {section.mandatory ? " — اجباری" : " — اختیاری"}
-                    </div>
-                    <div className="text-sm text-slate-600 mb-3">
-                      وضعیت:{" "}
-                      <span
-                        className={`font-bold px-2 py-0.5 rounded text-xs ${
-                          doc?.status === "APPROVED"
-                            ? "bg-green-100 text-green-700"
-                            : doc?.status === "REJECTED"
-                              ? "bg-red-100 text-red-700"
-                              : "bg-amber-100 text-amber-700"
-                        }`}
-                      >
-                        {DOC_STATUS_LABELS[doc?.status || "MISSING"]}
-                      </span>
-                    </div>
-                    {doc?.note && (
-                      <div className="text-xs text-red-600 bg-red-50 p-2 rounded mb-3">
-                        علت رد: {doc.note}
-                      </div>
-                    )}
-                    {doc?.url ? (
-                      <a href={doc.url} target="_blank" rel="noreferrer">
-                        <img
-                          src={doc.url}
-                          alt={slot.label}
-                          className="mb-4 max-h-40 rounded-lg border border-slate-200 object-contain bg-white"
-                        />
-                      </a>
-                    ) : (
-                      <div className="text-sm text-red-400 mb-4">تصویری آپلود نشده</div>
-                    )}
-                  </div>
-                  {can("drivers.documents") && doc?.url && doc.status === "PENDING" && (
-                    <div className="flex gap-2 mt-2">
-                      <button
-                        disabled={busy}
-                        className="flex-1 bg-green-600 text-white rounded-lg px-3 py-2 text-sm font-medium hover:bg-green-700 disabled:opacity-40"
-                        onClick={() => handleReview(doc, "APPROVED")}
-                      >
-                        {busy ? "در حال ثبت..." : "تأیید مدرک"}
-                      </button>
-                      <button
-                        disabled={busy}
-                        className="flex-1 bg-red-600 text-white rounded-lg px-3 py-2 text-sm font-medium hover:bg-red-700 disabled:opacity-40"
-                        onClick={() => {
-                          setRejecting(open ? null : key);
-                          setReason("");
-                        }}
-                      >
-                        رد مدرک
-                      </button>
-                    </div>
-                  )}
-                  {open && (
-                    <div className="mt-3 space-y-2">
-                      <textarea
-                        className="w-full rounded-lg border border-slate-300 p-2 text-sm"
-                        value={reason}
-                        onChange={(event) => setReason(event.target.value)}
-                        placeholder="دلیل رد مدرک (حداقل سه نویسه)"
-                      />
-                      <button
-                        type="button"
-                        className="w-full bg-red-600 text-white rounded-lg px-3 py-2 text-sm"
-                        onClick={() => handleReview(doc, "REJECTED", reason)}
-                      >
-                        ارسال دلیل رد
-                      </button>
-                    </div>
-                  )}
-                </div>
-              );
-            }),
-          )}
+        <div className="p-6">
+          <OwnerDocuments
+            owner={{ id: driver.id, kyc: driver.kyc }}
+            canReview={can("drivers.documents")}
+            reviewUrl={`/drivers/${id}/documents/review`}
+            emptyWithType="مدرکی برای این راننده ثبت نشده است."
+            emptyWithoutType="راننده هنوز نوع مدرک شناسایی (شناسنامه یا کارت ملی) را انتخاب نکرده است."
+            lockedLabel="این تصویر تأیید شده و دیگر از پنل راننده قابل تغییر نیست."
+            onReviewed={() => load().catch((err) => setError(err.message))}
+          />
         </div>
       </div>
     </div>

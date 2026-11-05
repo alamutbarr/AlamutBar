@@ -5,7 +5,7 @@ const multer = require('multer');
 const { Op } = require('sequelize');
 const { authMiddleware } = require('../middleware/auth');
 const { Shipment, Driver, City, VehicleType, Zone, DriverNotice } = require('../models');
-const { upsertDocument, SLOT_META, flatDocuments } = require('../admin/documents');
+const { upsertDocument, setIdType, present, ID_TYPES } = require('../admin/documents');
 const { describeVehicle } = require('../utils/vehicleLabels');
 const { canRevealExactDestination } = require('../mobile/missionPolicy');
 const { applyLegacyDriverStatus } = require('../mobile/driverActions');
@@ -28,7 +28,7 @@ const documentUpload = multer({
       cb(null, `doc-${unique}${path.extname(file.originalname) || '.jpg'}`);
     },
   }),
-  limits: { fileSize: 8 * 1024 * 1024 },
+  limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)) {
       cb(new Error('فقط تصویر JPG، PNG یا WEBP مجاز است.'));
@@ -86,7 +86,8 @@ function toPanelDriver(row, extras = {}) {
     verifiedStatus: d.verificationStatus === 'VERIFIED' ? 'verified' : d.verificationStatus === 'REJECTED' ? 'rejected' : 'pending',
     verificationStatus: d.verificationStatus,
     rejectionReason: d.rejectionReason || '',
-    documents: extras.documents || flatDocuments(d.documents),
+    kyc: extras.kyc || present(d.documents),
+    documents: extras.documents || present(d.documents).documents,
     notices: extras.notices || [],
     rating: 5,
     totalMissions: 0,
@@ -196,8 +197,30 @@ router.get('/profile', authMiddleware, async (req, res) => {
   return res.json({ driver: toPanelDriver(driver, { notices }) });
 });
 
+router.patch('/kyc', authMiddleware, async (req, res) => {
+  try {
+    const driver = await Driver.findByPk(req.user.id);
+    if (!driver) return res.status(401).json({ message: 'کاربر یافت نشد' });
+    if (driver.verificationStatus === 'VERIFIED') {
+      return res.status(403).json({ message: 'هویت تأیید شده و نوع مدرک قابل تغییر نیست.' });
+    }
+    driver.documents = setIdType(driver.documents, req.body.idType);
+    driver.changed('documents', true);
+    driver.verificationStatus = 'PENDING_VERIFICATION';
+    driver.rejectionReason = null;
+    await driver.save();
+    const notices = await driverNotices(driver.id);
+    return res.json({ driver: toPanelDriver(driver, { notices }) });
+  } catch (error) {
+    return res.status(error.statusCode || 400).json({ message: error.message || 'نوع مدرک ذخیره نشد.' });
+  }
+});
+
 router.post('/documents', authMiddleware, (req, res, next) => {
-  documentUpload.array('files', 12)(req, res, (error) => {
+  documentUpload.single('file')(req, res, (error) => {
+    if (error?.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ message: 'حجم عکس نباید بیشتر از ۵ مگابایت باشد.' });
+    }
     if (error) return res.status(400).json({ message: error.message || 'آپلود مدرک ناموفق بود.' });
     return next();
   });
@@ -205,34 +228,23 @@ router.post('/documents', authMiddleware, (req, res, next) => {
   try {
     const driver = await Driver.findByPk(req.user.id);
     if (!driver) return res.status(401).json({ message: 'کاربر یافت نشد' });
-    const files = req.files || [];
-    if (!files.length) return res.status(400).json({ message: 'حداقل یک مدرک را انتخاب و تأیید کنید.' });
-    const slots = Array.isArray(req.body.slots) ? req.body.slots : (req.body.slots ? [req.body.slots] : []);
-    if (slots.length !== files.length) return res.status(400).json({ message: 'هر فایل باید به یک مدرک مشخص وصل باشد.' });
-    let documents = driver.documents;
-    for (let index = 0; index < files.length; index += 1) {
-      const meta = SLOT_META[slots[index]];
-      if (!meta) return res.status(400).json({ message: 'نوع مدرک نامعتبر است.' });
-      documents = upsertDocument(documents, {
-        group: meta.group,
-        key: slots[index],
-        title: meta.title,
-        url: `/uploads/${files[index].filename}`,
-      });
-    }
-    driver.documents = documents;
+    if (!req.file) return res.status(400).json({ message: 'تصویر را انتخاب کنید.' });
+    const slot = String(req.body.slot || req.body.key || '');
+    const idType = ID_TYPES.includes(req.body.idType) ? req.body.idType : undefined;
+    driver.documents = upsertDocument(driver.documents, {
+      key: slot,
+      idType,
+      url: `/uploads/${req.file.filename}`,
+    });
     driver.changed('documents', true);
     if (driver.verificationStatus === 'REJECTED') {
-      const stillRejected = flatDocuments(documents).some((item) => item.status === 'REJECTED');
-      if (!stillRejected) {
-        driver.verificationStatus = 'PENDING_VERIFICATION';
-        driver.rejectionReason = null;
-      }
+      driver.verificationStatus = 'PENDING_VERIFICATION';
+      driver.rejectionReason = null;
     }
     await driver.save();
     const notices = await driverNotices(driver.id);
     return res.json({
-      message: 'مدارک ارسال شد و در صف بررسی است.',
+      message: 'مدرک ارسال شد و در صف بررسی است.',
       driver: toPanelDriver(driver, { notices }),
     });
   } catch (error) {

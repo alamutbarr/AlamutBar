@@ -16,6 +16,7 @@ const { getSettings } = require('../admin/settingsStore');
 const { normalizePhone } = require('../admin/phone');
 const AppError = require('../utils/AppError');
 const asyncHandler = require('../utils/asyncHandler');
+const { upsertDocument, present, ID_TYPES } = require('../admin/documents');
 
 const router = express.Router();
 
@@ -183,7 +184,8 @@ router.get('/me', requireDriver, asyncHandler(async (req, res) => {
     plate: driver.plate,
     tractorType: driver.tractorType,
     trailerType: driver.trailerType,
-    documents: driver.documents || { personal: [], vehicle: [], insurance: [] },
+    kyc: present(driver.documents),
+    documents: present(driver.documents).documents,
     push: { registered: Boolean(driver.expoPushToken), stub: driver.expoPushToken === 'stub' },
   });
 }));
@@ -294,22 +296,17 @@ router.post('/documents', requireDriver, asyncHandler(async (req, res, next) => 
   });
 }), asyncHandler(async (req, res) => {
   if (!req.file) throw new AppError('تصویر مدرک را انتخاب کنید.', 400);
-  const group = ['personal', 'vehicle', 'insurance'].includes(req.body.group) ? req.body.group : 'personal';
   const driver = await Driver.findByPk(req.user.id);
-  const documents = driver.documents || { personal: [], vehicle: [], insurance: [] };
-  documents[group] = documents[group] || [];
-  documents[group].push({
-    key: req.body.key || `doc-${Date.now()}`,
-    title: req.body.title || 'مدرک',
+  if (!driver) throw new AppError('راننده پیدا نشد.', 401);
+  driver.documents = upsertDocument(driver.documents, {
+    key: req.body.slot || req.body.key,
+    idType: ID_TYPES.includes(req.body.idType) ? req.body.idType : undefined,
     url: `/uploads/${req.file.filename}`,
-    status: 'PENDING',
-    note: '',
   });
-  driver.documents = documents;
   driver.changed('documents', true);
   if (driver.verificationStatus === 'REJECTED') driver.verificationStatus = 'PENDING_VERIFICATION';
   await driver.save();
-  ok(res, { documents }, 'مدرک ثبت شد و در صف بررسی است.');
+  ok(res, { documents: present(driver.documents) }, 'مدرک ثبت شد و در صف بررسی است.');
 }));
 
 router.post('/missions/:id/photos', requireDriver, asyncHandler(async (req, res, next) => {

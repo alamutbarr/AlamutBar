@@ -14,7 +14,7 @@ const { parseRoles } = require('./permissions');
 const { jsonList, photoList } = require('../utils/jsonList');
 const driverNotificationService = require('../services/driverNotification.service');
 const { describeVehicle } = require('../utils/vehicleLabels');
-const { normalizeDocuments, flatDocuments } = require('./documents');
+const { present } = require('./documents');
 
 const includes = [
   { model: City, as: 'originCity' },
@@ -52,7 +52,7 @@ function presentDriver(driver) {
   if (!driver) return null;
   const row = driver.toJSON ? driver.toJSON() : driver;
   const vehicle = describeVehicle(row.tractorType, row.trailerType, row.vehicleSpecs);
-  const documents = normalizeDocuments(row.documents);
+  const kyc = present(row.documents);
   return {
     id: row.id,
     fullName: driverName(row),
@@ -73,8 +73,9 @@ function presentDriver(driver) {
     licenseNumber: row.licenseNumber,
     smartCardNumber: row.smartCardNumber,
     vehicleSpecs: row.vehicleSpecs,
-    documents,
-    documentList: flatDocuments(documents),
+    kyc,
+    documents: kyc.documents,
+    documentList: kyc.documents,
     rejectionReason: row.rejectionReason,
     lastLocation: row.lastLat != null ? { lat: num(row.lastLat), lng: num(row.lastLng) } : null,
     lastLocationAt: row.lastLocationAt,

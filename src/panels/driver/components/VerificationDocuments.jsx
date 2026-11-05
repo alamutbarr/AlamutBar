@@ -1,35 +1,56 @@
-import { useEffect, useMemo, useState } from 'react';
-import {
-  Upload, Loader2, CheckCircle2, ShieldCheck, ShieldAlert, AlertTriangle, Send,
-} from 'lucide-react';
-import { VERIFICATION_SECTIONS } from '@/verification';
+import { useEffect, useRef, useState } from 'react';
+import { Camera, Loader2 } from 'lucide-react';
 import { api } from '@/services/api';
+import { KYC_MAX_LABEL, kycFileIssue } from '../../owner/utils/kycFile';
+import { DRIVER_ID_TYPES } from '../verification';
 
-const STATUS_LABEL = {
-  PENDING: 'در صف بررسی',
+const STATUS = {
+  MISSING: 'ارسال نشده',
+  PENDING: 'در انتظار بررسی',
   APPROVED: 'تأیید شد',
   REJECTED: 'رد شد',
 };
 
-export function VerificationDocuments({ driverId, onVerifiedChange, onDriverUpdate }) {
-  const [serverDocs, setServerDocs] = useState([]);
-  const [notices, setNotices] = useState([]);
-  const [pending, setPending] = useState({});
-  const [previews, setPreviews] = useState({});
-  const [status, setStatus] = useState('');
+const OVERALL = {
+  VERIFIED: 'هویت تأیید شد',
+  REJECTED: 'هویت رد شده است',
+  PENDING_VERIFICATION: 'هویت هنوز کامل تأیید نشده',
+  PENDING: 'هویت هنوز کامل تأیید نشده',
+};
+
+export function VerificationDocuments({ driver, onVerifiedChange, onDriverUpdate }) {
+  const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
-  const [sending, setSending] = useState(false);
+  const [slotErrors, setSlotErrors] = useState({});
+  const [previews, setPreviews] = useState({});
+  const previewsRef = useRef({});
+  previewsRef.current = previews;
+
+  const kyc = driver?.kyc || { idType: null, documents: [], verificationStatus: driver?.verificationStatus || 'PENDING_VERIFICATION' };
+  const documents = Array.isArray(kyc.documents) ? kyc.documents : [];
+  const overall = driver?.verificationStatus || kyc.verificationStatus || 'PENDING_VERIFICATION';
+
+  useEffect(() => () => {
+    Object.values(previewsRef.current).forEach((url) => URL.revokeObjectURL(url));
+  }, []);
+
+  useEffect(() => {
+    onVerifiedChange?.(overall === 'VERIFIED');
+  }, [overall, onVerifiedChange]);
+
+  const applyDriver = (next) => {
+    onDriverUpdate?.(next);
+    onVerifiedChange?.(next?.verificationStatus === 'VERIFIED');
+  };
 
   const refresh = async () => {
     const res = await api.get('/driver/profile');
-    const driver = res.data?.driver;
-    setServerDocs(Array.isArray(driver?.documents) ? driver.documents : []);
-    setNotices(Array.isArray(driver?.notices) ? driver.notices : []);
-    onDriverUpdate?.(driver);
-    if (driver?.notices?.some((item) => !item.isRead)) {
+    const next = res.data?.driver;
+    applyDriver(next);
+    if (next?.notices?.some((item) => !item.isRead)) {
       api.post('/driver/notices/read').catch(() => {});
     }
-    return driver;
+    return next;
   };
 
   useEffect(() => {
@@ -38,175 +59,162 @@ export function VerificationDocuments({ driverId, onVerifiedChange, onDriverUpda
       if (!cancelled) setError(err.response?.data?.message || 'دریافت مدارک ناموفق بود.');
     });
     return () => { cancelled = true; };
-  }, [driverId]);
+  }, [driver?.id]);
 
-  const byKey = useMemo(() => {
-    const map = new Map();
-    serverDocs.forEach((doc) => map.set(doc.key, doc));
-    return map;
-  }, [serverDocs]);
-
-  useEffect(() => {
-    const mandatoryDone = VERIFICATION_SECTIONS.filter((section) => section.mandatory).every((section) => (
-      section.slots.every((slot) => {
-        const doc = byKey.get(`${section.id}:${slot.id}`);
-        return doc?.url && doc.status !== 'REJECTED';
-      })
-    ));
-    onVerifiedChange?.(mandatoryDone);
-  }, [byKey, onVerifiedChange]);
-
-  const chooseFile = (section, slot, event) => {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
-    const key = `${section.id}:${slot.id}`;
-    if (byKey.get(key)?.status === 'APPROVED') {
-      setError('این تصویر تأیید شده و دیگر قابل تغییر نیست.');
-      return;
-    }
-    if (!file.type.startsWith('image/')) {
-      setError('فقط تصویر مجاز است.');
-      return;
-    }
-    setPending((current) => ({ ...current, [key]: file }));
-    setPreviews((current) => {
-      if (current[key]) URL.revokeObjectURL(current[key]);
-      return { ...current, [key]: URL.createObjectURL(file) };
-    });
-    setStatus('فایل انتخاب شد. برای ارسال، دکمه تأیید و ارسال مدارک را بزنید.');
+  const chooseType = async (idType) => {
+    setBusy('type');
     setError('');
+    Object.values(previewsRef.current).forEach((url) => URL.revokeObjectURL(url));
+    setPreviews({});
+    setSlotErrors({});
+    try {
+      const res = await api.patch('/driver/kyc', { idType });
+      applyDriver(res.data?.driver);
+    } catch (err) {
+      setError(err.response?.data?.message || 'نوع مدرک ذخیره نشد.');
+    } finally {
+      setBusy('');
+    }
   };
 
-  const submit = async () => {
-    const entries = Object.entries(pending).filter(([key]) => byKey.get(key)?.status !== 'APPROVED');
-    if (!entries.length) {
-      setError('اول فایل مدارک را انتخاب کنید.');
+  const upload = async (slot, file) => {
+    if (!file) return;
+    const issue = kycFileIssue(file);
+    if (issue) {
+      setSlotErrors((current) => ({ ...current, [slot]: issue }));
       return;
     }
-    const form = new FormData();
-    entries.forEach(([key, file]) => {
-      form.append('files', file);
-      form.append('slots', key);
+    setSlotErrors((current) => {
+      const next = { ...current };
+      delete next[slot];
+      return next;
     });
-    setSending(true);
+    const localUrl = URL.createObjectURL(file);
+    setPreviews((current) => {
+      if (current[slot]) URL.revokeObjectURL(current[slot]);
+      return { ...current, [slot]: localUrl };
+    });
+    setBusy(slot);
     setError('');
-    setStatus('در حال ارسال مدارک...');
     try {
-      const res = await api.post('/driver/documents', form, {
-        headers: { 'Content-Type': undefined },
+      const body = new FormData();
+      body.append('file', file);
+      body.append('slot', slot);
+      if (kyc.idType) body.append('idType', kyc.idType);
+      const res = await api.post('/driver/documents', body, {
         transformRequest: [(data, headers) => {
-          delete headers['Content-Type'];
+          if (headers) {
+            if (typeof headers.delete === 'function') headers.delete('Content-Type');
+            else delete headers['Content-Type'];
+          }
           return data;
         }],
       });
-      setPending({});
-      setServerDocs(res.data?.driver?.documents || []);
-      setNotices(res.data?.driver?.notices || []);
-      onDriverUpdate?.(res.data?.driver);
-      setStatus(res.data?.message || 'مدارک ارسال شد.');
+      applyDriver(res.data?.driver);
     } catch (err) {
-      setStatus('');
-      setError(err.response?.data?.message || 'ارسال مدارک ناموفق بود.');
+      setSlotErrors((current) => ({
+        ...current,
+        [slot]: err.response?.data?.message || 'بارگذاری مدرک انجام نشد.',
+      }));
     } finally {
-      setSending(false);
+      setBusy('');
     }
   };
 
-  const pendingCount = Object.keys(pending).length;
-
   return (
-    <div className="space-y-3">
-      {notices.filter((item) => item.title === 'مدرک رد شد' || !item.isRead).slice(0, 4).map((notice) => (
-        <div key={notice.id} className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-xs leading-6 text-rose-700">
-          <strong className="block">{notice.title}</strong>
-          {notice.message}
+    <section className="rounded-xl border border-ink-100 bg-white p-6 shadow-panel">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-bold text-ink-900">احراز هویت</h2>
+          <p className="mt-1 text-sm text-ink-300">
+            انجام یکی از دو مدرک کافی است: یا شناسنامه یا کارت ملی. نیازی به بارگذاری هر دو نیست.
+            هر بخش فقط دو عکس دارد: سلفی با همان مدرک و عکس خود مدرک. سقف حجم هر عکس {KYC_MAX_LABEL} است.
+          </p>
         </div>
-      ))}
-
-      <div className="rounded-md border border-[#d8e1dc] bg-[#f7f6f0] px-3 py-2.5 text-xs text-[#526d70]">
-        <div className="flex items-center gap-1.5 font-bold text-[#17383b]">
-          {pendingCount ? <ShieldAlert className="h-4 w-4 text-[#d7b56d]" /> : <ShieldCheck className="h-4 w-4 text-[#087f8c]" />}
-          بعد از انتخاب فایل‌ها، ارسال را تأیید کنید تا مدارک برای اپراتور برود.
-        </div>
-        {status && <p className="mt-1 text-[#087f8c]">{status}</p>}
+        <span className="rounded-md bg-[#17383b] px-3 py-1 text-xs font-bold text-[#f7f6f0]">
+          {OVERALL[overall] || OVERALL.PENDING}
+        </span>
       </div>
 
-      {error && (
-        <div className="flex items-center gap-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-600">
-          <AlertTriangle className="h-4 w-4 shrink-0" />
-          {error}
-        </div>
+      <div className="mb-4 flex flex-wrap gap-2">
+        {DRIVER_ID_TYPES.map(({ id: value, label }) => (
+          <button
+            key={value}
+            type="button"
+            disabled={busy === 'type' || overall === 'VERIFIED'}
+            onClick={() => chooseType(value)}
+            className={`rounded-md border px-3 py-2 text-sm font-bold ${
+              kyc.idType === value
+                ? 'border-[#087f8c] bg-[#e1f3f0] text-[#17383b]'
+                : 'border-ink-100 text-ink-500'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {!kyc.idType && (
+        <p className="mb-3 text-xs text-[#526d70]">
+          یکی از دو گزینه را انتخاب کنید. بارگذاری شناسنامه و کارت ملی با هم لازم نیست.
+        </p>
       )}
 
-      {VERIFICATION_SECTIONS.map((section) => (
-        <div key={section.id} className="rounded-md border border-[#d8e1dc] bg-white p-4">
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <h4 className="text-sm font-bold text-[#17383b]">{section.title}</h4>
-            <span className={`rounded-md px-2 py-0.5 text-[10px] font-bold ${section.mandatory ? 'bg-rose-50 text-rose-600' : 'bg-amber-50 text-amber-700'}`}>
-              {section.mandatory ? 'اجباری' : 'اختیاری'}
-            </span>
-          </div>
-          <p className="mb-3 text-xs leading-6 text-[#526d70]">{section.description}</p>
-          <div className={`grid gap-2 ${section.slots.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
-            {section.slots.map((slot) => {
-              const key = `${section.id}:${slot.id}`;
-              const saved = byKey.get(key);
-              const preview = previews[key] || saved?.url;
-              const rejected = saved?.status === 'REJECTED';
-              const locked = saved?.status === 'APPROVED';
-              return (
-                <div key={slot.id}>
-                  {!locked && (
-                    <input id={key} type="file" accept="image/*" className="hidden" onChange={(event) => chooseFile(section, slot, event)} />
-                  )}
-                  <label
-                    htmlFor={locked ? undefined : key}
-                    className={`flex aspect-[8/5] flex-col items-center justify-center overflow-hidden rounded-md border bg-[#f7f6f0] text-[#526d70] ${
-                      locked ? 'border-[#d8e1dc]' : 'cursor-pointer border-dashed border-[#d8e1dc]'
-                    }`}
-                  >
-                    {preview ? (
-                      <img src={preview} alt={slot.label} className="h-full w-full object-contain" />
-                    ) : (
-                      <>
-                        <Upload className="mb-1 h-5 w-5" />
-                        <span className="px-2 text-center text-[11px]">{slot.label}</span>
-                      </>
-                    )}
-                  </label>
-                  <div className="mt-1 text-[11px] leading-5">
-                    {locked && (
-                      <span className="text-[#087f8c]">
-                        <CheckCircle2 className="ml-1 inline h-3.5 w-3.5" />
-                        تأیید شد — این تصویر دیگر قابل تغییر نیست.
-                      </span>
-                    )}
-                    {!locked && pending[key] && <span className="text-[#087f8c]">آماده ارسال</span>}
-                    {!locked && !pending[key] && saved && (
-                      <span className={rejected ? 'text-rose-600' : 'text-[#17383b]'}>
-                        {STATUS_LABEL[saved.status] || saved.status}
-                        {rejected && saved.note ? ` — ${saved.note}` : ''}
-                        {rejected ? ' — می‌توانید دوباره بارگذاری کنید.' : ''}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      ))}
+      {error && <p className="mb-3 text-sm text-red-600">{error}</p>}
 
-      <button
-        type="button"
-        onClick={submit}
-        disabled={sending || pendingCount === 0}
-        className="flex w-full items-center justify-center gap-2 rounded-md bg-[#087f8c] py-3 text-sm font-bold text-[#f7f6f0] disabled:opacity-50"
-      >
-        {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-        تأیید و ارسال مدارک
-      </button>
-    </div>
+      <div className="grid gap-3">
+        {documents.map((doc) => {
+          const preview = previews[doc.key] || doc.url;
+          const locked = doc.status === 'APPROVED';
+          return (
+            <article key={doc.key} className="rounded-md border border-ink-100 p-3">
+              <div className="flex items-start gap-3">
+                <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-md border border-ink-100 bg-[#f7f6f0]">
+                  {preview ? (
+                    <img src={preview} alt={doc.title} className="h-full w-full object-cover" />
+                  ) : (
+                    <Camera size={22} className="text-ink-300" />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <strong className="text-sm text-ink-900">{doc.title}</strong>
+                    <span className="text-xs font-bold text-[#087f8c]">{STATUS[doc.status] || doc.status}</span>
+                  </div>
+                  {doc.status === 'REJECTED' && doc.note && (
+                    <p className="mt-1 text-sm text-red-600">دلیل رد: {doc.note}</p>
+                  )}
+                  {locked ? (
+                    <p className="mt-1 text-[11px] text-[#087f8c]">این تصویر تأیید شده و دیگر قابل تغییر نیست.</p>
+                  ) : (
+                    <>
+                      <p className="mt-1 text-[11px] text-ink-300">JPG، PNG یا WEBP — حداکثر {KYC_MAX_LABEL}</p>
+                      <label className="mt-2 inline-flex cursor-pointer items-center gap-2 rounded-md border border-[#087f8c] px-3 py-1.5 text-xs font-bold text-[#087f8c]">
+                        {busy === doc.key ? <Loader2 size={14} className="animate-spin" /> : null}
+                        {doc.url || preview ? 'تغییر تصویر' : 'انتخاب تصویر'}
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          hidden
+                          disabled={Boolean(busy)}
+                          onChange={(event) => {
+                            const file = event.target.files?.[0];
+                            event.target.value = '';
+                            upload(doc.key, file);
+                          }}
+                        />
+                      </label>
+                    </>
+                  )}
+                  {slotErrors[doc.key] && (
+                    <p className="mt-2 text-sm text-red-600">{slotErrors[doc.key]}</p>
+                  )}
+                </div>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </section>
   );
 }
