@@ -13,6 +13,7 @@ const { publish } = require('./realtime');
 const { parseRoles } = require('./permissions');
 const { jsonList, photoList } = require('../utils/jsonList');
 const driverNotificationService = require('../services/driverNotification.service');
+const { groupDigits } = require('../utils/groupDigits');
 const { describeVehicle } = require('../utils/vehicleLabels');
 const { present } = require('./documents');
 
@@ -23,6 +24,7 @@ const includes = [
   { model: Zone, as: 'destZone' },
   { model: VehicleType, as: 'vehicleType' },
   { model: Driver, as: 'driver' },
+  { model: Driver, as: 'offeredDriver' },
   { model: User, as: 'owner', include: [CargoOwner] },
   { model: Inspector, as: 'inspector' },
 ];
@@ -158,6 +160,11 @@ function presentOrder(row, extra = {}) {
     eta: data.eta,
     owner: presentOwner(data.owner),
     driver: presentDriver(data.driver),
+    offeredDriver: data.offeredDriver ? {
+      id: data.offeredDriver.id,
+      fullName: driverName(data.offeredDriver),
+      phone: data.offeredDriver.phoneNumber,
+    } : null,
     inspector: data.inspector ? {
       id: data.inspector.id,
       fullName: data.inspector.fullName,
@@ -453,7 +460,7 @@ async function updatePrice(admin, id, body) {
     const freight = num(shipment.final_price) || num(shipment.operator_price);
     await driverNotificationService.notifyDriver(shipment.driver_id, {
       title: 'کرایه مأموریت به‌روزرسانی شد',
-      message: `کرایه بار ${shipment.tracking_code} بازبینی شد${freight ? ` و مبلغ ${freight.toLocaleString('fa-IR')} تومان ثبت شد` : ''}.`,
+      message: `کرایه بار ${shipment.tracking_code} بازبینی شد${freight ? ` و مبلغ ${groupDigits(freight)} تومان ثبت شد` : ''}.`,
       shipmentId: shipment.id,
     }).catch((error) => console.error('driver notification failed:', error.message));
   }
@@ -463,30 +470,77 @@ async function updatePrice(admin, id, body) {
 async function assignDriver(admin, id, driverId, reasonText) {
   const reason = requireReason(reasonText);
   const shipment = await loadOrder(id);
+  if (shipment.driver_id) {
+    throw new AppError('این بار راننده دارد. برای تغییر، از جایگزینی راننده استفاده کنید.', 400);
+  }
   const driver = await Driver.findByPk(driverId);
   if (!driver) throw new AppError('راننده پیدا نشد.', 404);
   if (driver.verificationStatus !== 'VERIFIED' || driver.availability !== 'READY') {
-    throw new AppError('فقط راننده تأییدشده و آماده را می‌توان تخصیص داد.', 400);
+    throw new AppError('فقط راننده تأییدشده و آماده را می‌توان پیشنهاد داد.', 400);
+  }
+  shipment.offered_driver_id = driver.id;
+  await shipment.save();
+  await logEvent(shipment.id, {
+    type: 'DRIVER_OFFERED',
+    description: `بار به ${driverName(driver)} پیشنهاد شد و تا قبول او ثبت نمی‌شود. دلیل: ${reason}`,
+    adminId: admin.id,
+    metadata: { driverId: driver.id, offered: true },
+  });
+  await audit(admin, 'order.assign_driver', 'shipment', shipment.id, { driverId: driver.id, reason, offered: true });
+  await driverNotificationService.notifyDriver(driver.id, {
+    kind: 'load_offer',
+    title: 'بار پیشنهادی',
+    message: `بار ${shipment.tracking_code} از ${shipment.originCity?.name || 'مبدأ'} به ${shipment.destCity?.name || 'مقصد'} برای شما پیشنهاد شده. با قبول، بار در پنل شما و اپراتور ثبت می‌شود.${reason ? ` توضیح اپراتور: ${reason}` : ''}`,
+    shipmentId: shipment.id,
+  }).catch((error) => console.error('driver notification failed:', error.message));
+  publish({ type: 'order', orderId: shipment.id, workflowStatus: deriveWorkflow(shipment) });
+  return getOrder(shipment.id);
+}
+
+async function acceptDriverOffer(driverId, shipmentId) {
+  const shipment = await loadOrder(shipmentId);
+  if (Number(shipment.offered_driver_id) !== Number(driverId)) {
+    throw new AppError('این پیشنهاد برای شما نیست یا دیگر معتبر نیست.', 403);
+  }
+  if (shipment.driver_id) throw new AppError('این بار قبلاً ثبت شده است.', 409);
+  const driver = await Driver.findByPk(driverId);
+  if (!driver || driver.verificationStatus !== 'VERIFIED') {
+    throw new AppError('فقط راننده تأییدشده می‌تواند بار را بپذیرد.', 403);
+  }
+  if (driver.availability !== 'READY') {
+    throw new AppError('الان مأموریت فعال دارید و نمی‌توانید بار جدید را بپذیرید.', 400);
   }
   shipment.driver_id = driver.id;
+  shipment.offered_driver_id = null;
   driver.availability = 'BUSY';
   await driver.save();
   await shipment.save();
-  await setWorkflow(shipment, 'DRIVER_ACCEPTED', { admin, reason, driverId: driver.id });
+  await setWorkflow(shipment, 'DRIVER_ACCEPTED', {
+    reason: 'راننده بار پیشنهادی را پذیرفت',
+    driverId: driver.id,
+  });
   await logEvent(shipment.id, {
     type: 'DRIVER_ASSIGNED',
-    description: `راننده ${driverName(driver)} تخصیص داده شد. دلیل: ${reason}`,
-    adminId: admin.id,
+    description: `راننده ${driverName(driver)} بار پیشنهادی را پذیرفت و بار ثبت شد.`,
     metadata: { driverId: driver.id },
   });
-  await audit(admin, 'order.assign_driver', 'shipment', shipment.id, { driverId: driver.id, reason });
-  await driverNotificationService.notifyDriver(driver.id, {
-    title: 'مأموریت جدید به شما تخصیص یافت',
-    message: `بار ${shipment.tracking_code} از ${shipment.originCity?.name || 'مبدأ'} به ${shipment.destCity?.name || 'مقصد'} برای شما ثبت شد.${reason ? ` توضیح اپراتور: ${reason}` : ''}`,
-    shipmentId: shipment.id,
-  }).catch((error) => console.error('driver notification failed:', error.message));
-  publish({ type: 'order', orderId: shipment.id, workflowStatus: 'DRIVER_ACCEPTED' });
-  return getOrder(shipment.id);
+  return { ok: true };
+}
+
+async function declineDriverOffer(driverId, shipmentId) {
+  const shipment = await Shipment.findByPk(shipmentId);
+  if (!shipment || Number(shipment.offered_driver_id) !== Number(driverId)) {
+    throw new AppError('این پیشنهاد برای شما نیست یا دیگر معتبر نیست.', 403);
+  }
+  const driver = await Driver.findByPk(driverId);
+  shipment.offered_driver_id = null;
+  await shipment.save();
+  await logEvent(shipment.id, {
+    type: 'NOTE',
+    description: `راننده ${driverName(driver)} بار پیشنهادی را نپذیرفت.`,
+    metadata: { driverId },
+  });
+  return { ok: true };
 }
 
 async function replaceDriver(admin, id, body) {
@@ -501,6 +555,7 @@ async function replaceDriver(admin, id, body) {
     }
   }
   shipment.replaced_from_driver_id = previousId;
+  shipment.offered_driver_id = null;
   if (previousId) {
     await driverNotificationService.notifyDriver(previousId, {
       title: 'مأموریت از شما گرفته شد',
@@ -636,6 +691,8 @@ module.exports = {
   changeStatus,
   updatePrice,
   assignDriver,
+  acceptDriverOffer,
+  declineDriverOffer,
   replaceDriver,
   addNote,
   issueWaybill,

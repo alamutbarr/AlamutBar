@@ -244,7 +244,7 @@ router.get('/missions', asyncHandler(async (req, res) => {
       workflow_status: { [Op.notIn]: ['CANCELLED', 'COMPLETED', 'DRIVER_REPLACED'] },
     },
     include: includes,
-    order: [['loading_date', 'ASC'], ['id', 'DESC']],
+    order: [['createdAt', 'DESC'], ['id', 'DESC']],
     limit: 100,
   });
   const missions = rows.filter((row) => policy.missionVisible({

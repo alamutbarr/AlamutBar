@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
-import { LayoutDashboard, ListTodo, User, Bell } from 'lucide-react';
+import { LayoutDashboard, ListTodo, User, Bell, Menu } from 'lucide-react';
+import { useSidebarCollapsed } from '../../../shared/components/useSidebarCollapsed';
 import { ThemeToggle } from '../../../shared/theme/PanelTheme';
 import BrandMark from '../../owner/components/common/BrandMark';
 
@@ -24,10 +25,22 @@ export function DriverLayout({ current, onNavigate, driverName, children, notifi
     };
   }, []);
 
+  const { collapsed, toggle } = useSidebarCollapsed('driver');
+
   return (
     <div className="panel-canvas flex h-dvh max-h-dvh overflow-hidden" dir="rtl">
+      {!collapsed && (
       <aside className="brand-rail hidden h-full w-64 shrink-0 flex-col overflow-hidden lg:flex">
         <div className="px-5 pb-2 pt-6">
+          <button
+            type="button"
+            onClick={toggle}
+            className="mb-4 flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm text-[#f7f6f0]/80 hover:bg-white/10"
+            aria-label="جمع کردن منو"
+          >
+            <Menu size={18} />
+            جمع کردن منو
+          </button>
           <BrandMark light subtitle={driverName || 'پنل راننده'} to="/driver/dashboard" />
           <p className="mt-5 text-[11px] font-medium text-[#d7b56d]">حمل بار، با خیال راحت</p>
         </div>
@@ -63,8 +76,22 @@ export function DriverLayout({ current, onNavigate, driverName, children, notifi
           </div>
         </div>
       </aside>
+      )}
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        {collapsed && (
+          <div className="hidden items-center border-b border-[#d8e1dc] bg-white px-4 py-2 lg:flex">
+            <button
+              type="button"
+              onClick={toggle}
+              className="inline-flex items-center gap-2 rounded-md border border-[#d8e1dc] px-3 py-1.5 text-sm font-bold text-[#17383b]"
+              aria-label="باز کردن منو"
+            >
+              <Menu size={18} />
+              منو
+            </button>
+          </div>
+        )}
         <header className="lg:hidden z-30 flex items-center justify-between bg-[#10282b] px-4 py-3 text-[#f7f6f0]">
           <BrandMark light subtitle={driverName || 'پنل راننده'} to="/driver/dashboard" />
           <div className="flex items-center gap-2">

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { ShieldAlert, Send, ImagePlus, X, Loader2 } from 'lucide-react';
-import { createComplaint, getMyComplaints } from '../../api/complaint.api';
+import { createComplaint, getMyComplaints, sendComplaintMessage } from '../../api/complaint.api';
 import { getMyShipments } from '../../api/shipment.api';
 import { uploadComplaintEvidence } from '../../api/upload.api';
 import Input from '../../components/common/Input';
@@ -24,7 +24,12 @@ const STATUS_LABELS = {
   rejected: { label: 'رد شد', tone: 'bg-red-50 text-red-700' },
 };
 
-const MAX_PHOTOS = 4;
+const MAX_PHOTOS = 10;
+
+const ROLE_LABELS = {
+  owner: 'شما',
+  operator: 'اپراتور',
+};
 
 function complaintPhotos(item) {
   if (Array.isArray(item?.evidence_urls)) return item.evidence_urls.filter(Boolean);
@@ -45,6 +50,8 @@ export default function Complaints() {
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
+  const [threadDrafts, setThreadDrafts] = useState({});
+  const [sendingId, setSendingId] = useState(null);
   const toast = useToast();
 
   const load = () => {
@@ -58,6 +65,22 @@ export default function Complaints() {
   };
 
   useEffect(load, []);
+
+  const sendThread = async (id) => {
+    const body = (threadDrafts[id] || '').trim();
+    if (!body) return;
+    setSendingId(id);
+    try {
+      await sendComplaintMessage(id, body);
+      setThreadDrafts((current) => ({ ...current, [id]: '' }));
+      toast.success('پیام برای اپراتور ارسال شد.');
+      load();
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'ارسال پیام انجام نشد.'));
+    } finally {
+      setSendingId(null);
+    }
+  };
 
   useEffect(() => () => {
     localPreviewsRef.current.forEach((url) => URL.revokeObjectURL(url));
@@ -246,6 +269,30 @@ export default function Complaints() {
                     پاسخ: {c.admin_response}
                   </p>
                 )}
+                <div className="mt-3 space-y-2">
+                  {(c.messages || []).map((message) => (
+                    <p key={message.id} className="rounded-lg bg-[#f7f6f0] px-3 py-2 text-xs leading-6 text-[#17383b]">
+                      <span className="font-bold">{ROLE_LABELS[message.sender_role] || 'پیام'}: </span>
+                      {message.body}
+                    </p>
+                  ))}
+                  <textarea
+                    rows={2}
+                    value={threadDrafts[c.id] || ''}
+                    onChange={(event) => setThreadDrafts((current) => ({ ...current, [c.id]: event.target.value }))}
+                    placeholder="ادامهٔ گفتگو با اپراتور"
+                    className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    loading={sendingId === c.id}
+                    onClick={() => sendThread(c.id)}
+                  >
+                    ارسال پیام
+                  </Button>
+                </div>
               </li>
             ))}
           </ul>

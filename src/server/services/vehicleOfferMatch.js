@@ -121,6 +121,7 @@ function driverMatchesOffer(driver, offer = {}) {
 function isOfferedVisibleToDriver(row, driver, driverId) {
   if (row.driver_id && String(row.driver_id) === String(driverId)) return true;
   if (row.driver_id) return false;
+  if (row.offered_driver_id) return false;
   const declined = Array.isArray(row.declined_by) ? row.declined_by : [];
   if (declined.map(String).includes(String(driverId))) return false;
   return driverMatchesOffer(

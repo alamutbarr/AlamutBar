@@ -1,6 +1,7 @@
 import { NavLink, useLocation } from "react-router-dom";
 import {
   LayoutGrid,
+  Menu,
   PackagePlus,
   History,
   Bell,
@@ -21,13 +22,24 @@ const links = [
   { to: "/owner/profile", label: "پروفایل", icon: User },
 ];
 
-export default function Sidebar({ onClose = () => {}, unread = 0 }) {
+export default function Sidebar({ onClose = () => {}, unread = 0, collapsed = false, onToggle }) {
   const { user } = useAuth();
   const location = useLocation();
+
+  if (collapsed) return null;
 
   return (
     <aside className="brand-rail hidden h-full w-64 shrink-0 flex-col overflow-hidden lg:flex">
       <div className="px-5 pb-2 pt-6">
+        <button
+          type="button"
+          onClick={onToggle}
+          className="mb-4 flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm text-[#f7f6f0]/80 hover:bg-white/10"
+          aria-label="جمع کردن منو"
+        >
+          <Menu size={18} />
+          جمع کردن منو
+        </button>
         <BrandMark light subtitle="صاحب کالا" to="/owner/dashboard" />
         <p className="mt-5 text-[11px] font-medium text-[#d7b56d]">حمل بار، با خیال راحت</p>
       </div>

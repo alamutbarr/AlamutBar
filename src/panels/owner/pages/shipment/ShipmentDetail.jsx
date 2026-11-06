@@ -10,6 +10,7 @@ import { formatToman } from '../../utils/currency.util';
 import { useToast } from '../../hooks/useToast';
 import { getErrorMessage } from '../../utils/errorMessage';
 import ShipmentChat from '../../../../shared/components/ShipmentChat';
+import { variantLabels } from '../../utils/shipmentPresent';
 
 const CANCELLABLE = ['pending_review', 'price_proposed', 'searching_driver'];
 const RATEABLE = ['completed'];
@@ -105,6 +106,10 @@ export default function ShipmentDetail() {
         </div>
 
         <dl className="grid grid-cols-1 gap-y-3 text-sm sm:grid-cols-2">
+          <dt className="text-ink-300">خودرو</dt>
+          <dd className="text-left text-ink-900">{shipment.vehicleType?.title || '—'}</dd>
+          <dt className="text-ink-300">نوع گاری</dt>
+          <dd className="text-left text-ink-900">{variantLabels(shipment).join('، ') || 'ثبت نشده'}</dd>
           <dt className="text-ink-300">وزن</dt>
           <dd className="tabular text-left text-ink-900">{shipment.weight_kg} kg</dd>
           <dt className="text-ink-300">قیمت پیشنهادی شما</dt>

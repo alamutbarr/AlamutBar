@@ -7,6 +7,7 @@ const VehicleType = require('./VehicleType');
 const Shipment = require('./Shipment');
 const Notification = require('./Notification');
 const Complaint = require('./Complaint');
+const ComplaintMessage = require('./ComplaintMessage');
 const Rating = require('./Rating');
 const Driver = require('./Driver');
 const Message = require('./Message');
@@ -54,6 +55,8 @@ User.hasMany(Complaint, { foreignKey: 'owner_id', as: 'complaints' });
 Complaint.belongsTo(User, { foreignKey: 'owner_id' });
 Shipment.hasMany(Complaint, { foreignKey: 'shipment_id' });
 Complaint.belongsTo(Shipment, { foreignKey: 'shipment_id' });
+Complaint.hasMany(ComplaintMessage, { foreignKey: 'complaint_id', as: 'messages' });
+ComplaintMessage.belongsTo(Complaint, { foreignKey: 'complaint_id' });
 
 // Rating
 Shipment.hasOne(Rating, { foreignKey: 'shipment_id', as: 'rating' });
@@ -69,6 +72,7 @@ DriverNotification.belongsTo(Driver, { foreignKey: 'driverId' });
 
 Driver.hasMany(Shipment, { foreignKey: 'driver_id', as: 'missions' });
 Shipment.belongsTo(Driver, { foreignKey: 'driver_id', as: 'driver' });
+Shipment.belongsTo(Driver, { foreignKey: 'offered_driver_id', as: 'offeredDriver' });
 
 Shipment.hasMany(Message, { foreignKey: 'shipment_id', as: 'messages' });
 Message.belongsTo(Shipment, { foreignKey: 'shipment_id' });
@@ -102,6 +106,7 @@ module.exports = {
   Shipment,
   Notification,
   Complaint,
+  ComplaintMessage,
   Rating,
   Driver,
   Message,

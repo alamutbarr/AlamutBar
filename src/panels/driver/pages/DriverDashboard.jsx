@@ -30,6 +30,9 @@ export function DriverDashboard({
   notificationsUnread = 0,
   onNotificationClick,
   onMarkAllNotificationsRead,
+  onAcceptOffer,
+  onDeclineOffer,
+  offerBusyId,
 }) {
   useEffect(() => {
     let cancelled = false;
@@ -80,6 +83,9 @@ export function DriverDashboard({
         onOpenAll={() => onNavigate("notifications")}
         onNotificationClick={onNotificationClick}
         onMarkAllRead={onMarkAllNotificationsRead}
+        onAcceptOffer={onAcceptOffer}
+        onDeclineOffer={onDeclineOffer}
+        offerBusyId={offerBusyId}
       />
 
       {/* Stats cards */}

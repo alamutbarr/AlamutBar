@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { Bell, ClipboardList, HardHat, LayoutGrid, Map, MessageCircle, Moon, Settings, Shield, Sun, Truck, User, Users } from 'lucide-react';
+import { Bell, ClipboardList, HardHat, LayoutGrid, Map, Menu, MessageCircle, Moon, Settings, Shield, Sun, Truck, User, Users } from 'lucide-react';
+import { useSidebarCollapsed } from '../../../shared/components/useSidebarCollapsed';
 import { toast } from 'sonner';
 import BrandMark from '../../owner/components/common/BrandMark';
 import { getAccess } from '../api';
@@ -30,6 +31,7 @@ export default function Shell() {
   const [theme, setTheme] = useState(localStorage.getItem('alamut_admin_theme') || 'light');
   const [alerts, setAlerts] = useState(user?.openAlerts || 0);
   const [more, setMore] = useState(false);
+  const { collapsed, toggle } = useSidebarCollapsed('admin');
   const visible = LINKS.filter((item) => !item.perm || can(item.perm));
 
   useEffect(() => {
@@ -58,8 +60,11 @@ export default function Shell() {
 
   return (
     <div className="admin-app" data-theme={theme}>
-      <aside className="admin-side brand-rail">
+      <aside className={`admin-side brand-rail${collapsed ? ' is-collapsed' : ''}`}>
         <div className="admin-side-brand">
+          <button type="button" className="nav-link" onClick={toggle} aria-label="جمع کردن منو">
+            <Menu size={18} /> جمع کردن منو
+          </button>
           <BrandMark light subtitle="مرکز عملیات" to="/admin" />
           <p className="admin-kicker">حمل بار، با خیال راحت</p>
         </div>
@@ -87,6 +92,11 @@ export default function Shell() {
         </div>
       </aside>
       <div className="admin-body">
+        {collapsed && (
+          <button type="button" className="btn secondary admin-reopen" onClick={toggle} aria-label="باز کردن منو">
+            <Menu size={18} /> منو
+          </button>
+        )}
         <header className="admin-top">
           <span className="admin-mobile-brand"><BrandMark light subtitle="مرکز عملیات" to="/admin" /></span>
           <div style={{ flex: 1 }} />

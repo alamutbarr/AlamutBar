@@ -46,6 +46,7 @@ export default function App() {
   const [retryKey, setRetryKey] = useState(0);
   const [actionError, setActionError] = useState("");
   const [confirmLogout, setConfirmLogout] = useState(false);
+  const [offerBusyId, setOfferBusyId] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -212,8 +213,33 @@ export default function App() {
     await handleMissionAction(mission, "Accepted");
   };
 
+  const reloadMissions = async () => {
+    try {
+      const res = await api.get("/driver/missions");
+      setMissions(Array.isArray(res.data?.missions) ? res.data.missions : []);
+    } catch (error) {
+      console.warn("Could not reload driver missions:", error);
+    }
+  };
+
+  const respondToOffer = async (item, decision) => {
+    if (!item?.shipmentId) return;
+    setOfferBusyId(item.id);
+    setActionError("");
+    try {
+      await api.post(`/driver/offers/${item.shipmentId}/${decision}`);
+      await notifications.reload();
+      await reloadMissions();
+    } catch (error) {
+      setActionError(error?.response?.data?.message || "ثبت پاسخ به بار پیشنهادی انجام نشد.");
+    } finally {
+      setOfferBusyId(null);
+    }
+  };
+
   const handleNotificationClick = (item) => {
     notifications.markRead(item.id);
+    if (item?.kind === "load_offer") return;
     const mission = item.shipmentId
       ? missions.find((row) => String(row.id) === String(item.shipmentId))
       : null;
@@ -260,6 +286,9 @@ export default function App() {
               notificationsUnread={notifications.unread}
               onNotificationClick={handleNotificationClick}
               onMarkAllNotificationsRead={notifications.markAllRead}
+              onAcceptOffer={(item) => respondToOffer(item, "accept")}
+              onDeclineOffer={(item) => respondToOffer(item, "decline")}
+              offerBusyId={offerBusyId}
             />
           }
         />
@@ -272,6 +301,9 @@ export default function App() {
               unread={notifications.unread}
               onNotificationClick={handleNotificationClick}
               onMarkAllRead={notifications.markAllRead}
+              onAcceptOffer={(item) => respondToOffer(item, "accept")}
+              onDeclineOffer={(item) => respondToOffer(item, "decline")}
+              offerBusyId={offerBusyId}
             />
           }
         />

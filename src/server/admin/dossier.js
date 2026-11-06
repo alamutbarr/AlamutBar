@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { groupDigits } = require('../utils/groupDigits');
 
 const FONT = fs.readFileSync(path.join(__dirname, 'fonts', 'Vazirmatn-Regular.ttf')).toString('base64');
 
@@ -15,7 +16,8 @@ const PDI = '\u2069';
 
 function money(value) {
   if (value == null || value === '') return '—';
-  return `${Number(value).toLocaleString('fa-IR')} تومان`;
+  const grouped = groupDigits(value);
+  return grouped ? `${grouped} تومان` : '—';
 }
 
 function ltr(value) {

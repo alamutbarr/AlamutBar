@@ -25,7 +25,8 @@ const chat = require('../chat/service');
 const { buildWorkbook } = require('./reports');
 const { normalizePhone } = require('./phone');
 const { logEvent } = require('./audit');
-const { jsonList, photoList, urlList } = require('../utils/jsonList');
+const { jsonList, photoList } = require('../utils/jsonList');
+const complaintService = require('../services/complaint.service');
 const driverNotificationService = require('../services/driverNotification.service');
 const avatarStore = require('../utils/avatarStore');
 
@@ -738,23 +739,19 @@ router.post('/customers/:id/kyc/review', requirePermission('owners.documents'), 
 
 router.get('/complaints', requirePermission('complaints'), asyncHandler(async (req, res) => {
   const rows = await Complaint.findAll({
-    include: [{ model: User }, { model: Shipment }],
+    include: [{ model: User }, { model: Shipment }, ...complaintService.messageInclude],
     order: [['createdAt', 'DESC']],
     limit: 100,
   });
-  success(res, {
-    data: rows.map((row) => ({
-      id: row.id,
-      type: row.type,
-      description: row.description,
-      status: row.status,
-      adminResponse: row.admin_response,
-      trackingCode: row.Shipment?.tracking_code,
-      ownerPhone: row.User?.phone_number,
-      evidenceUrls: urlList(row.evidence_url),
-      createdAt: row.createdAt,
-    })),
-  });
+  success(res, { data: rows.map((row) => complaintService.presentAdminComplaint(row)) });
+}));
+
+router.post('/complaints/:id/messages', requirePermission('complaints'), asyncHandler(async (req, res) => {
+  const complaint = await Complaint.findByPk(req.params.id);
+  if (!complaint) throw new AppError('تیکت پیدا نشد.', 404);
+  await complaintService.addComplaintMessage(complaint, { role: 'operator', body: req.body.body });
+  await audit(req.admin, 'complaint.message', 'complaint', complaint.id, { body: req.body.body });
+  success(res, { message: 'پیام ثبت شد.' });
 }));
 
 router.patch('/complaints/:id', requirePermission('complaints'), asyncHandler(async (req, res) => {

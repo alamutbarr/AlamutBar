@@ -9,9 +9,9 @@ const createComplaintSchema = Joi.object({
   description: Joi.string().min(10).max(1000).required().label('توضیحات'),
   evidence_url: Joi.alternatives().try(
     uploadPath.allow('', null),
-    Joi.array().items(uploadPath).max(4),
+    Joi.array().items(uploadPath).max(10),
   ).optional().label('مدرک'),
-  evidence_urls: Joi.array().items(uploadPath).max(4).optional().label('مدارک'),
+  evidence_urls: Joi.array().items(uploadPath).max(10).optional().label('مدارک'),
 }).messages(commonMessages);
 
 module.exports = { createComplaintSchema };

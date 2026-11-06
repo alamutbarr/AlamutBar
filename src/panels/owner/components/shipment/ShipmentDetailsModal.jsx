@@ -5,7 +5,7 @@ import StatusBadge from "../common/StatusBadge";
 import ShipmentFacts from "./ShipmentFacts";
 import ShipmentEditForm, { formToPayload, shipmentToForm } from "./ShipmentEditForm";
 import { getShipmentById, updateShipment } from "../../api/shipment.api";
-import { canEditShipment } from "../../utils/shipmentPresent";
+import { canEditShipment, variantLabels } from "../../utils/shipmentPresent";
 import { getErrorMessage } from "../../utils/errorMessage";
 
 export default function ShipmentDetailsModal({ shipmentId, open, onClose, onSaved }) {
@@ -103,7 +103,12 @@ export default function ShipmentDetailsModal({ shipmentId, open, onClose, onSave
       {!loading && shipment && (
         <div className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="tabular text-base font-bold text-[#17383b]">{shipment.tracking_code}</p>
+            <div>
+              <p className="tabular text-base font-bold text-[#17383b]">{shipment.tracking_code}</p>
+              <p className="mt-1 text-sm text-[#17383b]">
+                نوع گاری: {variantLabels(shipment).join("، ") || "ثبت نشده"}
+              </p>
+            </div>
             <StatusBadge status={shipment.workflow_status === 'ON_HOLD' ? 'on_hold' : shipment.status} />
           </div>
           {shipment.inspection && (

@@ -99,6 +99,7 @@ const emptyFormData = {
   loading_method: "",
   receiver_name: "",
   receiver_phone: "",
+  receiver_is_self: "",
   proposed_price: "",
   trackingCode: "",
 };
@@ -233,6 +234,9 @@ export default function CreateShipment() {
       !(Number(formData.cargo_value) >= MIN_CARGO_VALUE_RIAL)
     )
       return false;
+    if (stepNum === 9 && !["yes", "no"].includes(formData.receiver_is_self)) {
+      return false;
+    }
     if (stepNum === 9 && !/^09\d{9}$/.test(String(formData.receiver_phone))) {
       return false;
     }
@@ -319,6 +323,7 @@ export default function CreateShipment() {
 
     const payload = { ...formData };
     delete payload.trackingCode;
+    delete payload.receiver_is_self;
     if (payload.cargo_type !== "other") delete payload.cargo_type_other;
     delete payload.origin_city_name;
     delete payload.dest_city_name;

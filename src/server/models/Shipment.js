@@ -135,6 +135,7 @@ const Shipment = sequelize.define(
 
     owner_id: { type: DataTypes.INTEGER, allowNull: false },
     driver_id: { type: DataTypes.INTEGER.UNSIGNED, allowNull: true },
+    offered_driver_id: { type: DataTypes.INTEGER.UNSIGNED, allowNull: true },
     // وضعیت ریز پنل راننده (Accepted، InTransit، ...). وضعیت صاحب کالا در status می‌ماند.
     driver_status: { type: DataTypes.STRING(40), allowNull: true },
     declined_by: { type: DataTypes.JSON, allowNull: true },

@@ -179,7 +179,7 @@ export default function Visit() {
         <dl className="inspector-dl">
           <div>
             <dt>بار</dt>
-            <dd>{mission.cargo.type}، {mission.cargo.weightKg != null ? `${formatGroupedDigits(mission.cargo.weightKg, { decimal: true })} کیلو` : '—'}، بسته‌بندی {mission.cargo.packaging || '—'}</dd>
+            <dd>{mission.cargo.type}، بسته‌بندی {mission.cargo.packaging || '—'}</dd>
           </div>
           <div>
             <dt>ارزش اعلامی</dt>

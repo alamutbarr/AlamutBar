@@ -16,13 +16,9 @@ test('an object or a bare url does not throw when the inspections page lists pho
   assert.deepEqual(jsonList('[{"field":"vehicle"}]'), [{ field: 'vehicle' }]);
 });
 
-test('complaint evidence keeps a legacy single url and a list of four photos', () => {
+test('complaint evidence keeps a legacy single url and up to ten photos', () => {
   assert.deepEqual(urlList('/uploads/one.jpg'), ['/uploads/one.jpg']);
   assert.deepEqual(urlList(JSON.stringify(['/uploads/a.jpg', '/uploads/b.jpg'])), ['/uploads/a.jpg', '/uploads/b.jpg']);
-  assert.deepEqual(urlList(['/uploads/1.jpg', '/uploads/2.jpg', '/uploads/3.jpg', '/uploads/4.jpg', '/uploads/5.jpg']), [
-    '/uploads/1.jpg',
-    '/uploads/2.jpg',
-    '/uploads/3.jpg',
-    '/uploads/4.jpg',
-  ]);
+  const urls = Array.from({ length: 11 }, (_, index) => `/uploads/${index + 1}.jpg`);
+  assert.deepEqual(urlList(urls), urls.slice(0, 10));
 });

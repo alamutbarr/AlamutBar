@@ -1,21 +1,42 @@
-const { DriverNotification } = require('../models');
+const { DriverNotification, Shipment } = require('../models');
 
 // اعلان برای راننده؛ هر رویدادی که به مأموریت یا وضعیت راننده مربوط است اینجا ثبت می‌شود.
-async function notifyDriver(driverId, { title, message, shipmentId = null }) {
+async function notifyDriver(driverId, { title, message, shipmentId = null, kind = 'info' }) {
   if (!driverId) return null;
   return DriverNotification.create({
     driverId,
-    title,
-    message,
+    title: String(title || '').slice(0, 150),
+    message: String(message || '').slice(0, 500),
     shipmentId,
+    kind,
   });
 }
 
 async function listForDriver(driverId) {
-  return DriverNotification.findAll({
+  const rows = await DriverNotification.findAll({
     where: { driverId },
     order: [['createdAt', 'DESC']],
     limit: 100,
+  });
+  const offerIds = rows
+    .filter((row) => row.kind === 'load_offer' && row.shipmentId)
+    .map((row) => row.shipmentId);
+  const shipments = offerIds.length
+    ? await Shipment.findAll({
+      where: { id: offerIds },
+      attributes: ['id', 'offered_driver_id', 'driver_id'],
+    })
+    : [];
+  const byId = new Map(shipments.map((row) => [String(row.id), row]));
+  return rows.map((row) => {
+    const data = row.toJSON();
+    if (data.kind === 'load_offer') {
+      const shipment = byId.get(String(data.shipmentId));
+      data.offerOpen = Boolean(
+        shipment && !shipment.driver_id && String(shipment.offered_driver_id) === String(driverId),
+      );
+    }
+    return data;
   });
 }
 

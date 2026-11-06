@@ -83,6 +83,24 @@ export function cityLine(city, zone) {
   return extra ? `${name} — ${extra}` : name;
 }
 
+export function variantLabels(shipment) {
+  const raw = shipment?.vehicle_variants ?? shipment?.vehicle_variant;
+  let list = raw;
+  if (typeof raw === "string") {
+    const trimmed = raw.trim();
+    if (!trimmed) list = [];
+    else if (trimmed.startsWith("[")) {
+      try {
+        list = JSON.parse(trimmed);
+      } catch {
+        list = [trimmed];
+      }
+    } else list = [trimmed];
+  }
+  if (!Array.isArray(list)) list = list ? [String(list)] : [];
+  return list.map((item) => String(item || "").trim()).filter(Boolean);
+}
+
 export function syncTimeBounds(rangeKeys) {
   const selected = TIME_RANGES.filter((range) => rangeKeys.includes(range.key));
   return {

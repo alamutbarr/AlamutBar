@@ -29,6 +29,8 @@ test('unassigned missions stay hidden from the wrong vehicle', () => {
   assert.equal(isOfferedVisibleToDriver(row, driver, 7), true);
   assert.equal(isOfferedVisibleToDriver(row, { tractorType: 'khavar', trailerType: 'open' }, 7), false);
   assert.equal(isOfferedVisibleToDriver({ ...row, driver_id: 7 }, { tractorType: 'khavar', trailerType: 'open' }, 7), true);
+  assert.equal(isOfferedVisibleToDriver({ ...row, offered_driver_id: 7 }, driver, 7), false);
+  assert.equal(isOfferedVisibleToDriver({ ...row, offered_driver_id: 9 }, driver, 7), false);
 });
 
 test('cargo longer than the registered vehicle is hidden', () => {

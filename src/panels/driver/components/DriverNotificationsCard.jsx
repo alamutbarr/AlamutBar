@@ -12,6 +12,36 @@ export function notificationTimeAgo(dateStr) {
 }
 
 // بخش اعلان داشبورد راننده؛ هم‌ساختار با اعلان‌های پنل صاحب کالا
+export function LoadOfferActions({ item, busy, onAccept, onDecline }) {
+  if (item?.kind !== 'load_offer' || !item.offerOpen) return null;
+  return (
+    <div className="mt-2 flex flex-wrap gap-2">
+      <button
+        type="button"
+        disabled={busy}
+        onClick={(event) => {
+          event.stopPropagation();
+          onAccept?.(item);
+        }}
+        className="rounded-md bg-[#087f8c] px-3 py-1.5 text-xs font-bold text-white disabled:opacity-60"
+      >
+        قبول بار
+      </button>
+      <button
+        type="button"
+        disabled={busy}
+        onClick={(event) => {
+          event.stopPropagation();
+          onDecline?.(item);
+        }}
+        className="rounded-md border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-600 disabled:opacity-60"
+      >
+        رد پیشنهاد
+      </button>
+    </div>
+  );
+}
+
 export function DriverNotificationsCard({
   notifications = [],
   loading = false,
@@ -19,6 +49,9 @@ export function DriverNotificationsCard({
   onOpenAll,
   onNotificationClick,
   onMarkAllRead,
+  onAcceptOffer,
+  onDeclineOffer,
+  offerBusyId,
 }) {
   const latest = notifications.slice(0, 5);
 
@@ -68,9 +101,13 @@ export function DriverNotificationsCard({
           <ul className="divide-y divide-slate-100">
             {latest.map((item) => (
               <li key={item.id}>
-                <button
-                  type="button"
+                <div
+                  role="button"
+                  tabIndex={0}
                   onClick={() => onNotificationClick?.(item)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') onNotificationClick?.(item);
+                  }}
                   className={`flex w-full items-start gap-3 px-4 py-3 text-right transition-colors hover:bg-slate-50 ${
                     item.isRead ? "" : "bg-amber-50/50"
                   }`}
@@ -86,8 +123,14 @@ export function DriverNotificationsCard({
                     <p className={`text-sm ${item.isRead ? "text-slate-600" : "font-bold text-slate-800"}`}>{item.title}</p>
                     <p className="mt-0.5 line-clamp-2 text-xs leading-6 text-slate-500">{item.message}</p>
                     <p className="tabular mt-1 text-[11px] text-slate-400">{notificationTimeAgo(item.createdAt)}</p>
+                    <LoadOfferActions
+                      item={item}
+                      busy={offerBusyId === item.id}
+                      onAccept={onAcceptOffer}
+                      onDecline={onDeclineOffer}
+                    />
                   </div>
-                </button>
+                </div>
               </li>
             ))}
           </ul>

@@ -9,3 +9,8 @@ export const getMyComplaints = async () => {
   const res = await api.get('/complaints');
   return res.data.data;
 };
+
+export const sendComplaintMessage = async (id, body) => {
+  const res = await api.post(`/complaints/${id}/messages`, { body });
+  return res.data.data;
+};

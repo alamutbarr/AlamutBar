@@ -8,6 +8,7 @@ const DriverNotification = sequelize.define('DriverNotification', {
   shipmentId: { type: DataTypes.INTEGER, allowNull: true },
   title: { type: DataTypes.STRING(150), allowNull: false },
   message: { type: DataTypes.STRING(500), allowNull: false },
+  kind: { type: DataTypes.STRING(32), allowNull: false, defaultValue: 'info' },
   isRead: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
 }, { tableName: 'driver_notifications', underscored: true });
 

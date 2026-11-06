@@ -120,26 +120,23 @@ export default function Step2_Destination({ data, onChange }) {
           noResultsText="شهری با این مشخصات یافت نشد"
         />
 
-        <SearchableSelect
-          label={isTehran ? "محدوده مقصد" : "محدوده مقصد (اختیاری)"}
-          required={isTehran}
-          accent="teal"
-          disabled={!data.dest_city_id}
-          value={data.dest_zone_id || ""}
-          placeholder={
-            data.dest_city_id
-              ? "جستجو یا انتخاب محدوده..."
-              : "ابتدا شهر را انتخاب کنید"
-          }
-          options={availableZones.map((z) => ({
-            value: z.id,
-            label: z.name,
-          }))}
-          onChange={(zoneId) =>
-            onChange("dest_zone_id", zoneId ? Number(zoneId) : "")
-          }
-          noResultsText="محدوده‌ای برای این شهر یافت نشد"
-        />
+        {isTehran && (
+          <SearchableSelect
+            label="محدوده مقصد"
+            required
+            accent="teal"
+            value={data.dest_zone_id || ""}
+            placeholder="جستجو یا انتخاب محدوده..."
+            options={availableZones.map((z) => ({
+              value: z.id,
+              label: z.name,
+            }))}
+            onChange={(zoneId) =>
+              onChange("dest_zone_id", zoneId ? Number(zoneId) : "")
+            }
+            noResultsText="محدوده‌ای برای این شهر یافت نشد"
+          />
+        )}
       </div>
       {isTehran && !data.dest_zone_id && (
         <p className="-mt-2 text-xs text-[#087f8c]">

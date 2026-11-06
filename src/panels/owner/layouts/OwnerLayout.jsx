@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { Bell, History, LayoutGrid, PackagePlus, ShieldAlert, User } from 'lucide-react';
+import { Bell, History, LayoutGrid, Menu, PackagePlus, ShieldAlert, User } from 'lucide-react';
+import { useSidebarCollapsed } from '../../../shared/components/useSidebarCollapsed';
 import { AnimatePresence, motion } from 'framer-motion';
 import Sidebar from '../components/common/Sidebar';
 import BrandMark from '../components/common/BrandMark';
@@ -24,13 +25,27 @@ export default function OwnerLayout() {
   const location = useLocation();
   const { user } = useAuth();
   const unread = useOwnerUnread();
+  const { collapsed, toggle } = useSidebarCollapsed('owner');
   const [more, setMore] = useState(false);
   const name = user?.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : user?.phone_number;
 
   return (
     <div className="panel-canvas flex h-dvh overflow-hidden" dir="rtl">
-      <Sidebar unread={unread} />
+      <Sidebar unread={unread} collapsed={collapsed} onToggle={toggle} />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      {collapsed && (
+        <div className="hidden items-center border-b border-[#d8e1dc] bg-white px-4 py-2 lg:flex">
+          <button
+            type="button"
+            onClick={toggle}
+            className="inline-flex items-center gap-2 rounded-md border border-[#d8e1dc] px-3 py-1.5 text-sm font-bold text-[#17383b]"
+            aria-label="باز کردن منو"
+          >
+            <Menu size={18} />
+            منو
+          </button>
+        </div>
+      )}
       <header className="z-30 flex items-center gap-3 bg-[#10282b] px-4 py-3 text-[#f7f6f0] lg:hidden">
         <BrandMark light subtitle="صاحب کالا" to="/owner/dashboard" />
         <div className="flex-1" />

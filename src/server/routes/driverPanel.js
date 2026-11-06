@@ -14,6 +14,7 @@ const { filterNearbyMissions, filterMissionsByRoute } = require('../services/mis
 const { resolveDriverProvince } = require('../services/geocoding');
 const { latestInspections } = require('../inspector/summary');
 const driverNotificationService = require('../services/driverNotification.service');
+const orderOps = require('../admin/orderOps');
 
 const router = express.Router();
 
@@ -278,6 +279,26 @@ router.patch('/notifications/:id/read', authMiddleware, async (req, res) => {
   const notification = await driverNotificationService.markAsRead(req.user.id, req.params.id);
   if (!notification) return res.status(404).json({ message: 'اعلان پیدا نشد.' });
   return res.json({ notification });
+});
+
+router.post('/offers/:shipmentId/accept', authMiddleware, async (req, res) => {
+  if (!req.user?.id) return res.status(401).json({ message: 'لطفاً ابتدا وارد شوید.' });
+  try {
+    await orderOps.acceptDriverOffer(req.user.id, req.params.shipmentId);
+    return res.json({ message: 'بار پذیرفته شد و در مأموریت‌های شما ثبت شد.' });
+  } catch (error) {
+    return res.status(error.statusCode || 400).json({ message: error.message || 'پذیرش بار ناموفق بود.' });
+  }
+});
+
+router.post('/offers/:shipmentId/decline', authMiddleware, async (req, res) => {
+  if (!req.user?.id) return res.status(401).json({ message: 'لطفاً ابتدا وارد شوید.' });
+  try {
+    await orderOps.declineDriverOffer(req.user.id, req.params.shipmentId);
+    return res.json({ message: 'پیشنهاد رد شد.' });
+  } catch (error) {
+    return res.status(error.statusCode || 400).json({ message: error.message || 'رد پیشنهاد ناموفق بود.' });
+  }
 });
 
 router.get('/missions', authMiddleware, async (req, res) => {

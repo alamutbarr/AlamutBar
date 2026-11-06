@@ -125,26 +125,23 @@ export default function Step1_Origin({ data, onChange }) {
           noResultsText="شهری با این مشخصات یافت نشد"
         />
 
-        <SearchableSelect
-          label={isTehran ? "محدوده مبدأ" : "محدوده مبدأ (اختیاری)"}
-          required={isTehran}
-          accent="teal"
-          disabled={!data.origin_city_id}
-          value={data.origin_zone_id || ""}
-          placeholder={
-            data.origin_city_id
-              ? "جستجو یا انتخاب محدوده..."
-              : "ابتدا شهر را انتخاب کنید"
-          }
-          options={availableZones.map((z) => ({
-            value: z.id,
-            label: z.name,
-          }))}
-          onChange={(zoneId) =>
-            onChange("origin_zone_id", zoneId ? Number(zoneId) : "")
-          }
-          noResultsText="محدوده‌ای برای این شهر یافت نشد"
-        />
+        {isTehran && (
+          <SearchableSelect
+            label="محدوده مبدأ"
+            required
+            accent="teal"
+            value={data.origin_zone_id || ""}
+            placeholder="جستجو یا انتخاب محدوده..."
+            options={availableZones.map((z) => ({
+              value: z.id,
+              label: z.name,
+            }))}
+            onChange={(zoneId) =>
+              onChange("origin_zone_id", zoneId ? Number(zoneId) : "")
+            }
+            noResultsText="محدوده‌ای برای این شهر یافت نشد"
+          />
+        )}
       </div>
       {isTehran && !data.origin_zone_id && (
         <p className="-mt-2 text-xs text-[#087f8c]">

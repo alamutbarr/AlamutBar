@@ -9,5 +9,6 @@ const { createComplaintSchema } = require('../validations/complaintValidation');
 router.use(authenticate, requireRole('cargo_owner'));
 router.post('/', validate(createComplaintSchema), complaintController.create);
 router.get('/', complaintController.getMine);
+router.post('/:id/messages', complaintController.addMessage);
 
 module.exports = router;

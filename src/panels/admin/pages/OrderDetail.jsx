@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { api, download } from '../api';
 import { useAdmin } from '../auth';
 import { WORKFLOW_LABELS, money, toneOfStatus, when } from '../format';
+import { formatGroupedDigits, ungroupNumber } from '../../owner/utils/digits';
 import { Badge, Modal, Page, SkeletonRows } from '../components/ui';
 
 export default function OrderDetail() {
@@ -57,7 +58,7 @@ export default function OrderDetail() {
   async function submit() {
     try {
       if (dialog === 'status') await api(`/orders/${id}/status`, { method: 'POST', body: { workflowStatus: extra, reason } });
-      if (dialog === 'price') await api(`/orders/${id}/price`, { method: 'PATCH', body: { estimatedPrice: Number(extra), reason } });
+      if (dialog === 'price') await api(`/orders/${id}/price`, { method: 'PATCH', body: { estimatedPrice: Number(ungroupNumber(extra)), reason } });
       if (dialog === 'note') await api(`/orders/${id}/notes`, { method: 'POST', body: { kind: 'note', body: reason } });
       if (dialog === 'call') await api(`/orders/${id}/notes`, { method: 'POST', body: { kind: 'phone_call', body: reason } });
       if (dialog === 'waybill') await api(`/orders/${id}/waybill`, { method: 'PATCH', body: { waybillNumber: extra } });
@@ -65,7 +66,7 @@ export default function OrderDetail() {
       if (dialog === 'assign') await api(`/orders/${id}/assign-driver`, { method: 'POST', body: { driverId: Number(extra), reason } });
       if (dialog === 'replace') await api(`/orders/${id}/replace-driver`, { method: 'POST', body: { driverId: Number(extra) || undefined, reason } });
       if (dialog === 'inspector') await api(`/orders/${id}/inspector`, { method: 'POST', body: { inspectorId: Number(extra) } });
-      toast.success('ثبت شد');
+      toast.success(dialog === 'assign' ? 'بار در اعلان‌های راننده قرار گرفت و تا قبول او ثبت نمی‌شود.' : 'ثبت شد');
       setDialog(null);
       setReason('');
       await load();
@@ -94,7 +95,7 @@ export default function OrderDetail() {
             <p>مبدأ: {order.loading.city} — {order.loading.address}</p>
             <p>مقصد: {order.unloading.city} — {order.unloading.address}</p>
             <p>صاحب کالا: {order.owner?.companyName || order.owner?.firstName} — {order.owner?.phone}</p>
-            <p>راننده: {order.driver ? `${order.driver.fullName} — ${order.driver.phone} — ${order.driver.plate}` : 'تخصیص نشده'}</p>
+            <p>راننده: {order.driver ? `${order.driver.fullName} — ${order.driver.phone} — ${order.driver.plate}` : order.offeredDriver ? `پیشنهاد به ${order.offeredDriver.fullName} — در انتظار قبول` : 'تخصیص نشده'}</p>
             <p>متصدی: {order.inspector?.fullName || '—'}</p>
             <p>قیمت تخمینی {money(order.estimatedPrice)} / نهایی {money(order.finalPrice)}</p>
             <p>بارنامه {order.waybillNumber || '—'} / کد تحویل {order.deliveryOtp || '—'}</p>
@@ -108,8 +109,8 @@ export default function OrderDetail() {
         </div>
         <div style={{ display: 'grid', gap: 12, alignContent: 'start' }}>
           {can('orders.update') && <button type="button" className="btn" onClick={() => setDialog('status')}>تغییر وضعیت</button>}
-          {can('orders.price') && <button type="button" className="btn secondary" onClick={() => setDialog('price')}>اصلاح قیمت</button>}
-          {can('orders.assign') && <button type="button" className="btn secondary" onClick={() => setDialog('assign')}>تخصیص از صف آماده</button>}
+          {can('orders.price') && <button type="button" className="btn secondary" onClick={() => { setExtra(order.estimatedPrice != null ? formatGroupedDigits(order.estimatedPrice) : ''); setDialog('price'); }}>اصلاح قیمت</button>}
+          {can('orders.assign') && <button type="button" className="btn secondary" onClick={() => { setExtra(''); setDialog('assign'); }}>اعلان برای رانندهٔ خاص</button>}
           {can('orders.assign') && <button type="button" className="btn secondary" onClick={() => setDialog('replace')}>جایگزینی راننده</button>}
           {can('inspections') && <button type="button" className="btn secondary" onClick={() => { setDialog('inspector'); api('/inspectors').then(setInspectors).catch((error) => toast.error(error.message)); }}>تخصیص متصدی</button>}
           {can('orders.notes') && <button type="button" className="btn secondary" onClick={() => setDialog('call')}>ثبت تماس</button>}
@@ -143,7 +144,10 @@ export default function OrderDetail() {
             {Object.entries(WORKFLOW_LABELS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
           </select>
         )}
-        {(dialog === 'price' || dialog === 'penalty' || dialog === 'waybill') && (
+        {dialog === 'price' && (
+          <input className="field" style={{ marginTop: 8 }} inputMode="numeric" placeholder="قیمت به تومان" value={extra} onChange={(event) => setExtra(formatGroupedDigits(event.target.value))} />
+        )}
+        {(dialog === 'penalty' || dialog === 'waybill') && (
           <input className="field" style={{ marginTop: 8 }} placeholder={dialog === 'waybill' ? 'شماره بارنامه' : 'مقدار'} value={extra} onChange={(event) => setExtra(event.target.value)} />
         )}
         {(dialog === 'assign' || dialog === 'replace') && (

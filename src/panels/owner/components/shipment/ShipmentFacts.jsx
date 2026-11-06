@@ -8,6 +8,7 @@ import {
   formatFaNumber,
   formatIsoDate,
   timeWindowLabel,
+  variantLabels,
 } from "../../utils/shipmentPresent";
 
 function Fact({ label, value }) {
@@ -31,9 +32,7 @@ function Group({ title, children }) {
 export default function ShipmentFacts({ shipment }) {
   const price = formatToman(shipment.operator_price || shipment.proposed_price);
   const cargoValue = formatToman(Number(shipment.cargo_value) / 10);
-  const variants = Array.isArray(shipment.vehicle_variants)
-    ? shipment.vehicle_variants.join("، ")
-    : "";
+  const variants = variantLabels(shipment).join("، ");
 
   return (
     <div className="space-y-4">

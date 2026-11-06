@@ -8,7 +8,12 @@ test('skips message patches when the table does not exist', async () => {
       return [[]];
     },
   };
-  assert.deepEqual(await applySchemaPatches(sequelize), { messages: false, complaints: false });
+  assert.deepEqual(await applySchemaPatches(sequelize), {
+    messages: false,
+    complaints: false,
+    shipments: false,
+    driverNotifications: false,
+  });
 });
 
 test('widens a varchar evidence_url so four complaint photos fit', async () => {
@@ -24,7 +29,12 @@ test('widens a varchar evidence_url so four complaint photos fit', async () => {
       return [[]];
     },
   };
-  assert.deepEqual(await applySchemaPatches(sequelize), { messages: false, complaints: true });
+  assert.deepEqual(await applySchemaPatches(sequelize), {
+    messages: false,
+    complaints: true,
+    shipments: false,
+    driverNotifications: false,
+  });
   assert.ok(calls.some((sql) => /MODIFY evidence_url TEXT NULL/i.test(sql)));
 });
 

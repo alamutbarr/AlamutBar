@@ -43,7 +43,7 @@ function photoList(value) {
 }
 
 function urlList(value) {
-  return photoList(value).map((photo) => photo.url).filter(Boolean).slice(0, 4);
+  return photoList(value).map((photo) => photo.url).filter(Boolean).slice(0, 10);
 }
 
 module.exports = { jsonList, photoList, urlList };

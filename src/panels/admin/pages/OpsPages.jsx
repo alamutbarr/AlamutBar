@@ -117,7 +117,20 @@ function Complaints() {
               </div>
             )}
             {item.adminResponse && <p className="muted">پاسخ: {item.adminResponse}</p>}
-            <textarea className="area" value={drafts[item.id] || ''} onChange={(event) => setDrafts({ ...drafts, [item.id]: event.target.value })} placeholder="پاسخ پشتیبانی" />
+            {(item.messages || []).map((message) => (
+              <p key={message.id} className="muted">{message.sender_role === 'operator' ? 'اپراتور' : 'صاحب کالا'}: {message.body}</p>
+            ))}
+            <textarea className="area" value={drafts[item.id] || ''} onChange={(event) => setDrafts({ ...drafts, [item.id]: event.target.value })} placeholder="پیام برای صاحب کالا" />
+            <button type="button" className="btn secondary" style={{ marginTop: 8 }} onClick={async () => {
+              const body = (drafts[item.id] || '').trim();
+              if (!body) return;
+              try {
+                await api(`/complaints/${item.id}/messages`, { method: 'POST', body: { body } });
+                setDrafts({ ...drafts, [item.id]: '' });
+                toast.success('پیام ارسال شد');
+                reload();
+              } catch (err) { toast.error(err.message); }
+            }}>ارسال پیام</button>
             <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
               {['reviewed', 'resolved', 'rejected'].map((status) => (
                 <button key={status} type="button" className="btn secondary" onClick={async () => {

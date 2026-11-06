@@ -1,11 +1,14 @@
 import { Bell, BellRing, CheckCheck } from "lucide-react";
-import { notificationTimeAgo } from "@/components/DriverNotificationsCard";
+import { LoadOfferActions, notificationTimeAgo } from "@/components/DriverNotificationsCard";
 
 export function DriverNotifications({
   notifications = [],
   loading = false,
   onNotificationClick,
   onMarkAllRead,
+  onAcceptOffer,
+  onDeclineOffer,
+  offerBusyId,
   unread = 0,
 }) {
   return (
@@ -42,9 +45,13 @@ export function DriverNotifications({
           <ul className="divide-y divide-slate-100">
             {notifications.map((item) => (
               <li key={item.id}>
-                <button
-                  type="button"
+                <div
+                  role="button"
+                  tabIndex={0}
                   onClick={() => onNotificationClick?.(item)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') onNotificationClick?.(item);
+                  }}
                   className={`flex w-full items-start gap-3 px-4 py-4 text-right transition-colors hover:bg-slate-50 ${
                     item.isRead ? "" : "bg-amber-50/50"
                   }`}
@@ -60,8 +67,14 @@ export function DriverNotifications({
                     <p className={`text-sm ${item.isRead ? "text-slate-600" : "font-bold text-slate-800"}`}>{item.title}</p>
                     <p className="mt-0.5 text-xs leading-6 text-slate-500">{item.message}</p>
                     <p className="tabular mt-1 text-[11px] text-slate-400">{notificationTimeAgo(item.createdAt)}</p>
+                    <LoadOfferActions
+                      item={item}
+                      busy={offerBusyId === item.id}
+                      onAccept={onAcceptOffer}
+                      onDecline={onDeclineOffer}
+                    />
                   </div>
-                </button>
+                </div>
               </li>
             ))}
           </ul>
