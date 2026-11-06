@@ -1,6 +1,10 @@
-async function applySchemaPatches(sequelize) {
-  const [messageTables] = await sequelize.query("SHOW TABLES LIKE 'messages'");
-  if (!messageTables.length) return { messages: false };
+async function tableExists(sequelize, name) {
+  const [rows] = await sequelize.query(`SHOW TABLES LIKE '${name}'`);
+  return rows.length > 0;
+}
+
+async function patchMessages(sequelize) {
+  if (!(await tableExists(sequelize, 'messages'))) return false;
 
   const [roleColumn] = await sequelize.query("SHOW COLUMNS FROM messages LIKE 'sender_role'");
   if (roleColumn[0] && String(roleColumn[0].Type).toLowerCase().includes('enum')) {
@@ -14,7 +18,29 @@ async function applySchemaPatches(sequelize) {
     );
   }
 
-  return { messages: true };
+  return true;
 }
 
-module.exports = { applySchemaPatches };
+function evidenceColumnIsWide(type) {
+  const value = String(type || '').toLowerCase();
+  return value.includes('json') || value.includes('text') || value.includes('blob');
+}
+
+async function patchComplaints(sequelize) {
+  if (!(await tableExists(sequelize, 'complaints'))) return false;
+  const [column] = await sequelize.query("SHOW COLUMNS FROM complaints LIKE 'evidence_url'");
+  if (!column.length) return false;
+  if (!evidenceColumnIsWide(column[0].Type)) {
+    await sequelize.query('ALTER TABLE complaints MODIFY evidence_url TEXT NULL');
+  }
+  return true;
+}
+
+async function applySchemaPatches(sequelize) {
+  return {
+    messages: await patchMessages(sequelize),
+    complaints: await patchComplaints(sequelize),
+  };
+}
+
+module.exports = { applySchemaPatches, evidenceColumnIsWide };

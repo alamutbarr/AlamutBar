@@ -10,12 +10,19 @@ export const uploadShipmentPhotos = async (files) => {
   return res.data.data.urls;
 };
 
-// آپلود یک فایل مدرک برای شکایت / گزارش تخلف
-export const uploadComplaintEvidence = async (file) => {
+// آپلود حداکثر ۴ عکس مدرک برای شکایت / گزارش تخلف
+export const uploadComplaintEvidence = async (files) => {
+  const list = (Array.isArray(files) ? files : [files]).filter(Boolean);
   const formData = new FormData();
-  formData.append('evidence', file);
+  list.forEach((file) => formData.append('evidence', file));
   const res = await api.post('/uploads/evidence', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
+    transformRequest: [(data, headers) => {
+      if (headers) {
+        if (typeof headers.delete === 'function') headers.delete('Content-Type');
+        else delete headers['Content-Type'];
+      }
+      return data;
+    }],
   });
-  return res.data.data.url;
+  return res.data.data.urls || (res.data.data.url ? [res.data.data.url] : []);
 };

@@ -20,6 +20,13 @@ function listOf(value) {
   return Array.isArray(value) ? value : [];
 }
 const COMPLAINT = { pending: 'باز', reviewed: 'بررسی شد', resolved: 'حل شد', rejected: 'رد شد' };
+const COMPLAINT_TYPE = {
+  driver: 'راننده',
+  dispatcher: 'متصدی',
+  cargo: 'آسیب به کالا',
+  delay: 'تأخیر در حمل',
+  other: 'سایر موارد',
+};
 
 function useLoad(loader, deps) {
   const [data, setData] = useState(null);
@@ -98,8 +105,17 @@ function Complaints() {
         {data.map((item) => (
           <article key={item.id} className="card" style={{ padding: 14 }}>
             <Badge tone={item.status === 'resolved' ? 'ok' : item.status === 'rejected' ? 'crit' : 'warn'}>{COMPLAINT[item.status] || item.status}</Badge>
-            <p><strong>{item.type}</strong> — {item.trackingCode || 'بدون بار'} — {item.ownerPhone}</p>
+            <p><strong>{COMPLAINT_TYPE[item.type] || item.type}</strong> — {item.trackingCode || 'بدون بار'} — {item.ownerPhone}</p>
             <p>{item.description}</p>
+            {listOf(item.evidenceUrls).length > 0 && (
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', margin: '8px 0' }}>
+                {listOf(item.evidenceUrls).map((url) => (
+                  <a key={url} href={url} target="_blank" rel="noreferrer">
+                    <img src={url} alt="مدرک شکایت" style={{ width: 96, height: 72, objectFit: 'cover', borderRadius: 8, background: '#f7f6f0' }} />
+                  </a>
+                ))}
+              </div>
+            )}
             {item.adminResponse && <p className="muted">پاسخ: {item.adminResponse}</p>}
             <textarea className="area" value={drafts[item.id] || ''} onChange={(event) => setDrafts({ ...drafts, [item.id]: event.target.value })} placeholder="پاسخ پشتیبانی" />
             <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>

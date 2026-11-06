@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { ShieldAlert, Send, Paperclip, X, Loader2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { ShieldAlert, Send, ImagePlus, X, Loader2 } from 'lucide-react';
 import { createComplaint, getMyComplaints } from '../../api/complaint.api';
 import { getMyShipments } from '../../api/shipment.api';
 import { uploadComplaintEvidence } from '../../api/upload.api';
@@ -7,6 +7,7 @@ import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
 import { useToast } from '../../hooks/useToast';
 import { getErrorMessage } from '../../utils/errorMessage';
+import { KYC_MAX_LABEL, kycFileIssue } from '../../utils/kycFile';
 
 const TYPE_LABELS = {
   driver: 'راننده',
@@ -23,14 +24,26 @@ const STATUS_LABELS = {
   rejected: { label: 'رد شد', tone: 'bg-red-50 text-red-700' },
 };
 
+const MAX_PHOTOS = 4;
+
+function complaintPhotos(item) {
+  if (Array.isArray(item?.evidence_urls)) return item.evidence_urls.filter(Boolean);
+  if (Array.isArray(item?.evidence_url)) return item.evidence_url.filter(Boolean);
+  if (typeof item?.evidence_url === 'string' && item.evidence_url) return [item.evidence_url];
+  return [];
+}
+
 export default function Complaints() {
   const [complaints, setComplaints] = useState([]);
   const [shipments, setShipments] = useState([]);
   const [form, setForm] = useState({ type: '', shipment_id: '', description: '' });
+  const [photos, setPhotos] = useState([]);
+  const [localPreviews, setLocalPreviews] = useState([]);
+  const localPreviewsRef = useRef([]);
+  localPreviewsRef.current = localPreviews;
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [evidenceUrl, setEvidenceUrl] = useState('');
   const [error, setError] = useState('');
   const toast = useToast();
 
@@ -46,18 +59,33 @@ export default function Complaints() {
 
   useEffect(load, []);
 
-  const handleFileChange = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  useEffect(() => () => {
+    localPreviewsRef.current.forEach((url) => URL.revokeObjectURL(url));
+  }, []);
+
+  const handleFiles = async (event) => {
+    const remaining = MAX_PHOTOS - photos.length;
+    const files = Array.from(event.target.files || []).slice(0, remaining);
+    if (!files.length) return;
+    const invalid = files.find((file) => kycFileIssue(file));
+    if (invalid) {
+      toast.error(kycFileIssue(invalid));
+      event.target.value = '';
+      return;
+    }
+    const blobs = files.map((file) => URL.createObjectURL(file));
+    setLocalPreviews((current) => [...current, ...blobs]);
     setUploading(true);
     try {
-      const url = await uploadComplaintEvidence(file);
-      setEvidenceUrl(url);
+      const urls = await uploadComplaintEvidence(files);
+      setPhotos((current) => [...current, ...urls].slice(0, MAX_PHOTOS));
     } catch (err) {
       toast.error(getErrorMessage(err, 'بارگذاری مدرک با خطا مواجه شد.'));
     } finally {
+      blobs.forEach((url) => URL.revokeObjectURL(url));
+      setLocalPreviews((current) => current.filter((url) => !blobs.includes(url)));
       setUploading(false);
-      e.target.value = '';
+      event.target.value = '';
     }
   };
 
@@ -66,10 +94,14 @@ export default function Complaints() {
     setError('');
     setSubmitting(true);
     try {
-      await createComplaint({ ...form, shipment_id: form.shipment_id || null, evidence_url: evidenceUrl || null });
+      await createComplaint({
+        ...form,
+        shipment_id: form.shipment_id || null,
+        evidence_urls: photos,
+      });
       toast.success('شکایت شما با موفقیت ثبت شد.');
       setForm({ type: '', shipment_id: '', description: '' });
-      setEvidenceUrl('');
+      setPhotos([]);
       load();
     } catch (err) {
       setError(getErrorMessage(err, 'ثبت شکایت با خطا مواجه شد.'));
@@ -77,6 +109,11 @@ export default function Complaints() {
       setSubmitting(false);
     }
   };
+
+  const tiles = [
+    ...photos.map((url) => ({ key: url, src: url, uploaded: true })),
+    ...localPreviews.map((url) => ({ key: url, src: url, uploaded: false })),
+  ];
 
   return (
     <div>
@@ -128,22 +165,41 @@ export default function Complaints() {
           />
 
           <div>
-            <span className="mb-1.5 block text-sm font-medium text-ink-700">مدرک (اختیاری)</span>
-            {evidenceUrl ? (
-              <div className="flex items-center gap-2 rounded-lg border border-ink-100 bg-ink-50 px-3 py-2 text-xs text-ink-600">
-                <Paperclip size={14} />
-                <span className="flex-1 truncate">مدرک بارگذاری شد</span>
-                <button type="button" onClick={() => setEvidenceUrl('')} className="text-ink-300 hover:text-red-600">
-                  <X size={14} />
-                </button>
-              </div>
-            ) : (
-              <label className="flex w-fit cursor-pointer items-center gap-2 rounded-lg border border-dashed border-ink-200 px-3.5 py-2 text-xs text-ink-400 transition-colors hover:border-amber-400 hover:text-amber-600">
-                {uploading ? <Loader2 size={14} className="animate-spin" /> : <Paperclip size={14} />}
-                افزودن فایل یا عکس
-                <input type="file" accept="image/*" hidden onChange={handleFileChange} disabled={uploading} />
-              </label>
-            )}
+            <span className="mb-1.5 block text-sm font-medium text-ink-700">عکس مدرک (اختیاری)</span>
+            <p className="mb-2 text-xs text-ink-300">
+              تا {MAX_PHOTOS.toLocaleString('fa-IR')} عکس با پیش‌نمایش. سقف هر عکس {KYC_MAX_LABEL} است.
+              {' '}{photos.length.toLocaleString('fa-IR')} از {MAX_PHOTOS.toLocaleString('fa-IR')} عکس
+            </p>
+            <div className="flex flex-wrap gap-3">
+              {tiles.map((tile) => (
+                <div key={tile.key} className="group relative h-24 w-24 overflow-hidden rounded-lg border border-ink-100 bg-[#f7f6f0]">
+                  <img src={tile.src} alt="پیش‌نمایش مدرک شکایت" className="h-full w-full object-cover" />
+                  {tile.uploaded && (
+                    <button
+                      type="button"
+                      onClick={() => setPhotos((current) => current.filter((url) => url !== tile.key))}
+                      className="absolute inset-0 flex items-center justify-center bg-ink-950/50 text-white opacity-0 transition-opacity group-hover:opacity-100"
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
+                </div>
+              ))}
+              {photos.length < MAX_PHOTOS && (
+                <label className="flex h-24 w-24 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-ink-100 text-ink-300 transition-colors hover:border-amber-400 hover:text-amber-600">
+                  {uploading ? <Loader2 size={18} className="animate-spin" /> : <ImagePlus size={18} />}
+                  <span className="text-[10px]">افزودن</span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    multiple
+                    hidden
+                    disabled={uploading}
+                    onChange={handleFiles}
+                  />
+                </label>
+              )}
+            </div>
           </div>
 
           <Button type="submit" variant="accent" icon={Send} loading={submitting}>
@@ -171,11 +227,20 @@ export default function Complaints() {
               <li key={c.id} className="px-5 py-4">
                 <div className="mb-1.5 flex items-center justify-between">
                   <span className="text-sm font-medium text-ink-900">{TYPE_LABELS[c.type]}</span>
-                  <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${STATUS_LABELS[c.status].tone}`}>
-                    {STATUS_LABELS[c.status].label}
+                  <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${STATUS_LABELS[c.status]?.tone || 'bg-ink-50 text-ink-600'}`}>
+                    {STATUS_LABELS[c.status]?.label || c.status}
                   </span>
                 </div>
                 <p className="text-xs text-ink-400">{c.description}</p>
+                {complaintPhotos(c).length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {complaintPhotos(c).map((url) => (
+                      <a key={url} href={url} target="_blank" rel="noreferrer">
+                        <img src={url} alt="مدرک شکایت" className="h-16 w-16 rounded-md object-cover bg-[#f7f6f0]" />
+                      </a>
+                    ))}
+                  </div>
+                )}
                 {c.admin_response && (
                   <p className="mt-2 rounded-lg bg-ink-50 px-3 py-2 text-xs text-ink-600">
                     پاسخ: {c.admin_response}

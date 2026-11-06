@@ -25,7 +25,7 @@ const chat = require('../chat/service');
 const { buildWorkbook } = require('./reports');
 const { normalizePhone } = require('./phone');
 const { logEvent } = require('./audit');
-const { jsonList, photoList } = require('../utils/jsonList');
+const { jsonList, photoList, urlList } = require('../utils/jsonList');
 const driverNotificationService = require('../services/driverNotification.service');
 const avatarStore = require('../utils/avatarStore');
 
@@ -751,6 +751,7 @@ router.get('/complaints', requirePermission('complaints'), asyncHandler(async (r
       adminResponse: row.admin_response,
       trackingCode: row.Shipment?.tracking_code,
       ownerPhone: row.User?.phone_number,
+      evidenceUrls: urlList(row.evidence_url),
       createdAt: row.createdAt,
     })),
   });

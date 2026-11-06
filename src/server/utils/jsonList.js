@@ -42,4 +42,8 @@ function photoList(value) {
   }).filter(Boolean);
 }
 
-module.exports = { jsonList, photoList };
+function urlList(value) {
+  return photoList(value).map((photo) => photo.url).filter(Boolean).slice(0, 4);
+}
+
+module.exports = { jsonList, photoList, urlList };

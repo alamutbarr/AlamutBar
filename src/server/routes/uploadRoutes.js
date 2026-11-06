@@ -6,6 +6,6 @@ const authenticate = require('../middleware/authMiddleware');
 
 router.use(authenticate);
 router.post('/photos', upload.array('photos', 4), uploadController.uploadPhotos);
-router.post('/evidence', upload.single('evidence'), uploadController.uploadEvidence);
+router.post('/evidence', upload.array('evidence', 4), uploadController.uploadEvidence);
 
 module.exports = router;
