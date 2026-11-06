@@ -13,6 +13,7 @@ import {
   TIME_RANGES,
   URGENCY_LABELS,
   syncTimeBounds,
+  variantLabels,
 } from "../../utils/shipmentPresent";
 
 const TEHRAN_ZONES = [
@@ -78,6 +79,7 @@ export function shipmentToForm(shipment) {
     origin_lat: shipment.origin_lat,
     origin_lng: shipment.origin_lng,
     dest_city_id: shipment.dest_city_id || "",
+    dest_city_name: shipment.destCity?.name?.trim() || "",
     dest_zone_id: shipment.dest_zone_id || "",
     dest_address: shipment.dest_address || "",
     dest_lat: shipment.dest_lat ?? "",
@@ -97,7 +99,7 @@ export function shipmentToForm(shipment) {
     loading_time_ranges: Array.isArray(shipment.loading_time_ranges) ? shipment.loading_time_ranges : [],
     urgency: shipment.urgency || "scheduled",
     vehicle_type_id: shipment.vehicle_type_id || "",
-    vehicle_variants: Array.isArray(shipment.vehicle_variants) ? shipment.vehicle_variants : [],
+    vehicle_variants: variantLabels(shipment),
     loading_method: shipment.loading_method || "",
     receiver_name: shipment.receiver_name || "",
     receiver_phone: shipment.receiver_phone || "",
@@ -110,15 +112,19 @@ export function shipmentToForm(shipment) {
 
 export function formToPayload(form) {
   const blankToNull = (value) => (value === "" || value == null ? null : Number(value));
-  const { origin_city_name, ...rest } = form;
+  const { origin_city_name, dest_city_name, ...rest } = form;
   return {
     ...rest,
     origin_city_id: Number(form.origin_city_id),
-    origin_zone_id: form.origin_zone_id ? Number(form.origin_zone_id) : null,
+    origin_zone_id: String(form.origin_city_name || "").trim() === "تهران" && form.origin_zone_id
+      ? Number(form.origin_zone_id)
+      : null,
     origin_lat: Number(form.origin_lat),
     origin_lng: Number(form.origin_lng),
     dest_city_id: Number(form.dest_city_id),
-    dest_zone_id: form.dest_zone_id ? Number(form.dest_zone_id) : null,
+    dest_zone_id: String(form.dest_city_name || "").trim() === "تهران" && form.dest_zone_id
+      ? Number(form.dest_zone_id)
+      : null,
     dest_lat: form.dest_lat === "" || form.dest_lat == null ? null : Number(form.dest_lat),
     dest_lng: form.dest_lng === "" || form.dest_lng == null ? null : Number(form.dest_lng),
     weight_kg: Number(form.weight_kg),
@@ -167,7 +173,7 @@ export default function ShipmentEditForm({ form, onChange }) {
   const originCity = cities.find((city) => String(city.id) === String(form.origin_city_id));
   const destCity = cities.find((city) => String(city.id) === String(form.dest_city_id));
   const originIsTehran = (originCity?.name || form.origin_city_name || "").trim() === "تهران";
-  const destIsTehran = destCity?.name?.trim() === "تهران";
+  const destIsTehran = (destCity?.name || form.dest_city_name || "").trim() === "تهران";
 
   useEffect(() => {
     if (!form.origin_city_id || originIsTehran) {
@@ -197,6 +203,7 @@ export default function ShipmentEditForm({ form, onChange }) {
   const supportedVehicles = vehicles.filter((vehicle) => vehicleCategory(vehicle.title));
   const selectedVehicle = supportedVehicles.find((vehicle) => String(vehicle.id) === String(form.vehicle_type_id));
   const variants = selectedVehicle ? VEHICLE_VARIANTS[vehicleCategory(selectedVehicle.title)] || [] : [];
+  const choiceVariants = Array.from(new Set([...(form.vehicle_variants || []), ...variants]));
 
   const set = (key, value) => onChange({ ...form, [key]: value });
 
@@ -232,6 +239,7 @@ export default function ShipmentEditForm({ form, onChange }) {
           <SearchableSelect
             label="شهر مبدأ"
             required
+            accent="teal"
             value={form.origin_city_id}
             options={options}
             placeholder="جستجو یا انتخاب شهر..."
@@ -245,15 +253,18 @@ export default function ShipmentEditForm({ form, onChange }) {
               });
             }}
           />
-          <SearchableSelect
-            label={originIsTehran ? "محدوده مبدأ" : "محدوده مبدأ (اختیاری)"}
-            required={originIsTehran}
-            disabled={!form.origin_city_id}
-            value={form.origin_zone_id}
-            options={originZoneOptions}
-            placeholder="انتخاب محدوده"
-            onChange={(zoneId) => set("origin_zone_id", zoneId ? Number(zoneId) : "")}
-          />
+          {originIsTehran && (
+            <SearchableSelect
+              label="محدوده مبدأ"
+              required
+              accent="teal"
+              disabled={!form.origin_city_id}
+              value={form.origin_zone_id}
+              options={originZoneOptions}
+              placeholder="انتخاب محدوده"
+              onChange={(zoneId) => set("origin_zone_id", zoneId ? Number(zoneId) : "")}
+            />
+          )}
         </div>
         <Input
           label="آدرس مبدأ"
@@ -268,19 +279,32 @@ export default function ShipmentEditForm({ form, onChange }) {
           <SearchableSelect
             label="شهر مقصد"
             required
+            accent="teal"
             value={form.dest_city_id}
             options={options}
             placeholder="جستجو یا انتخاب شهر..."
-            onChange={(cityId) => onChange({ ...form, dest_city_id: cityId ? Number(cityId) : "", dest_zone_id: "" })}
+            onChange={(cityId) => {
+              const city = cities.find((item) => String(item.id) === String(cityId));
+              onChange({
+                ...form,
+                dest_city_id: cityId ? Number(cityId) : "",
+                dest_city_name: city?.name?.trim() || "",
+                dest_zone_id: "",
+              });
+            }}
           />
-          <SearchableSelect
-            label="محدوده مقصد (اختیاری)"
-            disabled={!form.dest_city_id}
-            value={form.dest_zone_id}
-            options={destZoneOptions}
-            placeholder="انتخاب محدوده"
-            onChange={(zoneId) => set("dest_zone_id", zoneId ? Number(zoneId) : "")}
-          />
+          {destIsTehran && (
+            <SearchableSelect
+              label="محدوده مقصد"
+              required
+              accent="teal"
+              disabled={!form.dest_city_id}
+              value={form.dest_zone_id}
+              options={destZoneOptions}
+              placeholder="انتخاب محدوده"
+              onChange={(zoneId) => set("dest_zone_id", zoneId ? Number(zoneId) : "")}
+            />
+          )}
         </div>
         <Input
           label="آدرس مقصد"
@@ -357,7 +381,7 @@ export default function ShipmentEditForm({ form, onChange }) {
               type="button"
               key={key}
               onClick={() => set("urgency", key)}
-              className={`rounded-full border px-3 py-1.5 text-xs ${
+              className={`rounded-md border px-3 py-1.5 text-xs ${
                 form.urgency === key ? "border-[#087f8c] bg-[#e7f4f5] text-[#087f8c]" : "border-[#d8e1dc] text-[#526d70]"
               }`}
             >
@@ -386,16 +410,22 @@ export default function ShipmentEditForm({ form, onChange }) {
             );
           })}
         </div>
-        {variants.length > 0 && (
+        <div>
+          <p className="mb-2 text-xs font-bold text-[#17383b]">نوع گاری</p>
+          {(form.vehicle_variants || []).length > 0 && (
+            <p className="mb-2 text-xs text-[#526d70]">انتخاب‌شده: {form.vehicle_variants.join("، ")}</p>
+          )}
+        </div>
+        {choiceVariants.length > 0 && (
           <div className="flex flex-wrap gap-2">
-            {variants.map((variant) => {
+            {choiceVariants.map((variant) => {
               const active = form.vehicle_variants.includes(variant);
               return (
                 <button
                   type="button"
                   key={variant}
                   onClick={() => toggleVariant(variant)}
-                  className={`rounded-full border px-3 py-1.5 text-xs ${
+                  className={`rounded-md border px-3 py-1.5 text-xs ${
                     active ? "border-[#087f8c] bg-[#087f8c] text-white" : "border-[#d8e1dc] text-[#17383b]"
                   }`}
                 >

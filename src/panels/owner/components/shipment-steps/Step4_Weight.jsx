@@ -165,6 +165,17 @@ export default function Step4_Weight({ data, onChange }) {
           <span className="font-semibold text-base">{words}</span>
         </div>
       )}
+
+      <Input
+        label="تعداد بسته‌ها"
+        type="text"
+        inputMode="numeric"
+        className="tabular"
+        value={data.piece_count ?? ""}
+        onChange={(event) => onChange("piece_count", toEnglishDigits(event.target.value).replace(/[^\d]/g, ""))}
+        placeholder="مثلاً ۱۲"
+        hint="اگر بار چند بسته یا شمش جدا دارد، تعداد را بنویسید."
+      />
     </div>
   );
 }

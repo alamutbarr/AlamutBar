@@ -1,5 +1,20 @@
 const { City, Zone } = require("../models");
-const iranCities = require("../data/iranCities.json");
+const { CITIES } = require("../services/geoData");
+
+function cityRows() {
+  const seen = new Set();
+  const rows = [];
+  for (const city of CITIES) {
+    if (!city.name || !city.province) continue;
+    const name = String(city.name).slice(0, 50);
+    const province = String(city.province).slice(0, 50);
+    const key = `${name}||${province}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    rows.push({ name, province });
+  }
+  return rows;
+}
 
 const TEHRAN_ZONES = [
   "مرکز، شمال و بافت متراکم",
@@ -12,9 +27,9 @@ const TEHRAN_ZONES = [
 const seedLocations = async () => {
   const count = await City.count();
   if (count === 0) {
-    // ۱. درج یکجای تمام ۱۴۸۱ شهر ایران
-    await City.bulkCreate(iranCities, { ignoreDuplicates: true });
-    console.log(`✅ ${iranCities.length} Iranian cities seeded successfully.`);
+    const rows = cityRows();
+    await City.bulkCreate(rows, { ignoreDuplicates: true });
+    console.log(`✅ ${rows.length} Iranian cities seeded successfully.`);
   }
 
   // ۲. افزودن محدوده‌های اختصاصی تهران

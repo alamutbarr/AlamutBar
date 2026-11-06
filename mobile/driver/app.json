@@ -1,0 +1,52 @@
+{
+  "expo": {
+    "name": "الموت راننده",
+    "slug": "alamut-driver",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "scheme": "alamut-driver",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "bar.alamut.driver",
+      "infoPlist": {
+        "NSCameraUsageDescription": "برای عکس بار و مدارک به دوربین نیاز است.",
+        "NSPhotoLibraryUsageDescription": "برای انتخاب عکس بار و مدارک به عکس‌ها نیاز است."
+      }
+    },
+    "android": {
+      "package": "bar.alamut.driver",
+      "usesCleartextTraffic": true,
+      "adaptiveIcon": {
+        "backgroundColor": "#087F8C",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "برای عکس بار و مدارک به دوربین نیاز است.",
+          "photosPermission": "برای انتخاب عکس بار و مدارک به عکس‌ها نیاز است."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#087F8C"
+        }
+      ],
+      "expo-secure-store",
+      "expo-font"
+    ],
+    "extra": {
+      "apiUrl": "http://127.0.0.1:5088"
+    }
+  }
+}

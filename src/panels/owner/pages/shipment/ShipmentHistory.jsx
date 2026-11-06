@@ -23,6 +23,7 @@ export default function ShipmentHistory() {
     <div>
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
+          <p className="panel-kicker">صاحب کالا</p>
           <h1 className="text-2xl font-bold text-ink-900">بارهای من</h1>
           <p className="mt-1 text-sm text-ink-300">فهرست کامل درخواست‌های حمل ثبت‌شده</p>
         </div>
@@ -31,7 +32,7 @@ export default function ShipmentHistory() {
         </Button>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-ink-100 bg-white shadow-panel">
+      <section className="panel-section">
         {loading ? (
           <p className="px-5 py-14 text-center text-sm text-ink-300">در حال بارگذاری...</p>
         ) : shipments.length === 0 ? (
@@ -48,7 +49,7 @@ export default function ShipmentHistory() {
               <li key={s.id} className="px-4 py-4">
                 <div className="mb-2 flex items-center justify-between gap-3">
                   <span className="tabular font-bold text-ink-900">{s.tracking_code}</span>
-                  <StatusBadge status={s.status} />
+                  <StatusBadge status={s.workflow_status === 'ON_HOLD' ? 'on_hold' : s.status} />
                 </div>
                 <p className="text-sm text-ink-700">
                   {s.originCity?.name || 'مبدأ'} ← {s.destCity?.name || 'مقصد'}
@@ -57,13 +58,22 @@ export default function ShipmentHistory() {
                   {s.weight_kg} کیلوگرم · {formatToman(s.operator_price || s.proposed_price)} ·{' '}
                   {new Intl.DateTimeFormat('fa-IR').format(new Date(s.loading_date))}
                 </p>
-                <button
-                  type="button"
-                  onClick={() => setOpenId(s.id)}
-                  className="mt-3 rounded-full bg-[#087f8c] px-3 py-1.5 text-xs font-semibold text-[#f7f6f0]"
-                >
-                  جزئیات
-                </button>
+                <div className="mt-3 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setOpenId(s.id)}
+                    className="rounded-md bg-[#087f8c] px-3 py-1.5 text-xs font-semibold text-[#f7f6f0]"
+                  >
+                    جزئیات
+                  </button>
+                  <Link
+                    to="/owner/create-shipment"
+                    state={{ repeat: s }}
+                    className="rounded-md border border-[#d7b56d] px-3 py-1.5 text-xs font-semibold text-[#17383b]"
+                  >
+                    تکرار این حمل
+                  </Link>
+                </div>
               </li>
             ))}
           </ul>
@@ -98,16 +108,25 @@ export default function ShipmentHistory() {
                     {new Intl.DateTimeFormat('fa-IR').format(new Date(s.loading_date))}
                   </td>
                   <td className="px-5 py-4">
-                    <StatusBadge status={s.status} />
+                    <StatusBadge status={s.workflow_status === 'ON_HOLD' ? 'on_hold' : s.status} />
                   </td>
                   <td className="px-5 py-4">
-                    <button
-                      type="button"
-                      onClick={() => setOpenId(s.id)}
-                      className="rounded-full bg-[#087f8c] px-3 py-1.5 text-xs font-semibold text-[#f7f6f0]"
-                    >
-                      جزئیات
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setOpenId(s.id)}
+                        className="rounded-md bg-[#087f8c] px-3 py-1.5 text-xs font-semibold text-[#f7f6f0]"
+                      >
+                        جزئیات
+                      </button>
+                      <Link
+                        to="/owner/create-shipment"
+                        state={{ repeat: s }}
+                        className="rounded-md border border-[#d7b56d] px-3 py-1.5 text-xs font-semibold text-[#17383b]"
+                      >
+                        تکرار
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -115,7 +134,7 @@ export default function ShipmentHistory() {
           </table>
           </>
         )}
-      </div>
+      </section>
 
       <ShipmentDetailsModal
         open={openId != null}

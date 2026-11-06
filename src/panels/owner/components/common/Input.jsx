@@ -58,11 +58,10 @@ export default function Input({
           />
         )}
         <Field
-          className={`w-full rounded-md border bg-white px-3.5 py-2.5 text-sm text-ink-900
-            placeholder:text-ink-300 transition-colors
-            focus:outline-none focus:ring-2 focus:ring-[#087f8c]/30
+          className={`auth-field w-full rounded-md px-3.5 py-2.5 text-sm text-ink-900
+            placeholder:text-ink-300
             ${Icon ? "pr-10" : ""}
-            ${error ? "border-red-300 focus:border-red-400" : "border-ink-100 focus:border-[#087f8c]"}
+            ${error ? "auth-field--error" : ""}
             ${className}`}
           onKeyDown={handleKeyDown}
           {...props}

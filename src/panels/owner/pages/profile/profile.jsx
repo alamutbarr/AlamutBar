@@ -1,18 +1,22 @@
 import { useEffect, useState } from "react";
-import { Camera, Loader2, Save } from "lucide-react";
+import { Camera, Loader2, LogOut, Save } from "lucide-react";
 import { nationalIdIssue } from "../../utils/nationalId";
 import { getProfile, updateProfile } from "../../api/auth.api";
 import { uploadShipmentPhotos } from "../../api/upload.api";
 import { useAuth } from "../../hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 import { useToast } from "../../hooks/useToast";
 import Input from "../../components/common/Input";
 import Button from "../../components/common/Button";
 import Avatar from "../../components/common/Avatar";
 import { toEnglishDigits } from "../../utils/digits";
 import { getErrorMessage } from "../../utils/errorMessage";
+import OwnerKyc from "./OwnerKyc";
+import LogoutConfirm from "../../../../shared/components/LogoutConfirm";
 
 export default function Profile() {
-  const { updateUser } = useAuth();
+  const { updateUser, logout } = useAuth();
+  const navigate = useNavigate();
   const toast = useToast();
 
   const [profile, setProfile] = useState(null);
@@ -21,12 +25,14 @@ export default function Profile() {
     last_name: "",
     company_name: "",
     national_id: "",
+    postal_code: "",
   });
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
+  const [confirmLogout, setConfirmLogout] = useState(false);
 
   const applyProfile = (data) => {
     setProfile(data);
@@ -35,6 +41,7 @@ export default function Profile() {
       last_name: data.last_name || "",
       company_name: data.company_name || "",
       national_id: data.national_id || "",
+      postal_code: data.postal_code || "",
     });
     updateUser(data);
   };
@@ -59,6 +66,10 @@ export default function Profile() {
       setError(nationalIssue);
       return;
     }
+    if (!/^\d{10}$/.test(form.postal_code)) {
+      setError("کد پستی باید ۱۰ رقم باشد.");
+      return;
+    }
 
     setError("");
     setSaving(true);
@@ -69,6 +80,7 @@ export default function Profile() {
         last_name: form.last_name.trim(),
         company_name: form.company_name.trim(),
         national_id: form.national_id,
+        postal_code: form.postal_code,
       });
 
       applyProfile(data);
@@ -126,6 +138,7 @@ export default function Profile() {
 
   const displayName = `${form.first_name} ${form.last_name}`.trim();
   const hasPhoto = Boolean(profile?.avatar_url);
+  const postalMissing = !/^\d{10}$/.test(String(form.postal_code || "").trim());
 
   return (
     <div>
@@ -135,6 +148,17 @@ export default function Profile() {
           اطلاعات حساب کاربری خود را مشاهده و ویرایش کنید
         </p>
       </div>
+
+      {postalMissing && (
+        <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-right shadow-panel">
+          <p className="text-sm font-bold text-amber-800">
+            برای ثبت بار وارد کردن کد پستی الزامی است
+          </p>
+          <p className="mt-1 text-sm text-amber-700">
+            کد پستی هنگام ورود به سایت گرفته نمی‌شود. این فیلد در پروفایل اجباری است و بدون آن نمی‌توانید بار ثبت کنید.
+          </p>
+        </div>
+      )}
 
       <div className="mb-6 flex flex-col items-center gap-5 rounded-xl border border-ink-100 bg-white p-6 shadow-panel sm:flex-row">
         <Avatar
@@ -152,6 +176,11 @@ export default function Profile() {
           {form.company_name && (
             <p className="mt-0.5 truncate text-sm text-ink-400">
               {form.company_name}
+            </p>
+          )}
+          {profile?.postal_code && (
+            <p className="mt-0.5 text-sm text-ink-400">
+              کد پستی <bdi dir="ltr">{profile.postal_code}</bdi>
             </p>
           )}
 
@@ -245,6 +274,22 @@ export default function Profile() {
             />
 
             <Input
+              label="کد پستی"
+              required
+              hint="کد پستی ۱۰ رقمی. هنگام ورود گرفته نمی‌شود و برای ثبت بار الزامی است."
+              value={form.postal_code}
+              onChange={(e) =>
+                setForm((current) => ({
+                  ...current,
+                  postal_code: toEnglishDigits(e.target.value).replace(/\D/g, "").slice(0, 10),
+                }))
+              }
+              inputMode="numeric"
+              dir="ltr"
+              className="tabular text-left"
+            />
+
+            <Input
               label="شماره موبایل"
               value={profile?.phone_number || ""}
               readOnly
@@ -260,6 +305,23 @@ export default function Profile() {
           </Button>
         </form>
       </div>
+
+      <OwnerKyc profile={profile} onChange={applyProfile} />
+
+      <button
+        type="button"
+        onClick={() => setConfirmLogout(true)}
+        className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-red-200 bg-red-50 px-4 py-3.5 text-base font-bold text-red-600"
+      >
+        <LogOut size={18} />
+        خروج از حساب
+      </button>
+      <LogoutConfirm
+        open={confirmLogout}
+        onCancel={() => setConfirmLogout(false)}
+        onConfirm={() => { setConfirmLogout(false); logout(); navigate("/owner/login"); }}
+        message="آیا مطمئن هستید که می‌خواهید از پنل صاحب کالا خارج شوید؟ برای ادامه کار باید دوباره وارد شوید."
+      />
     </div>
   );
 }

@@ -3,6 +3,9 @@ const AppError = require('../utils/AppError');
 const generateTrackingCode = require('../utils/generateTrackingCode');
 const vehicleMatchService = require('./vehicleMatch.service');
 const notificationService = require('./notification.service');
+const driverNotificationService = require('./driverNotification.service');
+const { assertPinInCity } = require('./cityBounds');
+const { attachInspectionSummaries } = require('../inspector/summary');
 
 const shipmentIncludes = [
   { model: VehicleType, as: 'vehicleType' },
@@ -66,6 +69,12 @@ async function validateReferences(payload) {
   if (tehranOrigin && !payload.origin_zone_id) {
     throw new AppError('برای شهر تهران، انتخاب محدوده مبدأ الزامی است.', 400);
   }
+  const tehranDest = String(destCity.name || '').trim() === 'تهران';
+  if (tehranDest && !payload.dest_zone_id) {
+    throw new AppError('برای شهر تهران، انتخاب محدوده مقصد الزامی است.', 400);
+  }
+  assertPinInCity({ lat: payload.origin_lat, lng: payload.origin_lng }, originCity, 'مبدأ');
+  assertPinInCity({ lat: payload.dest_lat, lng: payload.dest_lng }, destCity, 'مقصد');
 
   if (payload.origin_zone_id) {
     const originZone = await Zone.findByPk(payload.origin_zone_id);
@@ -103,11 +112,13 @@ async function getMyShipments(ownerId, { status } = {}) {
   const where = { owner_id: ownerId };
   if (status) where.status = status;
 
-  return Shipment.findAll({
+  const rows = await Shipment.findAll({
     where,
     include: shipmentIncludes,
     order: [['createdAt', 'DESC']],
   });
+  await attachInspectionSummaries(rows);
+  return rows;
 }
 
 async function getShipmentForOwner(ownerId, shipmentId) {
@@ -116,6 +127,7 @@ async function getShipmentForOwner(ownerId, shipmentId) {
     include: shipmentIncludes,
   });
   if (!shipment) throw new AppError('بار مورد نظر یافت نشد.', 404);
+  await attachInspectionSummaries(shipment);
   return shipment;
 }
 
@@ -265,6 +277,8 @@ async function confirmDelivery(ownerId, shipmentId) {
   }
 
   shipment.status = 'completed';
+  shipment.workflow_status = 'COMPLETED';
+  shipment.driver_status = shipment.driver_status || 'Completed';
   await shipment.save();
 
   await notificationService.notify(ownerId, {
@@ -272,6 +286,14 @@ async function confirmDelivery(ownerId, shipmentId) {
     message: `تحویل بار ${shipment.tracking_code} توسط شما تأیید شد. خوشحال می‌شویم به راننده و متصدی امتیاز بدهید.`,
     shipmentId: shipment.id,
   });
+
+  if (shipment.driver_id) {
+    await driverNotificationService.notifyDriver(shipment.driver_id, {
+      title: 'تحویل بار تأیید شد',
+      message: `صاحب کالا تحویل بار ${shipment.tracking_code} را تأیید کرد و مأموریت بسته شد.`,
+      shipmentId: shipment.id,
+    }).catch((error) => console.error('driver notification failed:', error.message));
+  }
 
   return shipment;
 }

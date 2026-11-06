@@ -65,3 +65,15 @@ h3 {
     min-height: 220px;
   }
 }
+
+@media (max-width: 640px) {
+  .leaflet-container {
+    min-height: 200px;
+  }
+}
+
+@media (max-width: 480px) {
+  .auth-stage {
+    padding: 1.25rem 0.85rem;
+  }
+}

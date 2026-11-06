@@ -8,6 +8,7 @@ import {
   formatFaNumber,
   formatIsoDate,
   timeWindowLabel,
+  variantLabels,
 } from "../../utils/shipmentPresent";
 
 function Fact({ label, value }) {
@@ -31,9 +32,7 @@ function Group({ title, children }) {
 export default function ShipmentFacts({ shipment }) {
   const price = formatToman(shipment.operator_price || shipment.proposed_price);
   const cargoValue = formatToman(Number(shipment.cargo_value) / 10);
-  const variants = Array.isArray(shipment.vehicle_variants)
-    ? shipment.vehicle_variants.join("، ")
-    : "";
+  const variants = variantLabels(shipment).join("، ");
 
   return (
     <div className="space-y-4">
@@ -48,6 +47,8 @@ export default function ShipmentFacts({ shipment }) {
         <Fact label="نوع کالا" value={cargoTypeLabel(shipment)} />
         <Fact label="بسته‌بندی" value={shipment.packaging_type || "ثبت نشده"} />
         <Fact label="وزن" value={shipment.weight_kg ? `${formatFaNumber(shipment.weight_kg)} کیلوگرم` : "—"} />
+        <Fact label="تعداد" value={shipment.piece_count ? formatFaNumber(shipment.piece_count) : "ثبت نشده"} />
+        <Fact label="بار حساس" value={shipment.requires_inspector ? "متصدی در محل لازم است" : "خیر"} />
         <Fact label="ابعاد" value={dimensionsLabel(shipment)} />
         <Fact label="ارزش کالا" value={cargoValue ? `${cargoValue} (${formatFaNumber(shipment.cargo_value)} ریال)` : "—"} />
         <Fact label="توضیحات" value={shipment.notes || "ثبت نشده"} />

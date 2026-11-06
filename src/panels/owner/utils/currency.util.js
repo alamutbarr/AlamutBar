@@ -111,3 +111,9 @@ export function formatToman(tomanValue) {
   const words = numberToWordsFa(Math.floor(Number(tomanValue)));
   return words ? `${words} تومان` : "";
 }
+
+export function formatRialAsTomanAmount(rialValue) {
+  const toman = Math.floor(Number(rialValue) / 10);
+  if (!Number.isFinite(toman) || toman <= 0) return "";
+  return String(toman).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}

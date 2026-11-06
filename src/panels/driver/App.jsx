@@ -2,13 +2,19 @@ import { Routes, Route, Navigate, useNavigate, useLocation } from "react-router-
 import { useAuth } from "./contexts/AuthContext";
 import { useEffect, useState } from "react";
 import { api } from "./services/api";
-import { DriverLogin } from "@/driver/pages/DriverLogin";
-import { DriverDashboard } from "@/driver/pages/DriverDashboard";
-import { DriverMissions } from "@/driver/pages/DriverMissions";
-import { DriverMissionDetail } from "@/driver/pages/DriverMissionDetail";
-import { DriverProfile } from "@/driver/pages/DriverProfile";
-import { DriverLayout } from "@/driver/layouts/DriverLayout";
-import { isVerificationComplete } from "@/driver/verification";
+import { DriverLogin } from "@/pages/DriverLogin";
+import { DriverDashboard } from "@/pages/DriverDashboard";
+import { DriverMissions } from "@/pages/DriverMissions";
+import { DriverMissionDetail } from "@/pages/DriverMissionDetail";
+import { DriverProfile } from "@/pages/DriverProfile";
+import { DriverNotifications } from "@/pages/DriverNotifications";
+import { DriverLayout } from "@/layouts/DriverLayout";
+import { driverAcceptIssue } from "@/driverAcceptGate";
+import { useDriverGps } from "@/hooks/useDriverGps";
+import { useDriverNotifications } from "@/hooks/useDriverNotifications";
+import LogoutConfirm from "../../shared/components/LogoutConfirm";
+
+const GPS_STATUSES = ["InTransit", "NearDestination", "WaybillIssued"];
 
 function getProfileError(error) {
   if (error?.message === "پاسخ بک‌اند شامل اطلاعات راننده نیست.") return error.message;
@@ -38,6 +44,9 @@ export default function App() {
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState("");
   const [retryKey, setRetryKey] = useState(0);
+  const [actionError, setActionError] = useState("");
+  const [confirmLogout, setConfirmLogout] = useState(false);
+  const [offerBusyId, setOfferBusyId] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -97,6 +106,40 @@ export default function App() {
     };
   }, [token, retryKey]);
 
+  const gpsMission = missions.find((mission) => GPS_STATUSES.includes(mission.status))
+    || (selectedMission && GPS_STATUSES.includes(selectedMission.status) ? selectedMission : null);
+  const gps = useDriverGps(Boolean(token && gpsMission), gpsMission?.id);
+  const notifications = useDriverNotifications(Boolean(token));
+
+  // با هر جابه‌جایی بین صفحه‌ها، اعلان‌ها تازه می‌شوند
+  useEffect(() => {
+    if (token) notifications.reload();
+  }, [token, location.pathname]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const reloadMissions = async () => {
+    try {
+      const res = await api.get("/driver/missions");
+      const list = Array.isArray(res.data?.missions) ? res.data.missions : [];
+      setMissions(list);
+      setSelectedMission((previous) => {
+        if (!previous) return previous;
+        return list.find((item) => String(item.id) === String(previous.id)) || previous;
+      });
+    } catch (error) {
+      console.warn("Could not reload driver missions:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (!token || !selectedMission) return undefined;
+    const waiting = ["ArrivedPickup", "LoadingChecks", "WaybillIssued"].includes(selectedMission.status);
+    if (!waiting) return undefined;
+    const timer = setInterval(() => {
+      reloadMissions();
+    }, 8000);
+    return () => clearInterval(timer);
+  }, [token, selectedMission?.id, selectedMission?.status, selectedMission?.waybill?.codeVerified, selectedMission?.waybill?.photoUrl]);
+
   if (!token) {
     return <DriverLogin />;
   }
@@ -126,16 +169,24 @@ export default function App() {
             </button>
             <button
               type="button"
-              onClick={() => {
-                logout();
-                navigate("/driver", { replace: true });
-              }}
+              onClick={() => setConfirmLogout(true)}
               className="rounded-xl border border-slate-300 px-5 py-3 font-bold text-slate-700 hover:bg-slate-50"
             >
               خروج و ورود مجدد
             </button>
           </div>
         </div>
+        <LogoutConfirm
+          open={confirmLogout}
+          onCancel={() => setConfirmLogout(false)}
+          onConfirm={() => {
+            setConfirmLogout(false);
+            logout();
+            navigate("/driver", { replace: true });
+          }}
+          title="ورود مجدد"
+          message="آیا مطمئن هستید که می‌خواهید از حساب خارج شوید و دوباره وارد شوید؟"
+        />
       </div>
     );
   }
@@ -151,33 +202,91 @@ export default function App() {
   const currentPath = location.pathname.replace(/^\/driver\/?/, "") || "dashboard";
   const layoutCurrent = currentPath === "mission-detail" ? "missions" : currentPath;
 
-  const handleMissionAction = async (mission, action) => {
+  const handleMissionAction = async (mission, action, extra = {}) => {
     try {
-      const res = await api.post(`/driver/missions/${mission.id}/change-status`, { status: action });
-      setMissions((previous) => previous.map((item) =>
-        item.id === mission.id ? { ...item, status: res.data.status } : item,
-      ));
-      setSelectedMission((previous) => previous ? { ...previous, status: res.data.status } : null);
+      await api.post(`/driver/missions/${mission.id}/change-status`, {
+        status: action,
+        deliveryOtp: extra.otp,
+        exceptionReason: extra.exceptionReason,
+      });
+      setActionError("");
+      await reloadMissions();
     } catch (error) {
-      console.error("Could not update mission:", error);
+      const message = error?.response?.data?.error || error?.response?.data?.message || "به‌روزرسانی وضعیت ناموفق بود.";
+      setActionError(message);
     }
   };
 
-  // گرفتن بار (قبول مأموریت) مستلزم احراز هویت است؛ اگر کامل نباشد،
-  // کاربر به بخش مدارک پروفایل هدایت می‌شود و اعلان اجباری‌بودن نمایش می‌گیرد.
-  const handleAccept = (mission) => {
-    if (!isVerificationComplete(driver.id)) {
+  const handleWaybillCode = async (mission, code) => {
+    try {
+      await api.post(`/driver/missions/${mission.id}/waybill-code`, { code });
+      setActionError("");
+      await reloadMissions();
+    } catch (error) {
+      const message = error?.response?.data?.error || error?.response?.data?.message || "تأیید کد بارنامه ناموفق بود.";
+      setActionError(message);
+    }
+  };
+
+  const acceptIssue = selectedMission ? driverAcceptIssue(driver, missions, selectedMission) : null;
+
+  // قبول بار فقط پس از تأیید مدارک در پنل ادمین و فقط برای یک مأموریت فعال.
+  const handleAccept = async (mission) => {
+    const issue = driverAcceptIssue(driver, missions, mission);
+    if (issue?.code === "DOCS_NOT_APPROVED") {
+      setActionError(issue.message);
       navigate("/driver/profile", { state: { verificationRequired: true } });
       return;
     }
-    handleMissionAction(mission, "Accepted");
+    if (issue) {
+      setActionError(issue.message);
+      return;
+    }
+    await handleMissionAction(mission, "Accepted");
+  };
+
+  const respondToOffer = async (item, decision) => {
+    if (!item?.shipmentId) return;
+    setOfferBusyId(item.id);
+    setActionError("");
+    try {
+      await api.post(`/driver/offers/${item.shipmentId}/${decision}`);
+      await notifications.reload();
+      await reloadMissions();
+    } catch (error) {
+      setActionError(error?.response?.data?.message || "ثبت پاسخ به بار پیشنهادی انجام نشد.");
+    } finally {
+      setOfferBusyId(null);
+    }
+  };
+
+  const handleNotificationClick = (item) => {
+    notifications.markRead(item.id);
+    if (item?.kind === "load_offer") return;
+    const mission = item.shipmentId
+      ? missions.find((row) => String(row.id) === String(item.shipmentId))
+      : null;
+    if (mission) {
+      setSelectedMission(mission);
+      navigate("/driver/mission-detail");
+      return;
+    }
+    if (item.shipmentId) {
+      navigate("/driver/missions");
+      return;
+    }
+    if (/مدرک|هویت|احراز/.test(String(item.title || ""))) {
+      navigate("/driver/profile");
+      return;
+    }
+    navigate("/driver/notifications");
   };
 
   return (
     <DriverLayout
       current={layoutCurrent}
+      notificationCount={notifications.unread}
       onNavigate={(path) => navigate(`/driver/${path}`)}
-      onLogout={logout}
       driverName={driver.name}
     >
       <Routes>
@@ -188,12 +297,36 @@ export default function App() {
             <DriverDashboard
               driver={driver}
               missions={missions}
-              gpsStatus="active"
+              gpsStatus={gps.status}
               onNavigate={(path) => navigate(`/driver/${path}`)}
               onMissionClick={(mission) => {
                 setSelectedMission(mission);
                 navigate("/driver/mission-detail");
               }}
+              onDriverUpdate={setDriver}
+              notifications={notifications.items}
+              notificationsLoading={notifications.loading}
+              notificationsUnread={notifications.unread}
+              onNotificationClick={handleNotificationClick}
+              onMarkAllNotificationsRead={notifications.markAllRead}
+              onAcceptOffer={(item) => respondToOffer(item, "accept")}
+              onDeclineOffer={(item) => respondToOffer(item, "decline")}
+              offerBusyId={offerBusyId}
+            />
+          }
+        />
+        <Route
+          path="notifications"
+          element={
+            <DriverNotifications
+              notifications={notifications.items}
+              loading={notifications.loading}
+              unread={notifications.unread}
+              onNotificationClick={handleNotificationClick}
+              onMarkAllRead={notifications.markAllRead}
+              onAcceptOffer={(item) => respondToOffer(item, "accept")}
+              onDeclineOffer={(item) => respondToOffer(item, "decline")}
+              offerBusyId={offerBusyId}
             />
           }
         />
@@ -214,22 +347,30 @@ export default function App() {
           element={selectedMission ? (
             <DriverMissionDetail
               mission={selectedMission}
+              acceptIssue={acceptIssue}
+              actionError={actionError}
+              gpsStatus={gps.status}
+              queueSize={gps.queueSize}
+              onToggle={gps.onToggle}
+              onSync={gps.onSync}
+              currentPoint={gps.currentPoint}
               onBack={() => navigate(-1)}
               onAccept={handleAccept}
-              onDecline={(mission) => handleMissionAction(mission, "Declined")}
+              onVerifyWaybill={handleWaybillCode}
               onAction={(mission, action) => {
                 const statusMap = {
                   en_route: "EnRouteToPickup",
                   arrived_pickup: "ArrivedPickup",
                   start_move: "InTransit",
+                  arrived_dest: "NearDestination",
                 };
                 if (statusMap[action]) handleMissionAction(mission, statusMap[action]);
               }}
-              onPodComplete={(mission) => handleMissionAction(mission, "Completed")}
+              onPodComplete={(mission, result) => handleMissionAction(mission, "Completed", result || {})}
             />
           ) : <Navigate to="/driver/missions" replace />}
         />
-        <Route path="profile" element={<DriverProfile driver={driver} onLogout={logout} />} />
+        <Route path="profile" element={<DriverProfile driver={driver} onLogout={logout} onDriverUpdate={setDriver} />} />
         <Route path="*" element={<Navigate to="/driver/dashboard" replace />} />
       </Routes>
     </DriverLayout>

@@ -3,6 +3,7 @@ const { User, CargoOwner } = require("../models");
 const AppError = require("../utils/AppError");
 const otpService = require("./otp.service");
 const { isValidNationalId } = require("../utils/nationalId");
+const ownerKyc = require("../admin/ownerKyc");
 // درخواست کد تأیید: اگر کاربر وجود نداشته باشد، رکورد اولیه با نقش صاحب کالا ساخته می‌شود
 async function requestOtp(phoneNumber) {
   let user = await User.findOne({ where: { phone_number: phoneNumber } });
@@ -115,6 +116,9 @@ function serializeUser(user, cargoOwner) {
     company_name: cargoOwner.company_name,
     national_id: cargoOwner.national_id,
     avatar_url: cargoOwner.avatar_url,
+    postal_code: cargoOwner.postal_code || "",
+    verification_status: cargoOwner.verification_status,
+    kyc: ownerKyc.present(cargoOwner.kyc),
   };
 }
 
@@ -149,6 +153,14 @@ async function updateProfile(userId, data) {
     cargoOwner.national_id = String(data.national_id);
   }
 
+  if (data.postal_code !== undefined) {
+    const postal = String(data.postal_code || "").trim();
+    if (!/^\d{10}$/.test(postal)) {
+      throw new AppError("کد پستی باید ۱۰ رقم باشد.", 400);
+    }
+    cargoOwner.postal_code = postal;
+  }
+
   // نام و نام خانوادگی ستون‌های اجباری‌اند و نباید خالی شوند
   if (!cargoOwner.first_name || !cargoOwner.last_name) {
     throw new AppError("نام و نام خانوادگی نمی‌تواند خالی باشد.", 400);
@@ -158,9 +170,33 @@ async function updateProfile(userId, data) {
   return serializeUser(user, cargoOwner);
 }
 
+async function saveOwnerKyc(userId, kyc) {
+  const { user, cargoOwner } = await loadProfile(userId);
+  const synced = ownerKyc.syncStatus(kyc);
+  cargoOwner.kyc = synced.kyc;
+  cargoOwner.changed("kyc", true);
+  cargoOwner.verification_status = synced.verificationStatus;
+  cargoOwner.verification_note = synced.verificationNote;
+  await cargoOwner.save();
+  return serializeUser(user, cargoOwner);
+}
+
+async function setKycIdType(userId, idType) {
+  const { cargoOwner } = await loadProfile(userId);
+  return saveOwnerKyc(userId, ownerKyc.setIdType(cargoOwner.kyc, idType));
+}
+
+async function uploadKycDocument(userId, { slot, idType, url }) {
+  const { cargoOwner } = await loadProfile(userId);
+  const next = ownerKyc.uploadDocument(cargoOwner.kyc, { key: slot, url, idType: idType || undefined });
+  return saveOwnerKyc(userId, next);
+}
+
 module.exports = {
   requestOtp,
   verifyOtpAndAuthenticate,
   getProfile,
   updateProfile,
+  setKycIdType,
+  uploadKycDocument,
 };

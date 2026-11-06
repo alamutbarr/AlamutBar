@@ -1,10 +1,18 @@
 import { useEffect, useRef, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { Check, ChevronRight, ChevronLeft } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { createShipment } from "../../api/shipment.api";
+import { getProfile } from "../../api/auth.api";
 import Button from "../../components/common/Button";
+import { useAuth } from "../../hooks/useAuth";
 import { useToast } from "../../hooks/useToast";
 import { getErrorMessage } from "../../utils/errorMessage";
+import {
+  ownerKycShipmentIssue,
+  ownerPostalShipmentIssue,
+  ownerShipmentBlockers,
+} from "../../utils/ownerKycGate";
 
 import Step1_Origin from "../../components/shipment-steps/Step1_Origin";
 import Step2_Destination from "../../components/shipment-steps/Step2_Destination";
@@ -21,6 +29,11 @@ import {
   isValidIranNationalId,
   isValidIranPostalCode,
 } from "../../utils/receiverValidation";
+import {
+  clearShipmentDraft,
+  loadShipmentDraft,
+  saveShipmentDraft,
+} from "../../utils/shipmentDraft";
 
 const STEPS = [
   { title: "مبدأ", Component: Step1_Origin },
@@ -30,7 +43,7 @@ const STEPS = [
   { title: "عکس و توضیح", Component: Step7_PhotosNotes },
   { title: "زمان", Component: Step8_DateUrgency },
   { title: "خودرو", Component: Step9_Vehicle },
-  { title: "بارگیری/تخلیه", Component: Step10_HandlingMethods },
+  { title: "بارگیری", Component: Step10_HandlingMethods },
   { title: "گیرنده", Component: Step11_Contact },
   { title: "تأیید", Component: Step12_Confirm },
   { title: "پایان", Component: Step13_Done },
@@ -59,6 +72,7 @@ const emptyFormData = {
   origin_lat: "",
   origin_lng: "",
   dest_city_id: "",
+  dest_city_name: "",
   dest_zone_id: "",
   dest_address: "",
   dest_lat: "",
@@ -67,6 +81,8 @@ const emptyFormData = {
   cargo_type_other: "",
   packaging_type: "",
   weight_kg: "",
+  piece_count: "",
+  requires_inspector: false,
   length_cm: "",
   width_cm: "",
   height_cm: "",
@@ -83,17 +99,106 @@ const emptyFormData = {
   loading_method: "",
   receiver_name: "",
   receiver_phone: "",
+  receiver_is_self: "",
   proposed_price: "",
   trackingCode: "",
 };
 
+function formFromShipment(shipment) {
+  if (!shipment) return emptyFormData;
+  const date = shipment.loading_date ? String(shipment.loading_date).slice(0, 10) : "";
+  return {
+    ...emptyFormData,
+    origin_city_id: shipment.origin_city_id || "",
+    origin_city_name: shipment.originCity?.name || "",
+    origin_zone_id: shipment.origin_zone_id || "",
+    origin_address: shipment.origin_address || "",
+    origin_lat: shipment.origin_lat ?? "",
+    origin_lng: shipment.origin_lng ?? "",
+    dest_city_id: shipment.dest_city_id || "",
+    dest_city_name: shipment.destCity?.name || "",
+    dest_zone_id: shipment.dest_zone_id || "",
+    dest_address: shipment.dest_address || "",
+    dest_lat: shipment.dest_lat ?? "",
+    dest_lng: shipment.dest_lng ?? "",
+    cargo_type: shipment.cargo_type || "",
+    cargo_type_other: shipment.cargo_type_other || "",
+    packaging_type: shipment.packaging_type || "",
+    weight_kg: shipment.weight_kg ?? "",
+    piece_count: shipment.piece_count ?? "",
+    length_cm: shipment.length_cm ?? "",
+    width_cm: shipment.width_cm ?? "",
+    height_cm: shipment.height_cm ?? "",
+    cargo_value: shipment.cargo_value ?? "",
+    photo_urls: Array.isArray(shipment.photo_urls) ? shipment.photo_urls : [],
+    notes: shipment.notes || "",
+    loading_date: date,
+    loading_time_from: shipment.loading_time_from || "",
+    loading_time_to: shipment.loading_time_to || "",
+    loading_time_ranges: Array.isArray(shipment.loading_time_ranges) ? shipment.loading_time_ranges : [],
+    urgency: shipment.urgency || "",
+    vehicle_type_id: shipment.vehicle_type_id || "",
+    vehicle_variants: Array.isArray(shipment.vehicle_variants) ? shipment.vehicle_variants : [],
+    loading_method: shipment.loading_method || "",
+    receiver_name: shipment.receiver_name || "",
+    receiver_phone: shipment.receiver_phone || "",
+    receiver_national_id: shipment.receiver_national_id || "",
+    receiver_postal_code: shipment.receiver_postal_code || "",
+    proposed_price: shipment.proposed_price ?? "",
+    requires_inspector: Boolean(shipment.requires_inspector),
+  };
+}
+
 export default function CreateShipment() {
+  const repeat = useLocation().state?.repeat;
+  const { user, updateUser } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
-  const [maxStepReached, setMaxStepReached] = useState(1);
+  const [maxStepReached, setMaxStepReached] = useState(repeat ? TOTAL_VISIBLE_STEPS : 1);
   const [direction, setDirection] = useState(1);
   const [stepError, setStepError] = useState("");
   const toast = useToast();
-  const [formData, setFormData] = useState(emptyFormData);
+  const [formData, setFormData] = useState(() => formFromShipment(repeat));
+  const [draftReady, setDraftReady] = useState(() => Boolean(repeat));
+  const [draftRestored, setDraftRestored] = useState(false);
+  const kycIssue = ownerKycShipmentIssue(user);
+  const postalIssue = ownerPostalShipmentIssue(user);
+
+  useEffect(() => {
+    let cancelled = false;
+    getProfile()
+      .then((fresh) => {
+        if (!cancelled) updateUser(fresh);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+    // فقط یک‌بار از سرور وضعیت احراز را تازه می‌کنیم
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (repeat || !user?.id || draftReady) return;
+    const draft = loadShipmentDraft(user.id);
+    if (draft?.formData) {
+      setFormData((current) => ({ ...emptyFormData, ...current, ...draft.formData }));
+      const step = Number(draft.currentStep) || 1;
+      const max = Number(draft.maxStepReached) || step;
+      setCurrentStep(Math.min(Math.max(step, 1), TOTAL_VISIBLE_STEPS));
+      setMaxStepReached(Math.min(Math.max(max, 1), TOTAL_VISIBLE_STEPS));
+      setDraftRestored(true);
+    }
+    setDraftReady(true);
+  }, [user?.id, repeat, draftReady]);
+
+  useEffect(() => {
+    if (!user?.id || !draftReady) return;
+    if (currentStep === STEPS.length) {
+      clearShipmentDraft(user.id);
+      return;
+    }
+    saveShipmentDraft(user.id, { formData, currentStep, maxStepReached });
+  }, [user?.id, draftReady, formData, currentStep, maxStepReached]);
 
   const updateFormData = (key, value) =>
     setFormData((prev) => ({ ...prev, [key]: value }));
@@ -118,10 +223,20 @@ export default function CreateShipment() {
       return false;
     }
     if (
+      stepNum === 2 &&
+      String(formData.dest_city_name || "").trim() === "تهران" &&
+      !formData.dest_zone_id
+    ) {
+      return false;
+    }
+    if (
       stepNum === 4 &&
       !(Number(formData.cargo_value) >= MIN_CARGO_VALUE_RIAL)
     )
       return false;
+    if (stepNum === 9 && !["yes", "no"].includes(formData.receiver_is_self)) {
+      return false;
+    }
     if (stepNum === 9 && !/^09\d{9}$/.test(String(formData.receiver_phone))) {
       return false;
     }
@@ -161,6 +276,14 @@ export default function CreateShipment() {
         !formData.origin_zone_id
       ) {
         setStepError("برای شهر تهران، محدوده مبدأ الزامی است.");
+      } else if (
+        currentStep === 2 &&
+        String(formData.dest_city_name || "").trim() === "تهران" &&
+        !formData.dest_zone_id
+      ) {
+        setStepError("برای شهر تهران، محدوده مقصد الزامی است.");
+      } else if (currentStep === 1 && !formData.origin_lat) {
+        setStepError("محل را روی نقشه، داخل شهر انتخاب‌شده، مشخص کنید.");
       } else {
         setStepError("لطفاً فیلدهای الزامی این مرحله را تکمیل کنید.");
       }
@@ -180,6 +303,13 @@ export default function CreateShipment() {
   };
 
   const handleSubmit = async () => {
+    const blockers = ownerShipmentBlockers(user);
+    if (blockers.length) {
+      const first = blockers[0].message;
+      setStepError(first);
+      toast.error(first);
+      return;
+    }
     // چک نهایی سرتاسری قبل از ارسال - اگر جایی ناقص مانده، مستقیم کاربر را همان‌جا می‌بریم
     const firstInvalid = findFirstInvalidStep();
     if (firstInvalid) {
@@ -193,12 +323,15 @@ export default function CreateShipment() {
 
     const payload = { ...formData };
     delete payload.trackingCode;
+    delete payload.receiver_is_self;
     if (payload.cargo_type !== "other") delete payload.cargo_type_other;
     delete payload.origin_city_name;
+    delete payload.dest_city_name;
     ["origin_zone_id", "dest_zone_id"].forEach((k) => {
       if (payload[k] === "") payload[k] = null;
     });
     [
+      "piece_count",
       "length_cm",
       "width_cm",
       "height_cm",
@@ -211,6 +344,7 @@ export default function CreateShipment() {
 
     try {
       const { shipment, needsManualReview } = await createShipment(payload);
+      if (user?.id) clearShipmentDraft(user.id);
       updateFormData("trackingCode", shipment.tracking_code);
       updateFormData("needsManualReview", needsManualReview);
       toast.success("بار با موفقیت ثبت شد.");
@@ -223,11 +357,53 @@ export default function CreateShipment() {
   const ActiveStep = STEPS[currentStep - 1].Component;
   const isFinal = currentStep === STEPS.length;
 
+  if (kycIssue || postalIssue) {
+    return (
+      <div className="mx-auto w-full max-w-4xl">
+        <h1 className="text-2xl font-bold text-ink-900">{repeat ? "تکرار حمل" : "ثبت بار جدید"}</h1>
+        {kycIssue && (
+          <div className="mt-6 rounded-xl border border-red-200 bg-red-50 px-5 py-5 text-right shadow-panel">
+            <p className="text-sm font-bold text-red-700">{kycIssue}</p>
+            <p className="mt-2 text-sm text-red-600">
+              ابتدا به پروفایل بروید و احراز هویت را کامل کنید؛ بعد می‌توانید بار ثبت کنید.
+            </p>
+            <Button as={Link} to="/owner/profile" variant="accent" className="mt-4">
+              رفتن به احراز هویت
+            </Button>
+          </div>
+        )}
+        {postalIssue && (
+          <div className={`${kycIssue ? "mt-4" : "mt-6"} rounded-xl border border-amber-200 bg-amber-50 px-5 py-5 text-right shadow-panel`}>
+            <p className="text-sm font-bold text-amber-800">{postalIssue}</p>
+            <p className="mt-2 text-sm text-amber-700">
+              کد پستی هنگام ورود درخواست نمی‌شود، اما برای ثبت بار اجباری است. آن را در پروفایل وارد کنید.
+            </p>
+            <Button as={Link} to="/owner/profile" variant="accent" className="mt-4">
+              وارد کردن کد پستی
+            </Button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto w-full max-w-4xl">
+      {!isFinal && draftRestored && !repeat && (
+        <p className="mb-4 rounded-lg border border-[#d7b56d] bg-[#f7f6f0] px-3 py-2 text-sm text-[#17383b]">
+          پیش‌نویس ثبت بار ذخیره شده است. از همان مرحله می‌توانید ادامه بدهید.
+        </p>
+      )}
+
+      {!isFinal && repeat && (
+        <p className="mb-4 rounded-lg border border-[#d7b56d] bg-[#f7f6f0] px-3 py-2 text-sm text-[#17383b]">
+          مشخصات از حمل {repeat.tracking_code} آمده است. وزن، تعداد، زمان و مقصد را پیش از ثبت عوض کنید. اگر تاریخ بارگیری گذشته باشد، در مرحلهٔ زمان یک تاریخ تازه بگذارید.
+        </p>
+      )}
+
       {!isFinal && (
         <div className="mb-4 flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-ink-900">ثبت بار جدید</h1>
+          <h1 className="text-2xl font-bold text-ink-900">{repeat ? "تکرار حمل" : "ثبت بار جدید"}</h1>
           <p className="text-sm text-ink-300">
             مرحلهٔ <bdi dir="ltr" className="tabular">{currentStep.toLocaleString("fa-IR")}</bdi>
             {" "}از{" "}
@@ -335,7 +511,7 @@ function RouteProgress({ current, maxReached, onStepClick }) {
 
       <div
         ref={scrollerRef}
-        className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="chip-rail"
       >
         {STEPS.slice(0, TOTAL_VISIBLE_STEPS).map((step, idx) => {
           const num = idx + 1;
@@ -354,7 +530,7 @@ function RouteProgress({ current, maxReached, onStepClick }) {
                   ? `برو به «${step.title}»`
                   : "هنوز به این مرحله نرسیده‌اید"
               }
-              className={`flex shrink-0 items-center gap-2 rounded-full border px-2.5 py-1.5 text-xs transition ${
+              className={`flex shrink-0 items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs transition ${
                 active
                   ? "border-[#087f8c] bg-[#087f8c] text-[#f7f6f0]"
                   : done

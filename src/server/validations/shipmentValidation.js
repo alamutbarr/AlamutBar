@@ -97,6 +97,8 @@ const createShipmentSchema = Joi.object({
       }),
     }),
   packaging_type: Joi.string().max(100).allow("", null).label("نوع بسته‌بندی"),
+  piece_count: Joi.number().integer().min(1).max(100000).optional().allow(null).label("تعداد"),
+  requires_inspector: Joi.boolean().optional().label("بار حساس"),
   weight_kg: Joi.number()
     .positive()
     .max(40000)
@@ -133,7 +135,7 @@ const createShipmentSchema = Joi.object({
     .label("ارزش اعلامی کالا"),
   photo_urls: Joi.array()
     .items(Joi.string())
-    .max(5)
+    .max(4)
     .optional()
     .label("تصاویر کالا"),
   notes: Joi.string().max(1000).allow("", null).label("توضیحات تکمیلی"),

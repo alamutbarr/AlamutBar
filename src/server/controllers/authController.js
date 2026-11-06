@@ -1,5 +1,6 @@
 const asyncHandler = require("../utils/asyncHandler");
 const { success } = require("../utils/apiResponse");
+const AppError = require("../utils/AppError");
 const authService = require("../services/auth.service");
 
 const requestOtp = asyncHandler(async (req, res) => {
@@ -39,4 +40,19 @@ const updateMe = asyncHandler(async (req, res) => {
   success(res, { message: "پروفایل با موفقیت ذخیره شد.", data: user });
 });
 
-module.exports = { requestOtp, verifyOtp, getMe, updateMe };
+const setKycIdType = asyncHandler(async (req, res) => {
+  const user = await authService.setKycIdType(req.user.id, req.body.idType);
+  success(res, { message: "نوع مدرک شناسایی ذخیره شد.", data: user });
+});
+
+const uploadKyc = asyncHandler(async (req, res) => {
+  if (!req.file) throw new AppError("تصویر مدرک را انتخاب کنید.", 400);
+  const user = await authService.uploadKycDocument(req.user.id, {
+    slot: req.body.slot,
+    idType: req.body.idType,
+    url: `/uploads/${req.file.filename}`,
+  });
+  success(res, { message: "مدرک ارسال شد و در انتظار بررسی است.", data: user });
+});
+
+module.exports = { requestOtp, verifyOtp, getMe, updateMe, setKycIdType, uploadKyc };

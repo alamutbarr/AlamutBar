@@ -45,6 +45,7 @@ export default function Dashboard() {
     <div>
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
+          <p className="panel-kicker">صاحب کالا</p>
           <h1 className="text-2xl font-bold text-ink-900">
             سلام{user?.first_name ? ` ${user.first_name}` : ''}
           </h1>
@@ -66,7 +67,7 @@ export default function Dashboard() {
             key={label}
             variants={itemVariants}
             whileHover={{ y: -3 }}
-            className="rounded-xl border border-ink-100 bg-white p-5 shadow-panel transition-shadow hover:shadow-panel-lg"
+            className="panel-card p-5"
           >
             <span className={`inline-flex h-9 w-9 items-center justify-center rounded-lg ${tone}`}>
               <Icon size={18} />
@@ -77,7 +78,7 @@ export default function Dashboard() {
         ))}
       </motion.div>
 
-      <div className="rounded-xl border border-ink-100 bg-white shadow-panel">
+      <section className="panel-section">
         <div className="flex items-center justify-between border-b border-ink-50 px-5 py-4">
           <h2 className="text-sm font-bold text-ink-900">آخرین بارهای ثبت‌شده</h2>
           <Link
@@ -111,13 +112,13 @@ export default function Dashboard() {
                   <span className="tabular hidden text-sm text-ink-500 sm:block">
                     {formatToman(s.operator_price || s.proposed_price)} تومان
                   </span>
-                  <StatusBadge status={s.status} />
+                  <StatusBadge status={s.workflow_status === 'ON_HOLD' ? 'on_hold' : s.status} />
                 </div>
               </motion.li>
             ))}
           </motion.ul>
         )}
-      </div>
+      </section>
     </div>
   );
 }

@@ -31,11 +31,13 @@ export function mergeCityCatalog(apiCities) {
   return IRAN_CITIES.map((city) => {
     const name = String(city?.name || "").trim();
     const paired = byPair.get(pairKey(name, city.province));
-    if (paired) return { ...city, id: paired.id };
+    if (paired) {
+      return { ...city, id: paired.id, lat: paired.lat ?? null, lng: paired.lng ?? null };
+    }
 
     const sameName = byName.get(name) || [];
     if (sameName.length === 1 && localNameCount.get(name) === 1) {
-      return { ...city, id: sameName[0].id };
+      return { ...city, id: sameName[0].id, lat: sameName[0].lat ?? null, lng: sameName[0].lng ?? null };
     }
 
     return city;
