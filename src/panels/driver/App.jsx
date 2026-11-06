@@ -116,6 +116,30 @@ export default function App() {
     if (token) notifications.reload();
   }, [token, location.pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const reloadMissions = async () => {
+    try {
+      const res = await api.get("/driver/missions");
+      const list = Array.isArray(res.data?.missions) ? res.data.missions : [];
+      setMissions(list);
+      setSelectedMission((previous) => {
+        if (!previous) return previous;
+        return list.find((item) => String(item.id) === String(previous.id)) || previous;
+      });
+    } catch (error) {
+      console.warn("Could not reload driver missions:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (!token || !selectedMission) return undefined;
+    const waiting = ["ArrivedPickup", "LoadingChecks", "WaybillIssued"].includes(selectedMission.status);
+    if (!waiting) return undefined;
+    const timer = setInterval(() => {
+      reloadMissions();
+    }, 8000);
+    return () => clearInterval(timer);
+  }, [token, selectedMission?.id, selectedMission?.status, selectedMission?.waybill?.codeVerified, selectedMission?.waybill?.photoUrl]);
+
   if (!token) {
     return <DriverLogin />;
   }
@@ -180,18 +204,26 @@ export default function App() {
 
   const handleMissionAction = async (mission, action, extra = {}) => {
     try {
-      const res = await api.post(`/driver/missions/${mission.id}/change-status`, {
+      await api.post(`/driver/missions/${mission.id}/change-status`, {
         status: action,
         deliveryOtp: extra.otp,
         exceptionReason: extra.exceptionReason,
       });
       setActionError("");
-      setMissions((previous) => previous.map((item) =>
-        item.id === mission.id ? { ...item, status: res.data.status } : item,
-      ));
-      setSelectedMission((previous) => previous ? { ...previous, status: res.data.status } : null);
+      await reloadMissions();
     } catch (error) {
       const message = error?.response?.data?.error || error?.response?.data?.message || "به‌روزرسانی وضعیت ناموفق بود.";
+      setActionError(message);
+    }
+  };
+
+  const handleWaybillCode = async (mission, code) => {
+    try {
+      await api.post(`/driver/missions/${mission.id}/waybill-code`, { code });
+      setActionError("");
+      await reloadMissions();
+    } catch (error) {
+      const message = error?.response?.data?.error || error?.response?.data?.message || "تأیید کد بارنامه ناموفق بود.";
       setActionError(message);
     }
   };
@@ -211,15 +243,6 @@ export default function App() {
       return;
     }
     await handleMissionAction(mission, "Accepted");
-  };
-
-  const reloadMissions = async () => {
-    try {
-      const res = await api.get("/driver/missions");
-      setMissions(Array.isArray(res.data?.missions) ? res.data.missions : []);
-    } catch (error) {
-      console.warn("Could not reload driver missions:", error);
-    }
   };
 
   const respondToOffer = async (item, decision) => {
@@ -333,11 +356,13 @@ export default function App() {
               currentPoint={gps.currentPoint}
               onBack={() => navigate(-1)}
               onAccept={handleAccept}
+              onVerifyWaybill={handleWaybillCode}
               onAction={(mission, action) => {
                 const statusMap = {
                   en_route: "EnRouteToPickup",
                   arrived_pickup: "ArrivedPickup",
                   start_move: "InTransit",
+                  arrived_dest: "NearDestination",
                 };
                 if (statusMap[action]) handleMissionAction(mission, statusMap[action]);
               }}

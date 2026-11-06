@@ -29,6 +29,7 @@ const { jsonList, photoList } = require('../utils/jsonList');
 const complaintService = require('../services/complaint.service');
 const driverNotificationService = require('../services/driverNotification.service');
 const avatarStore = require('../utils/avatarStore');
+const upload = require('../config/upload');
 
 const avatarUpload = multer({
   dest: avatarStore.ROOT,
@@ -168,7 +169,16 @@ router.post('/orders/:id/notes', requirePermission('orders.notes'), asyncHandler
 }));
 
 router.patch('/orders/:id/waybill', requirePermission('orders.waybill'), asyncHandler(async (req, res) => {
-  success(res, { message: 'بارنامه ثبت شد.', data: await orderOps.issueWaybill(req.admin, req.params.id, req.body) });
+  success(res, { message: 'کد بارنامه برای راننده ارسال شد.', data: await orderOps.issueWaybill(req.admin, req.params.id, req.body) });
+}));
+
+router.post('/orders/:id/waybill-photo', requirePermission('orders.waybill'), (req, res, next) => {
+  upload.single('file')(req, res, (error) => {
+    if (error) return res.status(400).json({ success: false, message: error.message || 'آپلود عکس بارنامه ناموفق بود.' });
+    return next();
+  });
+}, asyncHandler(async (req, res) => {
+  success(res, { message: 'عکس بارنامه ثبت شد.', data: await orderOps.uploadWaybillPhoto(req.admin, req.params.id, req.file) });
 }));
 
 router.post('/orders/:id/penalty', requirePermission('orders.penalty'), asyncHandler(async (req, res) => {
@@ -554,7 +564,11 @@ router.post('/inspections/:id/decision', requirePermission('inspections'), async
   report.decisionNote = note;
   await report.save();
   const shipment = await orderOps.loadOrder(report.shipmentId);
-  if (decision === 'STOPPED') await orderOps.setWorkflow(shipment, 'ON_HOLD', { admin: req.admin, reason: `توقف به‌خاطر مغایرت: ${note}` });
+  if (decision === 'STOPPED') {
+    await orderOps.setWorkflow(shipment, 'ON_HOLD', { admin: req.admin, reason: `توقف به‌خاطر مغایرت: ${note}` });
+  } else if (decision === 'APPROVED' || decision === 'CORRECTED') {
+    await orderOps.releaseAfterInspection(shipment);
+  }
   await logEvent(shipment.id, {
     type: 'INSPECTION_DECISION',
     description: `تصمیم بازرسی: ${decision}. ${note}`,

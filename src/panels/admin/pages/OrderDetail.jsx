@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useRef } from 'react';
 import { toast } from 'sonner';
-import { api, download } from '../api';
+import { api, download, upload } from '../api';
 import { useAdmin } from '../auth';
 import { WORKFLOW_LABELS, money, toneOfStatus, when } from '../format';
 import { formatGroupedDigits, ungroupNumber } from '../../owner/utils/digits';
@@ -19,6 +19,8 @@ export default function OrderDetail() {
   const [ready, setReady] = useState([]);
   const [manualPdf, setManualPdf] = useState(null);
   const [inspectors, setInspectors] = useState([]);
+  const [waybillFile, setWaybillFile] = useState(null);
+  const [waybillBusy, setWaybillBusy] = useState(false);
   const parentRef = useRef(null);
 
   useEffect(() => () => {
@@ -46,6 +48,11 @@ export default function OrderDetail() {
   const load = () => api(`/orders/${id}`).then(setOrder);
   useEffect(() => { load().catch((error) => toast.error(error.message)); }, [id]);
   useEffect(() => {
+    if (!order?.waybill?.smsSent || order.waybill.codeVerified) return undefined;
+    const timer = setInterval(() => { load().catch(() => {}); }, 8000);
+    return () => clearInterval(timer);
+  }, [id, order?.waybill?.smsSent, order?.waybill?.codeVerified]);
+  useEffect(() => {
     if (can('drivers.queue')) api('/drivers/ready').then(setReady).catch(() => {});
   }, [can]);
 
@@ -61,7 +68,6 @@ export default function OrderDetail() {
       if (dialog === 'price') await api(`/orders/${id}/price`, { method: 'PATCH', body: { estimatedPrice: Number(ungroupNumber(extra)), reason } });
       if (dialog === 'note') await api(`/orders/${id}/notes`, { method: 'POST', body: { kind: 'note', body: reason } });
       if (dialog === 'call') await api(`/orders/${id}/notes`, { method: 'POST', body: { kind: 'phone_call', body: reason } });
-      if (dialog === 'waybill') await api(`/orders/${id}/waybill`, { method: 'PATCH', body: { waybillNumber: extra } });
       if (dialog === 'penalty') await api(`/orders/${id}/penalty`, { method: 'POST', body: { delayMinutes: Number(extra), forceMajeure: false, reason } });
       if (dialog === 'assign') await api(`/orders/${id}/assign-driver`, { method: 'POST', body: { driverId: Number(extra), reason } });
       if (dialog === 'replace') await api(`/orders/${id}/replace-driver`, { method: 'POST', body: { driverId: Number(extra) || undefined, reason } });
@@ -72,6 +78,36 @@ export default function OrderDetail() {
       await load();
     } catch (error) {
       toast.error(error.message);
+    }
+  }
+
+  const waybill = order?.waybill || {};
+
+  async function sendWaybillSms() {
+    setWaybillBusy(true);
+    try {
+      await api(`/orders/${id}/waybill`, { method: 'PATCH', body: { action: 'sms' } });
+      toast.success('کد بارنامه برای راننده ارسال شد.');
+      await load();
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setWaybillBusy(false);
+    }
+  }
+
+  async function sendWaybillPhoto() {
+    if (!waybillFile) return;
+    setWaybillBusy(true);
+    try {
+      await upload(`/orders/${id}/waybill-photo`, waybillFile);
+      toast.success('عکس بارنامه بارگذاری شد.');
+      setWaybillFile(null);
+      await load();
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setWaybillBusy(false);
     }
   }
 
@@ -98,8 +134,39 @@ export default function OrderDetail() {
             <p>راننده: {order.driver ? `${order.driver.fullName} — ${order.driver.phone} — ${order.driver.plate}` : order.offeredDriver ? `پیشنهاد به ${order.offeredDriver.fullName} — در انتظار قبول` : 'تخصیص نشده'}</p>
             <p>متصدی: {order.inspector?.fullName || '—'}</p>
             <p>قیمت تخمینی {money(order.estimatedPrice)} / نهایی {money(order.finalPrice)}</p>
-            <p>بارنامه {order.waybillNumber || '—'} / کد تحویل {order.deliveryOtp || '—'}</p>
+            <p>بارنامه {waybill.number || order.waybillNumber || '—'} / کد تحویل {order.deliveryOtp || '—'}</p>
           </article>
+          {can('orders.waybill') && (
+            <article className="card" style={{ padding: 16 }}>
+              <h2 style={{ marginTop: 0 }}>بارنامه</h2>
+              {!waybill.smsSent && (
+                <button type="button" className="btn" disabled={waybillBusy} onClick={sendWaybillSms}>
+                  {waybillBusy ? 'در حال ارسال…' : 'ارسال کد بارنامه برای راننده'}
+                </button>
+              )}
+              {waybill.smsSent && (
+                <p>کد پیامک‌شده: <strong style={{ letterSpacing: '0.2em' }}>{waybill.smsCode}</strong></p>
+              )}
+              {waybill.smsSent && !waybill.codeVerified && (
+                <p className="muted">راننده باید این کد را در بخش بارنامه وارد کند.</p>
+              )}
+              {waybill.codeVerified && !waybill.photoUrl && (
+                <div style={{ display: 'grid', gap: 8 }}>
+                  <p>کد راننده تأیید شد. عکس بارنامه را بارگذاری کنید.</p>
+                  <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => setWaybillFile(event.target.files?.[0] || null)} />
+                  <button type="button" className="btn" disabled={waybillBusy || !waybillFile} onClick={sendWaybillPhoto}>
+                    {waybillBusy ? 'در حال بارگذاری…' : 'بارگذاری عکس بارنامه'}
+                  </button>
+                </div>
+              )}
+              {waybill.photoUrl && (
+                <div style={{ display: 'grid', gap: 8 }}>
+                  <p className="muted">عکس بارنامه برای راننده قابل مشاهده است.</p>
+                  <img src={waybill.photoUrl} alt="بارنامه" style={{ width: '100%', borderRadius: 12, background: '#fff' }} />
+                </div>
+              )}
+            </article>
+          )}
           {(order.alertItems || []).length > 0 && (
             <article className="card" style={{ padding: 16 }}>
               <h2 style={{ marginTop: 0 }}>هشدارهای مرتبط</h2>
@@ -115,7 +182,7 @@ export default function OrderDetail() {
           {can('inspections') && <button type="button" className="btn secondary" onClick={() => { setDialog('inspector'); api('/inspectors').then(setInspectors).catch((error) => toast.error(error.message)); }}>تخصیص متصدی</button>}
           {can('orders.notes') && <button type="button" className="btn secondary" onClick={() => setDialog('call')}>ثبت تماس</button>}
           {can('orders.notes') && <button type="button" className="btn secondary" onClick={() => setDialog('note')}>یادداشت</button>}
-          {can('orders.waybill') && <button type="button" className="btn secondary" onClick={() => setDialog('waybill')}>بارنامه و کد تحویل</button>}
+          {can('orders.waybill') && <button type="button" className="btn secondary" disabled={waybillBusy} onClick={sendWaybillSms}>{waybill.smsSent ? 'ارسال دوباره کد بارنامه' : 'ارسال کد بارنامه'}</button>}
           {can('orders.penalty') && <button type="button" className="btn secondary" onClick={() => setDialog('penalty')}>جریمه تأخیر</button>}
           <button type="button" className="btn gold" onClick={saveDossier}>دانلود پرونده</button>
           {manualPdf && (
@@ -147,8 +214,8 @@ export default function OrderDetail() {
         {dialog === 'price' && (
           <input className="field" style={{ marginTop: 8 }} inputMode="numeric" placeholder="قیمت به تومان" value={extra} onChange={(event) => setExtra(formatGroupedDigits(event.target.value))} />
         )}
-        {(dialog === 'penalty' || dialog === 'waybill') && (
-          <input className="field" style={{ marginTop: 8 }} placeholder={dialog === 'waybill' ? 'شماره بارنامه' : 'مقدار'} value={extra} onChange={(event) => setExtra(event.target.value)} />
+        {dialog === 'penalty' && (
+          <input className="field" style={{ marginTop: 8 }} placeholder="مقدار" value={extra} onChange={(event) => setExtra(event.target.value)} />
         )}
         {(dialog === 'assign' || dialog === 'replace') && (
           <select className="select" style={{ marginTop: 8 }} value={extra} onChange={(event) => setExtra(event.target.value)}>
@@ -162,7 +229,7 @@ export default function OrderDetail() {
             {inspectors.filter((person) => person.isActive !== false).map((person) => <option key={person.id} value={person.id}>{person.fullName}</option>)}
           </select>
         )}
-        {dialog !== 'waybill' && dialog !== 'inspector' && <textarea className="area" style={{ marginTop: 8 }} placeholder="دلیل" value={reason} onChange={(event) => setReason(event.target.value)} />}
+        {dialog !== 'inspector' && <textarea className="area" style={{ marginTop: 8 }} placeholder="دلیل" value={reason} onChange={(event) => setReason(event.target.value)} />}
         <button type="button" className="btn" style={{ marginTop: 8 }} onClick={submit}>تأیید</button>
       </Modal>
     </Page>

@@ -405,6 +405,11 @@ router.post('/missions/:id/report', asyncHandler(async (req, res) => {
         shipmentId: shipment.id,
       }).catch((error) => console.error('driver notification failed:', error.message));
     }
+    if (['APPROVED', 'CORRECTED'].includes(report.decision)) {
+      const { loadOrder, releaseAfterInspection } = require('../admin/orderOps');
+      const fresh = await loadOrder(shipment.id);
+      await releaseAfterInspection(fresh);
+    }
   }
   const fresh = await loadVisible(shipment.id, req.inspector, settings);
   ok(res, presentMission(fresh, req.inspector, settings), finalize ? 'گزارش برای مرکز عملیات ارسال شد.' : 'پیش‌نویس ذخیره شد.');

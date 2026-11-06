@@ -3,7 +3,7 @@ export const missionStatusLabels = {
   Accepted: 'قبول‌شده',
   EnRouteToPickup: 'در حرکت به بارگیری',
   ArrivedPickup: 'رسیده به بارگیری',
-  LoadingChecks: 'در حال بارگیری',
+  LoadingChecks: 'تأیید متصدی',
   WaybillIssued: 'بارنامه صادر شد',
   InTransit: 'در مسیر',
   NearDestination: 'نزدیک مقصد',

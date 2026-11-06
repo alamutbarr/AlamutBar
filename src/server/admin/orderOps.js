@@ -8,13 +8,18 @@ const { audit, logEvent, pageOf } = require('./audit');
 const { deriveWorkflow, legacyPatch, isKnownStatus, WORKFLOW_LABELS, ACTIVE_TRIP } = require('./workflow');
 const { calculatePenalty } = require('./penalty');
 const { getSettings } = require('./settingsStore');
-const { needsInspector } = require('../inspector/policy');
+const { needsInspector, driverStatusAfterInspectionClear } = require('../inspector/policy');
 const { publish } = require('./realtime');
 const { parseRoles } = require('./permissions');
 const { jsonList, photoList } = require('../utils/jsonList');
 const driverNotificationService = require('../services/driverNotification.service');
 const { groupDigits } = require('../utils/groupDigits');
 const { describeVehicle } = require('../utils/vehicleLabels');
+const {
+  generateWaybillSmsCode,
+  waybillSmsMatches,
+  waybillForOperator,
+} = require('../services/waybill.service');
 const { present } = require('./documents');
 
 const includes = [
@@ -171,6 +176,7 @@ function presentOrder(row, extra = {}) {
       phone: data.inspector.phone,
     } : null,
     waybillNumber: data.waybill_number,
+    waybill: waybillForOperator(data),
     deliveryOtp: data.delivery_otp,
     requiresInspector: Boolean(data.requires_inspector),
     priority: data.priority_score || 0,
@@ -210,7 +216,9 @@ async function loadOrder(id) {
 const DRIVER_WORKFLOW_NOTICES = {
   WAYBILL_ISSUED: (shipment) => ({
     title: 'بارنامه صادر شد',
-    message: `بارنامه ${shipment.waybill_number || ''} برای بار ${shipment.tracking_code} صادر شد؛ کد تحویل در جزئیات مأموریت است.`.replace('  ', ' '),
+    message: shipment.waybill_sms_code
+      ? `کد پیامک‌شده را در بخش بارنامه وارد کنید: ${shipment.waybill_sms_code}`
+      : `برای بار ${shipment.tracking_code} کد بارنامه پیامک شد. کد را در بخش بارنامه وارد کنید.`,
   }),
   AT_DESTINATION_UNLOADING: (shipment) => ({
     title: 'رسیدن به مقصد ثبت شد',
@@ -412,10 +420,12 @@ async function changeStatus(admin, id, body) {
     throw new AppError('اول راننده را تخصیص دهید.', 400);
   }
   const pastWaybill = ['WAYBILL_ISSUED', 'IN_TRANSIT', 'AT_DESTINATION_UNLOADING', 'COMPLETED'];
-  if (['IN_TRANSIT', 'AT_DESTINATION_UNLOADING', 'COMPLETED'].includes(next) && !shipment.waybill_number && !pastWaybill.includes(shipment.workflow_status)) {
-    throw new AppError('تا ثبت شماره بارنامه، حمل شروع نمی‌شود.', 400);
+  if (['IN_TRANSIT', 'AT_DESTINATION_UNLOADING', 'COMPLETED'].includes(next)
+    && !shipment.waybill_photo_url
+    && !pastWaybill.includes(shipment.workflow_status)) {
+    throw new AppError('تا بارگذاری عکس بارنامه، حمل شروع نمی‌شود.', 400);
   }
-  if (next === 'WAYBILL_ISSUED' || (['IN_TRANSIT', 'COMPLETED'].includes(next) && !shipment.waybill_number)) {
+  if (next === 'WAYBILL_ISSUED' || (['IN_TRANSIT', 'COMPLETED'].includes(next) && !shipment.waybill_photo_url)) {
     await assertInspectionClear(shipment);
   }
   await setWorkflow(shipment, next, { admin, reason });
@@ -424,13 +434,19 @@ async function changeStatus(admin, id, body) {
   return getOrder(shipment.id);
 }
 
-async function assertInspectionClear(shipment) {
+async function inspectionIsClear(shipment) {
   const settings = await getSettings();
-  if (!needsInspector(shipment, settings)) return;
+  if (!needsInspector(shipment, settings)) return true;
   const report = await InspectionReport.findOne({
     where: { shipmentId: shipment.id, decision: { [Op.in]: ['APPROVED', 'CORRECTED'] } },
   });
-  if (!report) throw new AppError('برای این بار، تأیید بازرسی متصدی لازم است.', 400);
+  return Boolean(report);
+}
+
+async function assertInspectionClear(shipment) {
+  if (!(await inspectionIsClear(shipment))) {
+    throw new AppError('برای این بار، تأیید بازرسی متصدی لازم است.', 400);
+  }
 }
 
 async function updatePrice(admin, id, body) {
@@ -607,25 +623,97 @@ async function addNote(admin, id, body) {
   return getOrder(shipment.id);
 }
 
-async function issueWaybill(admin, id, body) {
-  const shipment = await loadOrder(id);
-  const waybillNumber = String(body.waybillNumber || '').trim();
-  if (waybillNumber.length < 3) throw new AppError('شماره بارنامه را وارد کنید.', 400);
-  await assertInspectionClear(shipment);
-  shipment.waybill_number = waybillNumber;
-  shipment.delivery_otp = String(body.deliveryOtp || '').trim() || String(Math.floor(1000 + Math.random() * 9000));
-  await shipment.save();
-  if (['AT_LOADING_INSPECTION', 'DRIVER_ACCEPTED', 'EN_ROUTE_TO_LOADING', 'DRIVER_ASSIGNMENT'].includes(shipment.workflow_status)) {
-    await setWorkflow(shipment, 'WAYBILL_ISSUED', { admin, reason: 'صدور بارنامه' });
+async function releaseAfterInspection(shipment) {
+  if (!shipment?.driver_id) return shipment;
+  if (!(await inspectionIsClear(shipment))) return shipment;
+  if (shipment.workflow_status === 'ON_HOLD') {
+    await setWorkflow(shipment, 'AT_LOADING_INSPECTION', { reason: 'رفع توقف پس از تأیید بازرسی' });
   }
+  const nextStatus = driverStatusAfterInspectionClear({
+    driverStatus: shipment.driver_status,
+    workflowStatus: shipment.workflow_status,
+  });
+  if (!nextStatus || nextStatus === shipment.driver_status) return shipment;
+  shipment.driver_status = nextStatus;
+  await shipment.save();
+  await driverNotificationService.notifyDriver(shipment.driver_id, {
+    title: 'بازرسی تأیید شد',
+    message: `تأیید متصدی برای بار ${shipment.tracking_code} ثبت شد. مرحله بعد در پنل شما باز است.`,
+    shipmentId: shipment.id,
+  }).catch((error) => console.error('driver notification failed:', error.message));
+  publish({ type: 'order', orderId: shipment.id, workflowStatus: shipment.workflow_status });
+  return shipment;
+}
+
+async function sendWaybillSms(admin, id) {
+  const shipment = await loadOrder(id);
+  if (!shipment.driver_id) throw new AppError('اول راننده باید بار را بپذیرد.', 400);
+  await assertInspectionClear(shipment);
+  const code = generateWaybillSmsCode();
+  shipment.waybill_sms_code = code;
+  shipment.waybill_code_verified = false;
+  if (!shipment.delivery_otp) {
+    shipment.delivery_otp = String(Math.floor(1000 + Math.random() * 9000));
+  }
+  await shipment.save();
+  await setWorkflow(shipment, 'WAYBILL_ISSUED', { admin, reason: 'ارسال کد بارنامه برای راننده', driverId: shipment.driver_id });
   await logEvent(shipment.id, {
     type: 'WAYBILL',
-    description: `بارنامه ${waybillNumber} ثبت شد. کد تحویل برای گیرنده صادر شد.`,
+    description: 'کد بارنامه برای راننده ارسال شد. تا ورود کد و بارگذاری عکس، حمل شروع نمی‌شود.',
     adminId: admin.id,
-    metadata: { waybillNumber, deliveryOtp: shipment.delivery_otp },
+    metadata: { smsSent: true },
   });
-  await audit(admin, 'order.waybill', 'shipment', shipment.id, { waybillNumber });
+  await audit(admin, 'order.waybill', 'shipment', shipment.id, { smsSent: true });
   return getOrder(shipment.id);
+}
+
+async function confirmWaybillCode(driverId, shipmentId, code) {
+  const shipment = await loadOrder(shipmentId);
+  if (Number(shipment.driver_id) !== Number(driverId)) {
+    throw new AppError('این بار برای شما ثبت نشده است.', 403);
+  }
+  if (!shipment.waybill_sms_code) throw new AppError('هنوز کدی از طرف اپراتور ارسال نشده است.', 400);
+  if (!waybillSmsMatches(shipment.waybill_sms_code, code)) {
+    throw new AppError('کد پیامک‌شده نادرست است.', 400);
+  }
+  shipment.waybill_code_verified = true;
+  await shipment.save();
+  await logEvent(shipment.id, {
+    type: 'WAYBILL',
+    description: 'راننده کد بارنامه را وارد کرد و تأیید شد.',
+    metadata: { driverId },
+  });
+  return { ok: true };
+}
+
+async function uploadWaybillPhoto(admin, id, file) {
+  const shipment = await loadOrder(id);
+  if (!shipment.waybill_code_verified) {
+    throw new AppError('اول راننده باید کد پیامک‌شده را وارد کند.', 400);
+  }
+  if (!file?.filename) throw new AppError('عکس بارنامه را انتخاب کنید.', 400);
+  shipment.waybill_photo_url = `/uploads/${file.filename}`;
+  if (!shipment.waybill_number) shipment.waybill_number = `WB-${shipment.tracking_code}`;
+  await shipment.save();
+  await logEvent(shipment.id, {
+    type: 'WAYBILL',
+    description: 'عکس بارنامه بارگذاری شد و برای راننده قابل مشاهده است.',
+    adminId: admin.id,
+    metadata: { photoUrl: shipment.waybill_photo_url },
+  });
+  await audit(admin, 'order.waybill', 'shipment', shipment.id, { photoUrl: shipment.waybill_photo_url });
+  if (shipment.driver_id) {
+    await driverNotificationService.notifyDriver(shipment.driver_id, {
+      title: 'عکس بارنامه آماده است',
+      message: `عکس بارنامه بار ${shipment.tracking_code} بارگذاری شد. می‌توانید آن را ببینید و حرکت را شروع کنید.`,
+      shipmentId: shipment.id,
+    }).catch((error) => console.error('driver notification failed:', error.message));
+  }
+  return getOrder(shipment.id);
+}
+
+async function issueWaybill(admin, id) {
+  return sendWaybillSms(admin, id);
 }
 
 async function applyPenalty(admin, id, body) {
@@ -696,6 +784,10 @@ module.exports = {
   replaceDriver,
   addNote,
   issueWaybill,
+  sendWaybillSms,
+  confirmWaybillCode,
+  uploadWaybillPhoto,
+  releaseAfterInspection,
   applyPenalty,
   listReadyDrivers,
   num,

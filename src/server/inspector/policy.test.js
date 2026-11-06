@@ -98,3 +98,18 @@ test('the inspector can close only a complete visit with no discrepancy', () => 
   assert.equal(policy.approvalDecision({ finalApproval: 'inspector', complete: true, discrepancies: [{}] }), 'PENDING');
   assert.equal(policy.approvalDecision({ finalApproval: 'inspector', complete: false, discrepancies: [] }), 'PENDING');
 });
+
+test('after inspector approval the driver leaves the pickup wait and reaches loading checks', () => {
+  assert.equal(policy.driverStatusAfterInspectionClear({
+    driverStatus: 'ArrivedPickup',
+    workflowStatus: 'AT_LOADING_INSPECTION',
+  }), 'LoadingChecks');
+  assert.equal(policy.driverStatusAfterInspectionClear({
+    driverStatus: 'EnRouteToPickup',
+    workflowStatus: 'EN_ROUTE_TO_LOADING',
+  }), 'EnRouteToPickup');
+  assert.equal(policy.driverStatusAfterInspectionClear({
+    driverStatus: 'WaybillIssued',
+    workflowStatus: 'WAYBILL_ISSUED',
+  }), 'WaybillIssued');
+});

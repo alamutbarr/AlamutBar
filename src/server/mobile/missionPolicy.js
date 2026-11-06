@@ -2,10 +2,13 @@ const REVEALED_DRIVER = ['WaybillIssued', 'InTransit', 'NearDestination', 'Compl
 const REVEALED_WORKFLOW = ['WAYBILL_ISSUED', 'IN_TRANSIT', 'AT_DESTINATION_UNLOADING', 'COMPLETED'];
 const REVEALED_LEGACY = ['in_transit', 'delivered', 'completed'];
 
-function canRevealExactDestination({ driverStatus, legacyStatus, workflowStatus } = {}) {
-  if (REVEALED_DRIVER.includes(driverStatus)) return true;
-  if (REVEALED_WORKFLOW.includes(workflowStatus)) return true;
+function canRevealExactDestination({ driverStatus, legacyStatus, workflowStatus, waybillPhotoUrl } = {}) {
+  if (['InTransit', 'NearDestination', 'Completed'].includes(driverStatus)) return true;
+  if (['IN_TRANSIT', 'AT_DESTINATION_UNLOADING', 'COMPLETED'].includes(workflowStatus)) return true;
   if (REVEALED_LEGACY.includes(legacyStatus)) return true;
+  if ((driverStatus === 'WaybillIssued' || workflowStatus === 'WAYBILL_ISSUED') && waybillPhotoUrl) return true;
+  if (REVEALED_DRIVER.includes(driverStatus) && waybillPhotoUrl) return true;
+  if (REVEALED_WORKFLOW.includes(workflowStatus) && waybillPhotoUrl) return true;
   return false;
 }
 

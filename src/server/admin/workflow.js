@@ -62,6 +62,7 @@ function deriveWorkflow(shipment) {
   if (shipment.on_hold) return 'ON_HOLD';
   const driverStatus = shipment.driver_status;
   if (driverStatus === 'EnRouteToPickup') return 'EN_ROUTE_TO_LOADING';
+  if (driverStatus === 'LoadingChecks') return 'AT_LOADING_INSPECTION';
   if (driverStatus === 'WaybillIssued') return 'WAYBILL_ISSUED';
   if (driverStatus === 'NearDestination') return 'AT_DESTINATION_UNLOADING';
   const map = {

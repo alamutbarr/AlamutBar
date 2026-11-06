@@ -5,6 +5,7 @@ const { deriveWorkflow, legacyPatch, isKnownStatus } = require('./workflow');
 test('legacy shipment maps onto the twelve-step flow', () => {
   assert.equal(deriveWorkflow({ status: 'searching_driver' }), 'DRIVER_ASSIGNMENT');
   assert.equal(deriveWorkflow({ status: 'driver_assigned', driver_status: 'EnRouteToPickup' }), 'EN_ROUTE_TO_LOADING');
+  assert.equal(deriveWorkflow({ status: 'at_pickup', driver_status: 'LoadingChecks' }), 'AT_LOADING_INSPECTION');
   assert.equal(deriveWorkflow({ status: 'in_transit', driver_status: 'NearDestination' }), 'AT_DESTINATION_UNLOADING');
   assert.equal(deriveWorkflow({ workflow_status: 'ON_HOLD', status: 'in_transit' }), 'ON_HOLD');
 });

@@ -6,11 +6,14 @@ import { GpsPanel } from '@/components/GpsPanel';
 import { PodFlow } from '@/components/PodFlow';
 import { SosButton } from '@/components/SosButton';
 import { formatPrice, formatWeight, formatDate, formatDay, formatDimensions, formatTimeWindow, vehicleTypeLabels, } from '@/driverFormat';
-import { ArrowRight, MapPin, Navigation, Truck, Package, Weight, Ruler, Clock, DollarSign, Lock, CheckCircle2, XCircle, Loader2, Route, Calendar, } from 'lucide-react';
+import { ArrowRight, MapPin, Navigation, Truck, Package, Weight, Ruler, Clock, DollarSign, Lock, CheckCircle2, XCircle, Loader2, Route, Calendar, FileText, } from 'lucide-react';
 import ShipmentChat from '../../../shared/components/ShipmentChat';
-export function DriverMissionDetail({ mission, acceptIssue, actionError, gpsStatus, queueSize, onToggle, onSync, currentPoint, onBack, onAccept, onAction, onPodComplete, }) {
+export function DriverMissionDetail({ mission, acceptIssue, actionError, gpsStatus, queueSize, onToggle, onSync, currentPoint, onBack, onAccept, onAction, onVerifyWaybill, onPodComplete, }) {
     const [actionLoading, setActionLoading] = useState(null);
+    const waybill = mission.waybill || {};
     const gpsEnabled = ['InTransit', 'NearDestination', 'WaybillIssued'].includes(mission.status);
+    const showWaybill = ['LoadingChecks', 'WaybillIssued', 'InTransit', 'NearDestination', 'POD', 'Completed'].includes(mission.status)
+      || waybill.smsSent;
     const destLabel = mission.visibleDestinationExact
         ? mission.destExact.address
         : `${mission.destCity} — ${mission.destArea} (محدود)`;
@@ -133,20 +136,69 @@ export function DriverMissionDetail({ mission, acceptIssue, actionError, gpsStat
         {mission.status !== 'Offered' && mission.status !== 'Completed' && mission.status !== 'Cancelled' && mission.status !== 'Declined' && (<>
             <div className="glass-card anim-text rounded-2xl p-4">
               <h3 className="text-sm font-bold text-slate-700 mb-3">مراحل مأموریت</h3>
-              <StatusTimeline currentStatus={mission.status}/>
+              <StatusTimeline
+                currentStatus={mission.status}
+                extras={{
+                  WaybillIssued: mission.status === 'WaybillIssued' && waybill.smsSent && !waybill.codeVerified
+                    ? (<WaybillCodeForm error={actionError} loading={actionLoading === 'waybill_code'} onSubmit={(code) => {
+                      setActionLoading('waybill_code');
+                      Promise.resolve(onVerifyWaybill?.(mission, code)).finally(() => setActionLoading(null));
+                    }}/>)
+                    : null,
+                }}
+              />
             </div>
+
+            {showWaybill && (
+              <div className="glass-card anim-text rounded-2xl p-4">
+                <h3 className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-teal-600"/>
+                  بارنامه
+                </h3>
+                {!waybill.smsSent && (
+                  <p className="rounded-xl bg-slate-50 border border-slate-200 p-3 text-center text-sm text-slate-500">
+                    در انتظار صدور بارنامه و ارسال کد توسط اپراتور...
+                  </p>
+                )}
+                {waybill.smsSent && !waybill.codeVerified && (
+                  <WaybillCodeForm error={actionError} loading={actionLoading === 'waybill_code'} onSubmit={(code) => {
+                    setActionLoading('waybill_code');
+                    Promise.resolve(onVerifyWaybill?.(mission, code)).finally(() => setActionLoading(null));
+                  }}/>
+                )}
+                {waybill.codeVerified && !waybill.photoUrl && (
+                  <p className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-center text-sm text-amber-700">
+                    کد تأیید شد. در انتظار بارگذاری عکس بارنامه توسط اپراتور...
+                  </p>
+                )}
+                {waybill.photoUrl && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-slate-700">عکس بارنامه صادرشده</p>
+                    <img src={waybill.photoUrl} alt="بارنامه" className="w-full rounded-xl border border-slate-200 bg-white object-contain"/>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* State-based action buttons */}
             <div className="space-y-2">
               {mission.status === 'Accepted' && (<ActionButton onClick={() => handleAction('en_route')} loading={actionLoading === 'en_route'} icon={<Navigation className="w-5 h-5"/>} label="شروع حرکت به بارگیری" color="blue"/>)}
               {mission.status === 'EnRouteToPickup' && (<ActionButton onClick={() => handleAction('arrived_pickup')} loading={actionLoading === 'arrived_pickup'} icon={<MapPin className="w-5 h-5"/>} label="رسیدم به محل بارگیری" color="blue"/>)}
               {mission.status === 'ArrivedPickup' && (<div className="rounded-xl bg-slate-50 border border-slate-200 p-3 text-center text-sm text-slate-500">
-                  در انتظار کنترل/صدور بارنامه توسط اپراتور...
+                  در انتظار تأیید متصدی...
                 </div>)}
-              {mission.status === 'WaybillIssued' && (<ActionButton onClick={() => handleAction('start_move')} loading={actionLoading === 'start_move'} icon={<Navigation className="w-5 h-5"/>} label="شروع حرکت" color="green"/>)}
-              {mission.status === 'InTransit' && (<div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-center text-sm text-emerald-700 font-medium">
-                  در حال حمل — GPS فعال است
+              {mission.status === 'LoadingChecks' && (<div className="rounded-xl bg-slate-50 border border-slate-200 p-3 text-center text-sm text-slate-500">
+                  تأیید متصدی ثبت شد — در انتظار صدور بارنامه توسط اپراتور...
                 </div>)}
+              {mission.status === 'WaybillIssued' && waybill.photoUrl && (<ActionButton onClick={() => handleAction('start_move')} loading={actionLoading === 'start_move'} icon={<Navigation className="w-5 h-5"/>} label="شروع حرکت" color="green"/>)}
+              {mission.status === 'InTransit' && (
+                <div className="space-y-2">
+                  <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-center text-sm text-emerald-700 font-medium">
+                    در حال حمل — GPS فعال است
+                  </div>
+                  <ActionButton onClick={() => handleAction('arrived_dest')} loading={actionLoading === 'arrived_dest'} icon={<MapPin className="w-5 h-5"/>} label="به مقصد رسیدم" color="blue"/>
+                </div>
+              )}
               {mission.status === 'NearDestination' && (<div className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-center text-sm text-amber-700 font-medium">
                   به مقصد رسیدید — تحویل بار را آغاز کنید
                 </div>)}
@@ -193,6 +245,33 @@ function InfoItem({ icon, label, value }) {
       </div>
       <p className="text-sm font-semibold text-slate-700">{value}</p>
     </div>);
+}
+function WaybillCodeForm({ onSubmit, loading, error }) {
+    const [code, setCode] = useState('');
+    return (
+      <form
+        className="mt-2 space-y-2"
+        onSubmit={(event) => {
+          event.preventDefault();
+          onSubmit?.(code);
+        }}
+      >
+        <label className="block text-xs font-medium text-slate-600">کد پیامک شده را وارد کنید :</label>
+        <input
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          maxLength={8}
+          value={code}
+          onChange={(event) => setCode(event.target.value.replace(/\D/g, ''))}
+          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-center text-lg tracking-[0.35em] text-slate-800"
+          placeholder="-----"
+        />
+        {error && <p className="text-xs text-rose-600">{error}</p>}
+        <button type="submit" disabled={loading || code.length < 4} className="w-full flex items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-teal-700 disabled:opacity-50">
+          {loading ? <Loader2 className="w-4 h-4 animate-spin"/> : 'تأیید کد'}
+        </button>
+      </form>
+    );
 }
 function ActionButton({ onClick, loading, icon, label, color, }) {
     const cls = color === 'blue'

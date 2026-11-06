@@ -11,6 +11,8 @@ const { validateVehicleSelection } = require('../services/vehicleConfig');
 const { applyLegacyDriverStatus } = require('./driverActions');
 const { isOfferedVisibleToDriver } = require('../services/vehicleOfferMatch');
 const { canRevealExactDestination } = require('./missionPolicy');
+const { waybillForDriver } = require('../services/waybill.service');
+const { confirmWaybillCode } = require('../admin/orderOps');
 const { ingestDriverPing } = require('../admin/monitor');
 const { getSettings } = require('../admin/settingsStore');
 const { normalizePhone } = require('../admin/phone');
@@ -61,6 +63,7 @@ function toMission(row, driverId) {
     driverStatus: status,
     legacyStatus: data.status,
     workflowStatus: data.workflow_status,
+    waybillPhotoUrl: data.waybill_photo_url,
   });
   const weight = data.weight_kg != null ? Number(data.weight_kg) : null;
   return {
@@ -99,6 +102,7 @@ function toMission(row, driverId) {
     vehicle: data.vehicleType?.title,
     price: data.operator_price != null ? Number(data.operator_price) : Number(data.proposed_price),
     waybillNumber: reveal ? data.waybill_number : undefined,
+    waybill: waybillForDriver(data),
     deliveryOtpRequired: Boolean(data.delivery_otp),
   };
 }
@@ -231,6 +235,12 @@ router.post('/missions/:id/accept', requireDriver, asyncHandler(async (req, res)
 router.post('/missions/:id/decline', requireDriver, asyncHandler(async (req, res) => {
   const result = await applyLegacyDriverStatus({ missionId: req.params.id, driverId: req.user.id, status: 'Declined' });
   ok(res, result, 'مأموریت رد شد.');
+}));
+
+router.post('/missions/:id/waybill-code', requireDriver, asyncHandler(async (req, res) => {
+  await confirmWaybillCode(req.user.id, req.params.id, req.body.code || req.body.otp);
+  const row = await Shipment.findByPk(req.params.id, { include: includes });
+  ok(res, { status: row ? driverFacingStatus(row) : 'WaybillIssued', mission: row ? toMission(row, req.user.id) : null }, 'کد بارنامه تأیید شد.');
 }));
 
 router.post('/missions/:id/status', requireDriver, asyncHandler(async (req, res) => {

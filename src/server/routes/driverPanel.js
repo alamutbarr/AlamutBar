@@ -9,6 +9,7 @@ const { upsertDocument, setIdType, present, ID_TYPES } = require('../admin/docum
 const { describeVehicle } = require('../utils/vehicleLabels');
 const { canRevealExactDestination } = require('../mobile/missionPolicy');
 const { applyLegacyDriverStatus } = require('../mobile/driverActions');
+const { waybillForDriver } = require('../services/waybill.service');
 const { isOfferedVisibleToDriver } = require('../services/vehicleOfferMatch');
 const { filterNearbyMissions, filterMissionsByRoute } = require('../services/missionSearch');
 const { resolveDriverProvince } = require('../services/geocoding');
@@ -112,6 +113,12 @@ function toMissionDto(row, inspection = null) {
   const d = row.toJSON ? row.toJSON() : row;
   const status = driverFacingStatus(d);
   const weight = d.weight_kg != null ? Number(d.weight_kg) : null;
+  const reveal = canRevealExactDestination({
+    driverStatus: status,
+    legacyStatus: d.status,
+    workflowStatus: d.workflow_status,
+    waybillPhotoUrl: d.waybill_photo_url,
+  });
   return {
     id: d.id,
     code: d.tracking_code,
@@ -122,18 +129,10 @@ function toMissionDto(row, inspection = null) {
       : undefined,
     destCity: d.destCity?.name,
     destArea: [d.destZone?.name, d.destCity?.province].filter(Boolean).join(' · '),
-    destExact: canRevealExactDestination({
-      driverStatus: status,
-      legacyStatus: d.status,
-      workflowStatus: d.workflow_status,
-    }) && d.dest_address
+    destExact: reveal && d.dest_address
       ? { lat: d.dest_lat != null ? Number(d.dest_lat) : undefined, lng: d.dest_lng != null ? Number(d.dest_lng) : undefined, address: d.dest_address }
       : undefined,
-    visibleDestinationExact: canRevealExactDestination({
-      driverStatus: status,
-      legacyStatus: d.status,
-      workflowStatus: d.workflow_status,
-    }),
+    visibleDestinationExact: reveal,
     cargo: {
       type: d.cargo_type === 'other' ? (d.cargo_type_other || 'سایر') : d.cargo_type,
       weightTons: weight != null ? weight / 1000 : undefined,
@@ -162,6 +161,7 @@ function toMissionDto(row, inspection = null) {
     photosUploaded: Array.isArray(d.photo_urls) ? d.photo_urls.length : 0,
     ownerId: d.owner_id,
     inspection,
+    waybill: waybillForDriver(d),
   };
 }
 
@@ -324,6 +324,24 @@ router.post('/missions/:id/photos', authMiddleware, (req, res, next) => {
   mission.changed('photo_urls', true);
   await mission.save();
   return res.json({ url: photos[photos.length - 1], count: photos.length });
+});
+
+router.post('/missions/:id/waybill-code', authMiddleware, async (req, res) => {
+  try {
+    await orderOps.confirmWaybillCode(req.user.id, req.params.id, req.body.code || req.body.otp);
+    const row = await Shipment.findByPk(req.params.id, { include: includes });
+    const inspections = await latestInspections([req.params.id]);
+    return res.json({
+      message: 'کد بارنامه تأیید شد.',
+      status: row ? driverFacingStatus(row) : 'WaybillIssued',
+      mission: row ? toMissionDto(row, inspections.get(row.id) || null) : null,
+    });
+  } catch (error) {
+    return res.status(error.statusCode || 400).json({
+      error: error.message || 'تأیید کد بارنامه ناموفق بود.',
+      code: error.code,
+    });
+  }
 });
 
 router.post('/missions/:id/change-status', authMiddleware, async (req, res) => {

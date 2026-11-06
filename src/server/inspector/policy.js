@@ -198,6 +198,18 @@ function approvalDecision({ finalApproval, complete, discrepancies }) {
   return 'PENDING';
 }
 
+function driverStatusAfterInspectionClear({ driverStatus, workflowStatus } = {}) {
+  if (['WaybillIssued', 'InTransit', 'NearDestination', 'POD', 'Completed'].includes(driverStatus)) {
+    return driverStatus;
+  }
+  const arrived = driverStatus === 'ArrivedPickup'
+    || driverStatus === 'LoadingChecks'
+    || workflowStatus === 'AT_LOADING_INSPECTION'
+    || workflowStatus === 'ON_HOLD';
+  if (!arrived) return driverStatus || null;
+  return 'LoadingChecks';
+}
+
 module.exports = {
   UPCOMING,
   ITEM_LABELS,
@@ -215,4 +227,5 @@ module.exports = {
   reportCountsAsVisit,
   inspectorNoShow,
   approvalDecision,
+  driverStatusAfterInspectionClear,
 };

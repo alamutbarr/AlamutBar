@@ -36,13 +36,20 @@ async function patchComplaints(sequelize) {
   return true;
 }
 
+async function addColumnIfMissing(sequelize, table, column, definition) {
+  const [rows] = await sequelize.query(`SHOW COLUMNS FROM ${table} LIKE '${column}'`);
+  if (rows.length) return false;
+  await sequelize.query(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  return true;
+}
+
 async function patchShipments(sequelize) {
   if (!(await tableExists(sequelize, 'shipments'))) return false;
-  const [column] = await sequelize.query("SHOW COLUMNS FROM shipments LIKE 'offered_driver_id'");
-  if (!column.length) {
-    await sequelize.query('ALTER TABLE shipments ADD COLUMN offered_driver_id INT UNSIGNED NULL');
-  }
-  return true;
+  const offered = await addColumnIfMissing(sequelize, 'shipments', 'offered_driver_id', 'INT UNSIGNED NULL');
+  const sms = await addColumnIfMissing(sequelize, 'shipments', 'waybill_sms_code', 'VARCHAR(8) NULL');
+  const verified = await addColumnIfMissing(sequelize, 'shipments', 'waybill_code_verified', 'TINYINT(1) NOT NULL DEFAULT 0');
+  const photo = await addColumnIfMissing(sequelize, 'shipments', 'waybill_photo_url', 'VARCHAR(255) NULL');
+  return offered || sms || verified || photo;
 }
 
 async function patchDriverNotifications(sequelize) {

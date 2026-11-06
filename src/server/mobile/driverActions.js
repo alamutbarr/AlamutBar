@@ -1,7 +1,8 @@
 const { Driver, Shipment, VehicleType } = require('../models');
 const AppError = require('../utils/AppError');
-const { setWorkflow, loadOrder } = require('../admin/orderOps');
+const { setWorkflow, loadOrder, releaseAfterInspection } = require('../admin/orderOps');
 const { assertDeliveryOtp } = require('./missionPolicy');
+const { driverMayStartTransit } = require('../services/waybill.service');
 const { logEvent } = require('../admin/audit');
 const {
   DRIVER_ACCEPT_DOCS_REQUIRED,
@@ -102,11 +103,15 @@ async function applyLegacyDriverStatus({ missionId, driverId, status, deliveryOt
   if (mission.driver_id && !mine) throw new AppError('این بار را راننده دیگری قبول کرده است.', 409);
   if (!mission.driver_id) mission.driver_id = driver.id;
 
+  if (status === 'WaybillIssued') {
+    throw new AppError('صدور بارنامه فقط از پنل اپراتور انجام می‌شود.', 400);
+  }
+
   const workflow = DRIVER_TO_WORKFLOW[status];
   if (!workflow) throw new AppError('وضعیت نامعتبر است.', 400);
 
-  if (workflow === 'IN_TRANSIT' && !mission.waybill_number && mission.workflow_status !== 'WAYBILL_ISSUED' && mission.driver_status !== 'WaybillIssued') {
-    throw new AppError('تا صدور بارنامه، حمل شروع نمی‌شود. هماهنگی با اپراتور است.', 400);
+  if (workflow === 'IN_TRANSIT' && !driverMayStartTransit(mission)) {
+    throw new AppError('تا ورود کد و مشاهده عکس بارنامه، حرکت شروع نمی‌شود.', 400);
   }
 
   if (workflow === 'COMPLETED') {
@@ -138,6 +143,9 @@ async function applyLegacyDriverStatus({ missionId, driverId, status, deliveryOt
   }
 
   await setWorkflow(mission, workflow, { reason: 'به‌روزرسانی از اپ راننده', driverId });
+  if (status === 'ArrivedPickup') {
+    await releaseAfterInspection(mission);
+  }
   return { driverStatus: mission.driver_status };
 }
 

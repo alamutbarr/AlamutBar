@@ -2,10 +2,15 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { canRevealExactDestination, assertDeliveryOtp } = require('./missionPolicy');
 
-test('exact destination stays hidden until the waybill', () => {
+test('exact destination stays hidden until the waybill photo is uploaded', () => {
   assert.equal(canRevealExactDestination({ driverStatus: 'Accepted', workflowStatus: 'DRIVER_ACCEPTED' }), false);
   assert.equal(canRevealExactDestination({ driverStatus: 'EnRouteToPickup', workflowStatus: 'EN_ROUTE_TO_LOADING' }), false);
-  assert.equal(canRevealExactDestination({ driverStatus: 'WaybillIssued', workflowStatus: 'WAYBILL_ISSUED' }), true);
+  assert.equal(canRevealExactDestination({ driverStatus: 'WaybillIssued', workflowStatus: 'WAYBILL_ISSUED' }), false);
+  assert.equal(canRevealExactDestination({
+    driverStatus: 'WaybillIssued',
+    workflowStatus: 'WAYBILL_ISSUED',
+    waybillPhotoUrl: '/uploads/waybill.jpg',
+  }), true);
   assert.equal(canRevealExactDestination({ legacyStatus: 'in_transit' }), true);
 });
 
