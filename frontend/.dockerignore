@@ -1,0 +1,13 @@
+**/node_modules
+**/.next
+test-results
+playwright-report
+mobile-test-results
+playwright-mobile-report
+logs
+runtime
+**/*.tsbuildinfo
+AGENTS.md
+.env*
+apps/*/dist
+apps/site/public

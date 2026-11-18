@@ -1,0 +1,18 @@
+FROM node:24-alpine AS builder
+WORKDIR /app
+COPY . .
+RUN npm ci
+ARG PANEL
+ARG SITE_URL=https://alamut.bar
+ENV SITE_URL=$SITE_URL
+RUN test "$PANEL" = driver -o "$PANEL" = owner -o "$PANEL" = inspector
+RUN npm run build --workspace=@alamut/$PANEL
+RUN cp -r apps/$PANEL/dist /output
+
+FROM nginx:stable-alpine AS runner
+COPY platform/nginx-panel.conf.template /etc/nginx/templates/default.conf.template
+COPY --from=builder /output /usr/share/nginx/html
+ENV NGINX_ENVSUBST_FILTER=ALAMUT_PANEL
+ARG PANEL
+ENV ALAMUT_PANEL=$PANEL
+EXPOSE 80

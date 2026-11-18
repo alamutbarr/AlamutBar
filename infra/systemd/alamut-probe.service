@@ -1,0 +1,15 @@
+[Unit]
+Description=Probe Alamut HTTPS and backup freshness
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+StateDirectory=alamut-probe
+EnvironmentFile=/etc/alamut/probe.env
+ExecStart=/usr/bin/python3 /opt/alamut/infra/probe.py ${SITE_URL} ${DRIVER_URL} --owner ${OWNER_URL} --inspector ${INSPECTOR_URL} --admin ${ADMIN_URL} --state-file /var/lib/alamut-probe/state.json --backup-dir /srv/alamut-backups
+UMask=0077
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true

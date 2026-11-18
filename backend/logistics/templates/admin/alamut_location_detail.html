@@ -1,0 +1,7 @@
+{% extends "admin/change_form.html" %}
+{% block extrastyle %}{{ block.super }}{% include "admin/alamut_map_assets.html" %}{% endblock %}
+{% block after_field_sets %}
+    <h2>موقعیت ثبت‌شده روی نقشه</h2>
+    <p><a href="{% url 'admin:alamut_driver_map' %}">نقشهٔ همهٔ سفرهای فعال</a></p>
+    {% include "admin/alamut_map_panel.html" %}
+{% endblock %}

@@ -1,0 +1,27 @@
+{
+  "name": "@alamut/frontend",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "npm run dev --workspace=@alamut/site",
+    "build": "npm run build --workspace=@alamut/site",
+    "start": "node scripts/serve.mjs",
+    "typecheck": "npm run typecheck --workspace=@alamut/site && tsc --project tsconfig.tests.json",
+    "test:e2e": "playwright test",
+    "test:mobile": "playwright test -c playwright.mobile.config.ts",
+    "build:apps": "npm run build --workspace=@alamut/driver --workspace=@alamut/owner --workspace=@alamut/inspector"
+  },
+  "devDependencies": {
+    "@playwright/test": "latest",
+    "@types/leaflet": "1.9.21",
+    "@types/node": "^22.0.0",
+    "@types/qrcode": "1.5.5",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "prettier": "3.6.2",
+    "typescript": "^5.7.0"
+  },
+  "workspaces": [
+    "apps/*"
+  ]
+}

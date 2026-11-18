@@ -1,0 +1,318 @@
+{
+  "panel_pages": [
+    {
+      "error": "",
+      "heading": "مقالات و راهنماها",
+      "url": "/admin/articles"
+    },
+    {
+      "error": "",
+      "heading": "هر اتفاق، در یک نگاه.",
+      "url": "/admin/control"
+    },
+    {
+      "error": "",
+      "heading": "از اولین تماس تا همکاری.",
+      "url": "/admin/crm"
+    },
+    {
+      "error": "",
+      "heading": "رخدادها و مغایرت‌های حمل",
+      "url": "/admin/incidents"
+    },
+    {
+      "error": "",
+      "heading": "سارا عزیز، روزتان بخیر.",
+      "url": "/admin/app"
+    },
+    {
+      "error": "",
+      "heading": "مدیریت محموله‌ها",
+      "url": "/admin/shipments"
+    },
+    {
+      "error": "",
+      "heading": "آدم‌های این مسیر",
+      "url": "/admin/team"
+    },
+    {
+      "error": "",
+      "heading": "مأموریت‌های بازرسی",
+      "url": "/admin/inspections"
+    },
+    {
+      "error": "",
+      "heading": "حسابداری و تسویه محموله‌ها",
+      "url": "/admin/invoices"
+    },
+    {
+      "error": "",
+      "heading": "تصویر روشن عملکرد",
+      "url": "/admin/reports"
+    },
+    {
+      "error": "",
+      "heading": "گفت‌وگو، تا حل مسئله.",
+      "url": "/admin/tickets"
+    },
+    {
+      "error": "",
+      "heading": "مرکز رویدادها",
+      "url": "/admin/operations"
+    },
+    {
+      "error": "",
+      "heading": "اعلان‌های شما",
+      "url": "/admin/notifications"
+    },
+    {
+      "error": "",
+      "heading": "حساب کاربری شما",
+      "url": "/admin/settings"
+    },
+    {
+      "error": "",
+      "heading": "رخدادها و مغایرت‌های حمل",
+      "url": "/owner/incidents"
+    },
+    {
+      "error": "",
+      "heading": "دفترچه نشانی و گیرندگان",
+      "url": "/owner/addresses"
+    },
+    {
+      "error": "",
+      "heading": "آرمان عزیز، روزتان بخیر.",
+      "url": "/owner/app"
+    },
+    {
+      "error": "",
+      "heading": "مدیریت محموله‌ها",
+      "url": "/owner/shipments"
+    },
+    {
+      "error": "",
+      "heading": "حسابداری و تسویه محموله‌ها",
+      "url": "/owner/invoices"
+    },
+    {
+      "error": "",
+      "heading": "تصویر روشن عملکرد",
+      "url": "/owner/reports"
+    },
+    {
+      "error": "",
+      "heading": "گفت‌وگو، تا حل مسئله.",
+      "url": "/owner/tickets"
+    },
+    {
+      "error": "",
+      "heading": "اعلان‌های شما",
+      "url": "/owner/notifications"
+    },
+    {
+      "error": "",
+      "heading": "حساب کاربری شما",
+      "url": "/owner/settings"
+    },
+    {
+      "error": "",
+      "heading": "تکمیل ثبت‌نام راننده",
+      "url": "/driver/onboarding"
+    },
+    {
+      "error": "",
+      "heading": "رخدادها و مغایرت‌های حمل",
+      "url": "/driver/incidents"
+    },
+    {
+      "error": "",
+      "heading": "مهدی عزیز، روزتان بخیر.",
+      "url": "/driver/app"
+    },
+    {
+      "error": "",
+      "heading": "سفرهای من",
+      "url": "/driver/shipments"
+    },
+    {
+      "error": "",
+      "heading": "فرصت‌های تازه در مسیر شما",
+      "url": "/driver/market"
+    },
+    {
+      "error": "",
+      "heading": "حسابداری و تسویه محموله‌ها",
+      "url": "/driver/invoices"
+    },
+    {
+      "error": "",
+      "heading": "تصویر روشن عملکرد",
+      "url": "/driver/reports"
+    },
+    {
+      "error": "",
+      "heading": "گفت‌وگو، تا حل مسئله.",
+      "url": "/driver/tickets"
+    },
+    {
+      "error": "",
+      "heading": "اعلان‌های شما",
+      "url": "/driver/notifications"
+    },
+    {
+      "error": "",
+      "heading": "حساب کاربری شما",
+      "url": "/driver/settings"
+    },
+    {
+      "error": "",
+      "heading": "رخدادها و مغایرت‌های حمل",
+      "url": "/inspector/incidents"
+    },
+    {
+      "error": "",
+      "heading": "علی عزیز، روزتان بخیر.",
+      "url": "/inspector/app"
+    },
+    {
+      "error": "",
+      "heading": "مدیریت محموله‌ها",
+      "url": "/inspector/shipments"
+    },
+    {
+      "error": "",
+      "heading": "مأموریت‌های بازرسی",
+      "url": "/inspector/inspections"
+    },
+    {
+      "error": "",
+      "heading": "تصویر روشن عملکرد",
+      "url": "/inspector/reports"
+    },
+    {
+      "error": "",
+      "heading": "گفت‌وگو، تا حل مسئله.",
+      "url": "/inspector/tickets"
+    },
+    {
+      "error": "",
+      "heading": "اعلان‌های شما",
+      "url": "/inspector/notifications"
+    },
+    {
+      "error": "",
+      "heading": "حساب کاربری شما",
+      "url": "/inspector/settings"
+    }
+  ],
+  "public_pages": [
+    {
+      "document": 375,
+      "error": "",
+      "heading": "خدمات الموت",
+      "url": "/services",
+      "width": 390
+    },
+    {
+      "document": 375,
+      "error": "",
+      "heading": "روش همکاری و مراحل حمل",
+      "url": "/how-it-works",
+      "width": 390
+    },
+    {
+      "document": 375,
+      "error": "",
+      "heading": "مقالات و راهنماها",
+      "url": "/articles",
+      "width": 390
+    },
+    {
+      "document": 375,
+      "error": "",
+      "heading": "پرسش‌های متداول",
+      "url": "/faq",
+      "width": 390
+    },
+    {
+      "document": 375,
+      "error": "",
+      "heading": "پیگیری عمومی محموله",
+      "url": "/tracking",
+      "width": 390
+    },
+    {
+      "document": 375,
+      "error": "",
+      "heading": "تماس با ما",
+      "url": "/contact",
+      "width": 390
+    },
+    {
+      "document": 375,
+      "error": "",
+      "heading": "چهار پنل، چهار برنامه مستقل.",
+      "url": "/apps",
+      "width": 390
+    },
+    {
+      "document": 375,
+      "error": "",
+      "heading": "راهنمای فضای کار شما",
+      "url": "/help",
+      "width": 390
+    },
+    {
+      "document": 375,
+      "error": "",
+      "heading": "امنیت و نگهداری اطلاعات",
+      "url": "/security",
+      "width": 390
+    },
+    {
+      "document": 375,
+      "error": "",
+      "heading": "حریم خصوصی",
+      "url": "/privacy",
+      "width": 390
+    },
+    {
+      "document": 375,
+      "error": "",
+      "heading": "شرایط استفاده از سامانه",
+      "url": "/terms",
+      "width": 390
+    },
+    {
+      "document": 375,
+      "error": "",
+      "heading": "وضعیت اتصال سرویس",
+      "url": "/status",
+      "width": 390
+    }
+  ],
+  "final_mobile_checks": [
+    {
+      "document": 375,
+      "path": "/owner/app",
+      "width": 390
+    },
+    {
+      "document": 375,
+      "path": "/owner/shipments",
+      "width": 390
+    },
+    {
+      "document": 375,
+      "path": "/driver/market",
+      "width": 390
+    }
+  ],
+  "notes": [
+    "41 panel menu routes inspected",
+    "mobile table overflow corrected and rechecked",
+    "offline fallback and service recovery verified",
+    "test content unpublished after UI review"
+  ]
+}

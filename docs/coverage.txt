@@ -1,0 +1,18 @@
+Name                               Stmts   Miss  Cover
+------------------------------------------------------
+backend\logistics\__init__.py          0      0   100%
+backend\logistics\admin.py            35      2    94%
+backend\logistics\editorial.py        49      1    98%
+backend\logistics\errors.py           28      1    96%
+backend\logistics\mailbackend.py      11      0   100%
+backend\logistics\middleware.py       15      0   100%
+backend\logistics\models.py          281      4    99%
+backend\logistics\operations.py      366     23    94%
+backend\logistics\permissions.py      16      0   100%
+backend\logistics\schema.py           36      0   100%
+backend\logistics\security.py        150      7    95%
+backend\logistics\serializers.py     155      1    99%
+backend\logistics\services.py         76      6    92%
+backend\logistics\views.py           410     13    97%
+------------------------------------------------------
+TOTAL                               1628     58    96%
