@@ -1,0 +1,107 @@
+{% extends "admin/base_site.html" %}
+{% block breadcrumbs %}
+<nav class="breadcrumbs" aria-label="مسیر صفحه">
+    <a href="{% url 'admin:index' %}">پیشخوان</a> ›
+    <a href="{% url 'admin:logistics_driverprofile_changelist' %}">پرونده‌های رانندگان</a> ›
+    {{ driver }}
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="alamut-review">
+    <div class="alamut-review-summary">
+        <span class="alamut-status" data-status="{{ profile.status }}">{{ profile.get_status_display }}</span>
+        <span>زمان ارسال: {{ profile.submitted_at|default_if_none:"—" }}</span>
+        {% if profile.reviewed_by %}<span>بررسی‌کننده: {{ profile.reviewed_by }}</span>{% endif %}
+    </div>
+    {% if profile.review_note %}<p class="alamut-callout"><strong>یادداشت بررسی:</strong> {{ profile.review_note }}</p>{% endif %}
+    <div class="alamut-review-grid">
+        <section class="alamut-card">
+            <h2>مشخصات راننده</h2>
+            <dl class="alamut-details">
+                <dt>نام و نام خانوادگی</dt><dd>{{ driver }}</dd>
+                <dt>شمارهٔ همراه</dt><dd><bdi>{{ driver.phone|default:"—" }}</bdi></dd>
+                <dt>کد ملی</dt><dd><bdi>{{ profile.national_id|default:"—" }}</bdi></dd>
+                <dt>تاریخ تولد</dt><dd>{{ profile.birth_date|default_if_none:"—" }}</dd>
+                <dt>نام فرد تماس اضطراری</dt><dd>{{ profile.emergency_name|default:"—" }}</dd>
+                <dt>شمارهٔ تماس اضطراری</dt><dd><bdi>{{ profile.emergency_phone|default:"—" }}</bdi></dd>
+                <dt>نشانی</dt><dd>{{ profile.address|default:"—"|linebreaksbr }}</dd>
+            </dl>
+        </section>
+        <section class="alamut-card">
+            <h2>خودرو و اعتبار مدارک</h2>
+            <dl class="alamut-details">
+                <dt>نوع خودرو</dt><dd>{{ vehicle.get_kind_display|default:"—" }}</dd>
+                <dt>پلاک</dt><dd><bdi>{{ vehicle.plate|default:"—" }}</bdi></dd>
+                <dt>ظرفیت (تن)</dt><dd>{{ vehicle.capacity|default_if_none:"—"|default:"—" }}</dd>
+                <dt>شمارهٔ گواهینامه</dt><dd><bdi>{{ vehicle.license_number|default:"—" }}</bdi></dd>
+                <dt>پایان اعتبار گواهینامه</dt><dd>{{ profile.license_expiry|default_if_none:"—" }}</dd>
+                <dt>پایان اعتبار بیمه‌نامه</dt><dd>{{ profile.insurance_expiry|default_if_none:"—" }}</dd>
+            </dl>
+        </section>
+    </div>
+    <form method="post">
+        {% csrf_token %}
+        {% if can_review %}<input type="hidden" name="submission" value="{{ submission }}">{% endif %}
+        <section class="alamut-card">
+            <h2>مدارک بارگذاری‌شده</h2>
+            {% if can_review %}<p class="alamut-help">فایل هر مدرک را بررسی کنید. برای تأیید پرونده، همهٔ مدارک الزامی باید تأیید شده باشند. اگر مدرکی را رد می‌کنید، دلیل آن را وارد کنید.</p>{% endif %}
+            <div class="alamut-documents">
+                {% for item in documents %}
+                <div class="alamut-document">
+                    <div>
+                        <h3>{{ item.label }}{% if item.required %} <small>الزامی</small>{% endif %}</h3>
+                        {% if item.file %}
+                            <span class="alamut-status" data-status="{{ item.file.status }}">{{ item.file.get_status_display }}</span>
+                            <a class="alamut-download" href="{% url 'credential-download' item.file.pk %}">دانلود فایل</a>
+                            <a class="alamut-download" href="{% url 'admin:logistics_drivercredential_change' item.file.pk %}">بررسی جداگانه</a>
+                            <div class="alamut-filename"><bdi>{{ item.file.original_name }}</bdi></div>
+                            {% if item.file.note %}<p class="alamut-help">{{ item.file.note }}</p>{% endif %}
+                        {% else %}
+                            <span class="alamut-status" data-status="rejected">بارگذاری نشده</span>
+                        {% endif %}
+                    </div>
+                    {% if can_review and item.file %}
+                    <div>
+                        <label for="document_{{ item.file.pk }}">نتیجهٔ بررسی {{ item.label }}</label>
+                        <select id="document_{{ item.file.pk }}" name="document_{{ item.file.pk }}">
+                            <option value="pending">بدون تغییر</option>
+                            <option value="approved"{% if item.decision == "approved" %} selected{% endif %}>تأیید مدرک</option>
+                            <option value="rejected"{% if item.decision == "rejected" %} selected{% endif %}>رد مدرک</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="reason_{{ item.file.pk }}">یادداشت {{ item.label }}</label>
+                        <input type="text" id="reason_{{ item.file.pk }}" name="reason_{{ item.file.pk }}" maxlength="1000" value="{{ item.reason }}">
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+        {% if can_review %}
+        <section class="alamut-card">
+            <h2>نتیجهٔ نهایی پرونده</h2>
+            <div class="alamut-decision">
+                <div>
+                    <label for="review-status">تصمیم نهایی</label>
+                    <select id="review-status" name="status" required>
+                        <option value="">انتخاب کنید</option>
+                        <option value="approved"{% if decision == "approved" %} selected{% endif %}>تأیید پرونده</option>
+                        <option value="rejected"{% if decision == "rejected" %} selected{% endif %}>رد پرونده و درخواست اصلاح</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="review-note">یادداشت برای راننده</label>
+                    <textarea id="review-note" name="note" rows="3" maxlength="2000" aria-describedby="review-note-help">{{ note }}</textarea>
+                    <p id="review-note-help" class="alamut-help">برای رد پرونده، دلیل را بنویسید تا راننده بداند چه چیزی را اصلاح کند.</p>
+                </div>
+            </div>
+            <button class="alamut-primary" type="submit">ثبت نتیجهٔ بررسی</button>
+        </section>
+        {% elif profile.status == "draft" %}
+            <p class="alamut-callout">پس از ارسال پرونده توسط راننده، فرم بررسی در دسترس قرار می‌گیرد.</p>
+        {% endif %}
+    </form>
+</div>
+{% endblock %}

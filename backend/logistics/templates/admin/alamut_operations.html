@@ -1,0 +1,47 @@
+{% extends "admin/base_site.html" %}
+{% block extrastyle %}{{ block.super }}<style>
+.ops-section{padding:16px;margin-bottom:20px;border:1px solid var(--hairline-color);border-radius:10px}.ops-row{padding:16px 0;border-top:1px solid var(--hairline-color)}.ops-form{display:flex;gap:10px;align-items:end;flex-wrap:wrap}.ops-form label{display:grid;gap:5px}.ops-form input,.ops-form select,.ops-form button{min-height:44px;max-width:100%;box-sizing:border-box}.ops-form button{padding:10px 18px}.ops-doc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}@media(max-width:600px){.ops-form{display:grid;grid-template-columns:1fr}.ops-form>*{width:100%}}
+</style>{% endblock %}
+{% block content %}
+{% if selected %}<p><a href="{% url 'admin:alamut_operations' %}">بازگشت به همهٔ عملیات</a></p>{% endif %}
+{% if monitoring %}<section class="ops-section"><h2>رصد عملیات</h2>
+<p>درخواست‌های تازه: {{ monitoring.pending_shipments }} · در انتظار تخصیص: {{ monitoring.unassigned }} · رخدادهای باز: {{ monitoring.open_incidents }} · پیگیری‌های عقب‌افتاده: {{ monitoring.overdue_followups }}</p>
+<p><a href="{% url 'admin:alamut_driver_map' %}">نقشهٔ رانندگان در مسیر</a></p>
+{% for point in monitoring.positions %}<p><strong>{{ point.code }}</strong> · {{ point.driver }} · {{ point.origin }} ← {{ point.destination }} · {{ point.observed_at|date:'Y/m/d H:i' }}{% if point.stale %} · موقعیت قدیمی{% endif %} · <a href="{% url 'admin:logistics_locationping_change' point.id %}">نمایش موقعیت روی نقشه</a></p>{% empty %}<p>برای سفرهای فعال موقعیتی ثبت نشده است.</p>{% endfor %}
+{% for item in monitoring.moving_without_location %}<p>{{ item.code }} · {{ item.origin }} ← {{ item.destination }} · بدون موقعیت</p>{% endfor %}
+</section>{% endif %}
+{% if incidents %}<section class="ops-section"><h2>{% if selected %}رخداد{% else %}رخدادهای باز{% endif %}</h2><p><a href="{% url 'admin:logistics_incident_changelist' %}">همهٔ رخدادها</a></p>{% for item in incidents %}<article class="ops-row"><h3>{{ item.shipment.code }} · {{ item.get_kind_display }} · {{ item.get_severity_display }}</h3><p>{{ item.description }}</p>{% if item.status == "resolved" %}<p>نتیجهٔ رسیدگی: {{ item.resolution }}</p>{% else %}<form method="post" class="ops-form">{% csrf_token %}<input type="hidden" name="action" value="resolve"><input type="hidden" name="record" value="{{ item.id }}"><label>اقدام اصلاحی <textarea name="resolution" minlength="10" maxlength="3000" required></textarea></label><button>ثبت رفع رخداد</button></form>{% endif %}</article>{% endfor %}</section>{% endif %}
+{% if not selected and 'verification' in caps %}<section class="ops-section"><h2>صف پرونده‌های راننده</h2>
+{% for item in queue %}<p><a href="?driver={{ item.user_id }}">{{ item.user }} — {{ item.submitted_at }}</a> · <a href="{% url 'admin:logistics_driverprofile_change' item.pk %}">باز کردن پرونده</a></p>{% empty %}<p>پرونده‌ای در انتظار بررسی نیست.</p>{% endfor %}
+{% if review %}<h3>{{ review.user.name }}</h3><dl>{% for label,value in review.fields %}<dt>{{ label }}</dt><dd>{{ value|default:'—' }}</dd>{% endfor %}</dl><p>پلاک: {{ review.vehicle.plate }} · ظرفیت: {{ review.vehicle.capacity }} تن · شماره گواهینامه: {{ review.vehicle.license_number }}</p>
+<form method="post">{% csrf_token %}<input type="hidden" name="action" value="review"><input type="hidden" name="record" value="{{ review.user.id }}"><input type="hidden" name="submission" value="{{ review.submission }}">
+{% for doc in review.documents %}<div class="ops-doc"><a href="{{ doc.url }}">{{ doc.label }} — {{ doc.name }}</a><label>نتیجه <select name="document_{{ doc.id }}"><option value="pending">بررسی نشده</option><option value="approved">تأیید</option><option value="rejected">رد</option></select></label><label>دلیل رد <input name="reason_{{ doc.id }}" maxlength="1000"></label></div>{% endfor %}
+<div class="ops-form"><label>نتیجه پرونده <select name="status"><option value="approved">تأیید همکاری</option><option value="rejected">نیازمند اصلاح</option></select></label><label>توضیح <textarea name="note" maxlength="2000"></textarea></label><button type="submit">ثبت نتیجه بررسی</button></div></form>{% endif %}</section>{% endif %}
+{% if 'dispatch' in caps and not selected or section == 'shipment' %}<section class="ops-section"><h2>{% if selected %}محموله{% else %}۵۰ محمولهٔ اخیر{% endif %}</h2><p><a href="{% url 'admin:logistics_shipment_changelist' %}">همهٔ بارها</a></p>{% for item in shipments %}<article class="ops-row"><h3>{{ item.code }} — {{ item.title }}</h3><p>{{ item.origin }} ← {{ item.destination }} — {{ item.get_status_display }}</p><p>راننده {{ item.driver|default:'تخصیص نیافته' }} · متصدی {{ item.inspector|default:'تخصیص نیافته' }}</p>
+{% if item.operation_statuses %}<form method="post" class="ops-form">{% csrf_token %}<input type="hidden" name="record" value="{{ item.id }}"><input type="hidden" name="action" value="transition"><label>مرحله <select name="status">{% for value, label in item.operation_statuses %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select></label><label>یادداشت <input name="note" maxlength="1000"></label><button>ثبت مرحله</button></form>{% endif %}
+{% if item.status == 'approved' %}
+<h4>پیشنهادهای کرایه</h4>
+<ul>{% for offer in item.offers.all %}
+  <li>{{ offer.driver }} · {{ offer.amount }} تومان{% if offer.note %} · {{ offer.note }}{% endif %}</li>
+{% empty %}
+  <li>هنوز پیشنهادی ثبت نشده است. کرایهٔ درخواست {{ item.price }} تومان است.</li>
+{% endfor %}</ul>
+<form method="post" class="ops-form">
+  {% csrf_token %}
+  <input type="hidden" name="record" value="{{ item.id }}">
+  <input type="hidden" name="action" value="assign">
+  <label>راننده <select name="driver" required>
+    <option value="" disabled selected>انتخاب راننده</option>
+    {% for driver in drivers %}<option value="{{ driver.id }}">{{ driver }}</option>{% endfor %}
+  </select></label>
+  <label>متصدی <select name="inspector" required>
+    <option value="" disabled selected>انتخاب متصدی</option>
+    {% for inspector in inspectors %}<option value="{{ inspector.id }}">{{ inspector }}</option>{% endfor %}
+  </select></label>
+  <button>تخصیص</button>
+</form>
+{% endif %}</article>{% endfor %}</section>{% endif %}
+{% if 'finance' in caps and not selected or section == 'invoice' %}<section class="ops-section"><h2>{% if selected %}صورتحساب{% else %}۵۰ صورتحساب اخیر{% endif %}</h2><p><a href="{% url 'admin:logistics_invoice_changelist' %}">همهٔ صورتحساب‌ها</a></p>{% for item in invoices %}<article class="ops-row"><h3>{{ item.shipment.code }} — {{ item.amount }} تومان — {{ item.get_status_display }}</h3>{% if item.status != "paid" %}<form method="post" class="ops-form">{% csrf_token %}<input type="hidden" name="action" value="payment"><input type="hidden" name="record" value="{{ item.id }}"><label>مبلغ پرداخت انجام‌شده <input type="number" name="amount" min="1" required></label><label>مرجع پرداخت <input name="reference" minlength="5" maxlength="100" required></label><button>ثبت پرداخت حسابداری</button></form>{% endif %}</article>{% endfor %}</section>{% endif %}
+{% if 'crm' in caps and not selected or section == 'lead' %}<section class="ops-section"><h2>{% if selected %}مشتری بالقوه{% else %}۵۰ سرنخ اخیر{% endif %}</h2><p><a href="{% url 'admin:logistics_lead_changelist' %}">همهٔ مشتریان بالقوه</a></p>{% for item in leads %}<article class="ops-row"><h3>{{ item.name }} — {{ item.phone }}</h3><p>{{ item.get_stage_display }}</p><form method="post" class="ops-form">{% csrf_token %}<input type="hidden" name="action" value="activity"><input type="hidden" name="record" value="{{ item.id }}"><label>نوع پیگیری <select name="kind"><option value="call">تماس</option><option value="note">یادداشت</option><option value="meeting">جلسه</option></select></label><label>متن <textarea name="body" required maxlength="2000"></textarea></label><button>ثبت پیگیری</button></form></article>{% endfor %}</section>{% endif %}
+{% if not selected or section == 'ticket' %}<section class="ops-section"><h2>{% if selected %}تیکت{% else %}۵۰ تیکت اخیر{% endif %}</h2><p><a href="{% url 'admin:logistics_ticket_changelist' %}">همهٔ تیکت‌ها</a></p>{% for item in tickets %}<article class="ops-row"><h3>{{ item.subject }} — {{ item.get_status_display }}</h3>{% for message in item.messages.all %}<p>{{ message.author }} — {{ message.body }}</p>{% endfor %}{% if item.status == 'open' %}<form method="post" class="ops-form">{% csrf_token %}<input type="hidden" name="record" value="{{ item.id }}"><input type="hidden" name="action" value="reply"><label>پاسخ <textarea name="body" required maxlength="4000"></textarea></label><button>ارسال پاسخ</button></form><form method="post">{% csrf_token %}<input type="hidden" name="record" value="{{ item.id }}"><input type="hidden" name="action" value="close"><button>بستن تیکت</button></form>{% endif %}</article>{% endfor %}</section>{% endif %}
+{% endblock %}

@@ -1,0 +1,136 @@
+name: alamut
+x-logging: &bounded-logging
+  driver: local
+  options:
+    max-size: "10m"
+    max-file: "5"
+services:
+  mysql:
+    image: mysql:8.4
+    logging: *bounded-logging
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-alamut}
+      MYSQL_USER: ${MYSQL_USER:-alamut}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in .env}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    volumes: ["mysql_data:/var/lib/mysql"]
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+  redis:
+    image: redis:7-alpine
+    logging: *bounded-logging
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  backend:
+    build: ./backend
+    logging: *bounded-logging
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      DB_ENGINE: mysql
+      REDIS_URL: redis://redis:6379/1
+      MULTI_APP: "1"
+      SITE_URL: ${SITE_URL:-https://alamut.bar}
+      DRIVER_URL: ${DRIVER_URL:-https://driver.alamut.bar}
+      OWNER_URL: ${OWNER_URL:-https://owner.alamut.bar}
+      INSPECTOR_URL: ${INSPECTOR_URL:-https://inspector.alamut.bar}
+      ADMIN_URL: ${ADMIN_URL:-https://admin.alamut.bar}
+    depends_on:
+      mysql: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    volumes: ["private_media:/app/media", "admin_static:/app/staticfiles"]
+    command: ["sh", "-c", "python manage.py migrate --noinput && python manage.py collectstatic --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --threads 2 --timeout 60 --access-logfile -"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health/')"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+  mail-worker:
+    profiles: ["mail"]
+    build: ./backend
+    logging: *bounded-logging
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      DB_ENGINE: mysql
+    depends_on: {backend: {condition: service_healthy}}
+    command: ["python", "manage.py", "deliver_outbox", "--loop"]
+  web:
+    logging: *bounded-logging
+    build:
+      context: ./frontend
+      args: &web-settings
+        API_INTERNAL_URL: http://backend:8000
+        MULTI_APP: "1"
+        SITE_URL: ${SITE_URL:-https://alamut.bar}
+        DRIVER_URL: ${DRIVER_URL:-https://driver.alamut.bar}
+        OWNER_URL: ${OWNER_URL:-https://owner.alamut.bar}
+        INSPECTOR_URL: ${INSPECTOR_URL:-https://inspector.alamut.bar}
+        ADMIN_URL: ${ADMIN_URL:-https://admin.alamut.bar}
+        APP_URL: ${APP_URL:-}
+        GOOGLE_SITE_VERIFICATION: ${GOOGLE_SITE_VERIFICATION:-}
+        BUSINESS_OPERATOR_NAME: ${BUSINESS_OPERATOR_NAME:-}
+        BUSINESS_CONTACT_EMAIL: ${BUSINESS_CONTACT_EMAIL:-}
+        BUSINESS_RETENTION_NOTICE: ${BUSINESS_RETENTION_NOTICE:-}
+        BUSINESS_TERMS_NOTICE: ${BUSINESS_TERMS_NOTICE:-}
+    environment: *web-settings
+    restart: unless-stopped
+    depends_on: {backend: {condition: service_healthy}}
+    ports: ["127.0.0.1:3001:3000"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health/').then(async r=>{if(!r.ok || (await r.json()).service !== 'alamut-api')process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+  driver:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.panel
+      args: {PANEL: driver, SITE_URL: "${SITE_URL:-https://alamut.bar}"}
+    restart: unless-stopped
+    logging: *bounded-logging
+    depends_on: {backend: {condition: service_healthy}}
+    ports: ["127.0.0.1:3002:80"]
+  owner:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.panel
+      args: {PANEL: owner, SITE_URL: "${SITE_URL:-https://alamut.bar}"}
+    restart: unless-stopped
+    logging: *bounded-logging
+    depends_on: {backend: {condition: service_healthy}}
+    ports: ["127.0.0.1:3003:80"]
+  inspector:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.panel
+      args: {PANEL: inspector, SITE_URL: "${SITE_URL:-https://alamut.bar}"}
+    restart: unless-stopped
+    logging: *bounded-logging
+    depends_on: {backend: {condition: service_healthy}}
+    ports: ["127.0.0.1:3004:80"]
+  admin:
+    image: nginx:stable-alpine
+    restart: unless-stopped
+    logging: *bounded-logging
+    depends_on: {backend: {condition: service_healthy}}
+    ports: ["127.0.0.1:3005:80"]
+    volumes: ["./infra/admin.nginx.conf:/etc/nginx/conf.d/default.conf:ro", "admin_static:/staticfiles:ro"]
+volumes:
+  mysql_data:
+  private_media:
+  admin_static:

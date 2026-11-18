@@ -1,0 +1,15 @@
+[Unit]
+Description=Encrypt the Alamut database and private media on the backup mount
+RequiresMountsFor=/srv/alamut-backups
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/alamut
+EnvironmentFile=/etc/alamut/backup.env
+ExecStartPre=/usr/bin/mountpoint -q /srv/alamut-backups
+ExecStart=/usr/bin/bash /opt/alamut/infra/backup-compose.sh /srv/alamut-backups
+UMask=0077
+PrivateTmp=true
+TimeoutStartSec=45min

@@ -1,0 +1,3839 @@
+openapi: 3.0.3
+info:
+  title: Alamut Logistics API
+  version: 1.0.0
+  description: Role-scoped freight operations. Session authentication with CSRF. All
+    money is integer toman.
+paths:
+  /api/addresses/:
+    get:
+      operationId: addresses_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: یک شماره صفحه‌ در مجموعه نتایج صفحه‌بندی شده.
+        schema:
+          type: integer
+      tags:
+      - addresses
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAddressList'
+          description: ''
+    post:
+      operationId: addresses_create
+      tags:
+      - addresses
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Address'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Address'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Address'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Address'
+          description: ''
+  /api/addresses/{id}/:
+    get:
+      operationId: addresses_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: یک مقداد عدد یکتا که این saved address را شناسایی میکند.
+        required: true
+      tags:
+      - addresses
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Address'
+          description: ''
+    put:
+      operationId: addresses_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: یک مقداد عدد یکتا که این saved address را شناسایی میکند.
+        required: true
+      tags:
+      - addresses
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Address'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Address'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Address'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Address'
+          description: ''
+    patch:
+      operationId: addresses_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: یک مقداد عدد یکتا که این saved address را شناسایی میکند.
+        required: true
+      tags:
+      - addresses
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedAddress'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedAddress'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedAddress'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Address'
+          description: ''
+    delete:
+      operationId: addresses_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: یک مقداد عدد یکتا که این saved address را شناسایی میکند.
+        required: true
+      tags:
+      - addresses
+      security:
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/articles/:
+    get:
+      operationId: articles_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: یک شماره صفحه‌ در مجموعه نتایج صفحه‌بندی شده.
+        schema:
+          type: integer
+      tags:
+      - articles
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedArticleList'
+          description: ''
+  /api/articles/{slug}/:
+    get:
+      operationId: articles_retrieve
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - articles
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Article'
+          description: ''
+  /api/auth/csrf/:
+    get:
+      operationId: auth_csrf_retrieve
+      tags:
+      - auth
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CsrfResponse'
+          description: ''
+  /api/auth/login/:
+    post:
+      operationId: auth_login_create
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+  /api/auth/logout/:
+    post:
+      operationId: auth_logout_create
+      tags:
+      - auth
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetailResponse'
+          description: ''
+  /api/auth/me/:
+    get:
+      operationId: auth_me_retrieve
+      tags:
+      - auth
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+    patch:
+      operationId: auth_me_partial_update
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUser'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedUser'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedUser'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+  /api/auth/password/:
+    post:
+      operationId: auth_password_create
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PasswordRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PasswordRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetailResponse'
+          description: ''
+  /api/auth/recovery/:
+    post:
+      operationId: auth_recovery_create
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecoveryRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RecoveryRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RecoveryRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/auth/recovery/confirm/:
+    post:
+      operationId: auth_recovery_confirm_create
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecoveryConfirmRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RecoveryConfirmRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RecoveryConfirmRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/auth/register/:
+    post:
+      operationId: auth_register_create
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Registration'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Registration'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Registration'
+        required: true
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+  /api/contact/:
+    post:
+      operationId: contact_create
+      tags:
+      - contact
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Contact'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Contact'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Contact'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetailResponse'
+          description: ''
+  /api/control-room/:
+    get:
+      operationId: control_room_retrieve
+      tags:
+      - control-room
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/credentials/{id}/download/:
+    get:
+      operationId: credentials_download_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - credentials
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+          description: ''
+  /api/crm/followups/:
+    get:
+      operationId: crm_followups_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: یک شماره صفحه‌ در مجموعه نتایج صفحه‌بندی شده.
+        schema:
+          type: integer
+      tags:
+      - crm
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedFollowUpList'
+          description: ''
+    post:
+      operationId: crm_followups_create
+      tags:
+      - crm
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FollowUp'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/FollowUp'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FollowUp'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FollowUp'
+          description: ''
+  /api/crm/followups/{id}/:
+    get:
+      operationId: crm_followups_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: یک مقداد عدد یکتا که این follow up را شناسایی میکند.
+        required: true
+      tags:
+      - crm
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FollowUp'
+          description: ''
+    patch:
+      operationId: crm_followups_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: یک مقداد عدد یکتا که این follow up را شناسایی میکند.
+        required: true
+      tags:
+      - crm
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedFollowUp'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedFollowUp'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedFollowUp'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FollowUp'
+          description: ''
+  /api/crm/leads/:
+    get:
+      operationId: crm_leads_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: یک شماره صفحه‌ در مجموعه نتایج صفحه‌بندی شده.
+        schema:
+          type: integer
+      tags:
+      - crm
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedLeadList'
+          description: ''
+    post:
+      operationId: crm_leads_create
+      tags:
+      - crm
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Lead'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Lead'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Lead'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lead'
+          description: ''
+  /api/crm/leads/{id}/:
+    get:
+      operationId: crm_leads_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: یک مقداد عدد یکتا که این lead را شناسایی میکند.
+        required: true
+      tags:
+      - crm
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lead'
+          description: ''
+    patch:
+      operationId: crm_leads_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: یک مقداد عدد یکتا که این lead را شناسایی میکند.
+        required: true
+      tags:
+      - crm
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedLead'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedLead'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedLead'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lead'
+          description: ''
+  /api/crm/leads/{id}/activity/:
+    post:
+      operationId: crm_leads_activity_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: یک مقداد عدد یکتا که این lead را شناسایی میکند.
+        required: true
+      tags:
+      - crm
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Activity'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Activity'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Activity'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Activity'
+          description: ''
+  /api/crm/staff/:
+    get:
+      operationId: crm_staff_retrieve
+      tags:
+      - crm
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/dashboard/:
+    get:
+      operationId: dashboard_retrieve
+      tags:
+      - dashboard
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/documents/{id}/download/:
+    get:
+      operationId: documents_download_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - documents
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+          description: ''
+  /api/drivers/{driver_id}/profile/:
+    get:
+      operationId: drivers_profile_retrieve
+      parameters:
+      - in: path
+        name: driver_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - drivers
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+    patch:
+      operationId: drivers_profile_partial_update
+      parameters:
+      - in: path
+        name: driver_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - drivers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedProfile'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedProfile'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedProfile'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/drivers/{driver_id}/review/:
+    post:
+      operationId: drivers_review_create
+      parameters:
+      - in: path
+        name: driver_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - drivers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/editorial/articles/:
+    get:
+      operationId: editorial_articles_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: یک شماره صفحه‌ در مجموعه نتایج صفحه‌بندی شده.
+        schema:
+          type: integer
+      tags:
+      - editorial
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedArticleList'
+          description: ''
+    post:
+      operationId: editorial_articles_create
+      tags:
+      - editorial
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Article'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Article'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Article'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Article'
+          description: ''
+  /api/editorial/articles/{id}/:
+    get:
+      operationId: editorial_articles_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: یک مقداد عدد یکتا که این article را شناسایی میکند.
+        required: true
+      tags:
+      - editorial
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Article'
+          description: ''
+    patch:
+      operationId: editorial_articles_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: یک مقداد عدد یکتا که این article را شناسایی میکند.
+        required: true
+      tags:
+      - editorial
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedArticle'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedArticle'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedArticle'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Article'
+          description: ''
+  /api/health/:
+    get:
+      operationId: health_retrieve
+      tags:
+      - health
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+          description: ''
+  /api/incidents/:
+    get:
+      operationId: incidents_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: یک شماره صفحه‌ در مجموعه نتایج صفحه‌بندی شده.
+        schema:
+          type: integer
+      tags:
+      - incidents
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedIncidentList'
+          description: ''
+    post:
+      operationId: incidents_create
+      tags:
+      - incidents
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Incident'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Incident'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Incident'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Incident'
+          description: ''
+  /api/incidents/{id}/:
+    get:
+      operationId: incidents_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: یک مقداد عدد یکتا که این incident را شناسایی میکند.
+        required: true
+      tags:
+      - incidents
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Incident'
+          description: ''
+  /api/incidents/{id}/resolve/:
+    post:
+      operationId: incidents_resolve_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: یک مقداد عدد یکتا که این incident را شناسایی میکند.
+        required: true
+      tags:
+      - incidents
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Incident'
+          description: ''
+  /api/invoices/:
+    get:
+      operationId: invoices_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: یک شماره صفحه‌ در مجموعه نتایج صفحه‌بندی شده.
+        schema:
+          type: integer
+      tags:
+      - invoices
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedInvoiceList'
+          description: ''
+  /api/invoices/{id}/:
+    get:
+      operationId: invoices_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: یک مقداد عدد یکتا که این invoice را شناسایی میکند.
+        required: true
+      tags:
+      - invoices
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invoice'
+          description: ''
+  /api/invoices/{id}/payments/:
+    post:
+      operationId: invoices_payments_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - invoices
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Payment'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Payment'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Payment'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payment'
+          description: ''
+  /api/invoices/{id}/settle/:
+    post:
+      operationId: invoices_settle_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: یک مقداد عدد یکتا که این invoice را شناسایی میکند.
+        required: true
+      tags:
+      - invoices
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SettlementRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SettlementRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SettlementRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invoice'
+          description: ''
+  /api/notifications/:
+    get:
+      operationId: notifications_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: یک شماره صفحه‌ در مجموعه نتایج صفحه‌بندی شده.
+        schema:
+          type: integer
+      tags:
+      - notifications
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedNotificationList'
+          description: ''
+  /api/notifications/{id}/:
+    get:
+      operationId: notifications_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: یک مقداد عدد یکتا که این notification را شناسایی میکند.
+        required: true
+      tags:
+      - notifications
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Notification'
+          description: ''
+  /api/notifications/read_all/:
+    post:
+      operationId: notifications_read_all_create
+      tags:
+      - notifications
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetailResponse'
+          description: ''
+  /api/onboarding/:
+    get:
+      operationId: onboarding_retrieve
+      tags:
+      - onboarding
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+    patch:
+      operationId: onboarding_partial_update
+      tags:
+      - onboarding
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedProfile'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedProfile'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedProfile'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/onboarding/documents/:
+    post:
+      operationId: onboarding_documents_create
+      tags:
+      - onboarding
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/onboarding/submit/:
+    post:
+      operationId: onboarding_submit_create
+      tags:
+      - onboarding
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/operations/:
+    get:
+      operationId: operations_retrieve
+      tags:
+      - operations
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/schema/:
+    get:
+      operationId: schema_retrieve
+      description: |-
+        OpenApi3 schema for this API. Format can be selected via content negotiation.
+
+        - YAML: application/vnd.oai.openapi
+        - JSON: application/vnd.oai.openapi+json
+      parameters:
+      - in: query
+        name: format
+        schema:
+          type: string
+          enum:
+          - json
+          - yaml
+      - in: query
+        name: lang
+        schema:
+          type: string
+          enum:
+          - af
+          - ar
+          - ar-dz
+          - ast
+          - az
+          - be
+          - bg
+          - bn
+          - br
+          - bs
+          - ca
+          - ckb
+          - cs
+          - cy
+          - da
+          - de
+          - dsb
+          - el
+          - en
+          - en-au
+          - en-gb
+          - eo
+          - es
+          - es-ar
+          - es-co
+          - es-mx
+          - es-ni
+          - es-ve
+          - et
+          - eu
+          - fa
+          - fi
+          - fr
+          - fy
+          - ga
+          - gd
+          - gl
+          - he
+          - hi
+          - hr
+          - hsb
+          - hu
+          - hy
+          - ia
+          - id
+          - ig
+          - io
+          - is
+          - it
+          - ja
+          - ka
+          - kab
+          - kk
+          - km
+          - kn
+          - ko
+          - ky
+          - lb
+          - lt
+          - lv
+          - mk
+          - ml
+          - mn
+          - mr
+          - ms
+          - my
+          - nb
+          - ne
+          - nl
+          - nn
+          - os
+          - pa
+          - pl
+          - pt
+          - pt-br
+          - ro
+          - ru
+          - sk
+          - sl
+          - sq
+          - sr
+          - sr-latn
+          - sv
+          - sw
+          - ta
+          - te
+          - tg
+          - th
+          - tk
+          - tr
+          - tt
+          - udm
+          - ug
+          - uk
+          - ur
+          - uz
+          - vi
+          - zh-hans
+          - zh-hant
+      tags:
+      - schema
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/vnd.oai.openapi:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/yaml:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/vnd.oai.openapi+json:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/security/mfa/disable/:
+    post:
+      operationId: security_mfa_disable_create
+      tags:
+      - security
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MFARequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MFARequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MFARequest'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/security/mfa/enable/:
+    post:
+      operationId: security_mfa_enable_create
+      tags:
+      - security
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MFARequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MFARequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MFARequest'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/security/mfa/setup/:
+    post:
+      operationId: security_mfa_setup_create
+      tags:
+      - security
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MFARequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MFARequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MFARequest'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/security/status/:
+    get:
+      operationId: security_status_retrieve
+      tags:
+      - security
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/shipments/:
+    get:
+      operationId: shipments_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: یک شماره صفحه‌ در مجموعه نتایج صفحه‌بندی شده.
+        schema:
+          type: integer
+      tags:
+      - shipments
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedShipmentList'
+          description: ''
+    post:
+      operationId: shipments_create
+      tags:
+      - shipments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Shipment'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Shipment'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Shipment'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Shipment'
+          description: ''
+  /api/shipments/{id}/:
+    get:
+      operationId: shipments_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: یک مقداد عدد یکتا که این shipment را شناسایی میکند.
+        required: true
+      tags:
+      - shipments
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Shipment'
+          description: ''
+    patch:
+      operationId: shipments_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: یک مقداد عدد یکتا که این shipment را شناسایی میکند.
+        required: true
+      tags:
+      - shipments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedShipment'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedShipment'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedShipment'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Shipment'
+          description: ''
+  /api/shipments/{id}/assign/:
+    post:
+      operationId: shipments_assign_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: یک مقداد عدد یکتا که این shipment را شناسایی میکند.
+        required: true
+      tags:
+      - shipments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AssignRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AssignRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Shipment'
+          description: ''
+  /api/shipments/{id}/documents/:
+    post:
+      operationId: shipments_documents_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: یک مقداد عدد یکتا که این shipment را شناسایی میکند.
+        required: true
+      tags:
+      - shipments
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UploadRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+          description: ''
+  /api/shipments/{id}/inspect/:
+    post:
+      operationId: shipments_inspect_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: یک مقداد عدد یکتا که این shipment را شناسایی میکند.
+        required: true
+      tags:
+      - shipments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Inspection'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Inspection'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Inspection'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Inspection'
+          description: ''
+  /api/shipments/{id}/location/:
+    post:
+      operationId: shipments_location_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: یک مقداد عدد یکتا که این shipment را شناسایی میکند.
+        required: true
+      tags:
+      - shipments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Location'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Location'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Location'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Location'
+          description: ''
+  /api/shipments/{id}/offer/:
+    post:
+      operationId: shipments_offer_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: یک مقداد عدد یکتا که این shipment را شناسایی میکند.
+        required: true
+      tags:
+      - shipments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Offer'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Offer'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Offer'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Offer'
+          description: ''
+  /api/shipments/{id}/transition/:
+    post:
+      operationId: shipments_transition_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: یک مقداد عدد یکتا که این shipment را شناسایی میکند.
+        required: true
+      tags:
+      - shipments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransitionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TransitionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TransitionRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Shipment'
+          description: ''
+  /api/shipments/export/:
+    get:
+      operationId: shipments_export_retrieve
+      tags:
+      - shipments
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            text/csv:
+              schema:
+                type: string
+          description: ''
+  /api/team/:
+    get:
+      operationId: team_list
+      tags:
+      - team
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+          description: ''
+  /api/team/{id}/verify/:
+    post:
+      operationId: team_verify_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - team
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/VerifyRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/VerifyRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+  /api/tickets/:
+    get:
+      operationId: tickets_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: یک شماره صفحه‌ در مجموعه نتایج صفحه‌بندی شده.
+        schema:
+          type: integer
+      tags:
+      - tickets
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTicketList'
+          description: ''
+    post:
+      operationId: tickets_create
+      tags:
+      - tickets
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Ticket'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Ticket'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Ticket'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ticket'
+          description: ''
+  /api/tickets/{id}/:
+    get:
+      operationId: tickets_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: یک مقداد عدد یکتا که این ticket را شناسایی میکند.
+        required: true
+      tags:
+      - tickets
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ticket'
+          description: ''
+  /api/tickets/{id}/close/:
+    post:
+      operationId: tickets_close_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: یک مقداد عدد یکتا که این ticket را شناسایی میکند.
+        required: true
+      tags:
+      - tickets
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ticket'
+          description: ''
+  /api/tickets/{id}/reply/:
+    post:
+      operationId: tickets_reply_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: یک مقداد عدد یکتا که این ticket را شناسایی میکند.
+        required: true
+      tags:
+      - tickets
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Message'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Message'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Message'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ticket'
+          description: ''
+  /api/tracking/:
+    get:
+      operationId: tracking_retrieve
+      parameters:
+      - in: query
+        name: code
+        schema:
+          type: string
+        required: true
+      tags:
+      - tracking
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackingResponse'
+          description: ''
+  /api/vehicle/:
+    get:
+      operationId: vehicle_retrieve
+      tags:
+      - vehicle
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vehicle'
+          description: ''
+    put:
+      operationId: vehicle_update
+      tags:
+      - vehicle
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Vehicle'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Vehicle'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Vehicle'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vehicle'
+          description: ''
+components:
+  schemas:
+    Activity:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        kind:
+          $ref: '#/components/schemas/ActivityKindEnum'
+        body:
+          type: string
+          maxLength: 3000
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        actor_name:
+          type: string
+          readOnly: true
+      required:
+      - actor_name
+      - body
+      - created_at
+      - id
+    ActivityKindEnum:
+      enum:
+      - call
+      - note
+      - meeting
+      - stage
+      type: string
+      description: |-
+        * `call` - تماس
+        * `note` - یادداشت
+        * `meeting` - جلسه
+        * `stage` - تغییر مرحله
+    Address:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        label:
+          type: string
+          maxLength: 100
+        city:
+          type: string
+          maxLength: 80
+        address:
+          type: string
+          maxLength: 1000
+        recipient_name:
+          type: string
+          maxLength: 100
+        phone:
+          type: string
+          pattern: ^09\d{9}$
+          maxLength: 11
+      required:
+      - address
+      - city
+      - id
+      - label
+      - phone
+      - recipient_name
+    Article:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        body:
+          type: string
+          maxLength: 50000
+        title:
+          type: string
+          maxLength: 180
+        slug:
+          type: string
+          maxLength: 180
+          pattern: ^[-a-zA-Z0-9_]+$
+        summary:
+          type: string
+          maxLength: 350
+        category:
+          type: string
+          maxLength: 60
+        status:
+          $ref: '#/components/schemas/ArticleStatusEnum'
+        published_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - body
+      - created_at
+      - id
+      - slug
+      - summary
+      - title
+      - updated_at
+    ArticleStatusEnum:
+      enum:
+      - draft
+      - published
+      type: string
+      description: |-
+        * `draft` - پیش‌نویس
+        * `published` - منتشرشده
+    AssignRequest:
+      type: object
+      properties:
+        driver:
+          type: integer
+          minimum: 1
+        inspector:
+          type: integer
+          minimum: 1
+      required:
+      - driver
+      - inspector
+    Contact:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        phone:
+          type: string
+          pattern: ^09\d{9}$
+          maxLength: 11
+        message:
+          type: string
+          maxLength: 2000
+      required:
+      - message
+      - name
+      - phone
+    CsrfResponse:
+      type: object
+      properties:
+        csrfToken:
+          type: string
+        demo_enabled:
+          type: boolean
+      required:
+      - csrfToken
+      - demo_enabled
+    DetailResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    Document:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 180
+        url:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - name
+      - url
+    Event:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        status:
+          type: string
+          maxLength: 20
+        note:
+          type: string
+          maxLength: 1000
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        actor_name:
+          type: string
+          readOnly: true
+      required:
+      - actor_name
+      - created_at
+      - id
+      - status
+    FollowUp:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        assigned_to:
+          type: integer
+        lead_name:
+          type: string
+          readOnly: true
+          default: ''
+        title:
+          type: string
+          maxLength: 180
+        due_at:
+          type: string
+          format: date-time
+        done:
+          type: boolean
+        completed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        lead:
+          type: integer
+          nullable: true
+        shipment:
+          type: integer
+          nullable: true
+        created_by:
+          type: integer
+          readOnly: true
+      required:
+      - assigned_to
+      - completed_at
+      - created_at
+      - created_by
+      - due_at
+      - id
+      - lead_name
+      - title
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        service:
+          type: string
+        database:
+          type: string
+      required:
+      - database
+      - service
+      - status
+    Incident:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        code:
+          type: string
+          readOnly: true
+        kind:
+          $ref: '#/components/schemas/IncidentKindEnum'
+        severity:
+          $ref: '#/components/schemas/SeverityEnum'
+        description:
+          type: string
+          maxLength: 3000
+        status:
+          allOf:
+          - $ref: '#/components/schemas/IncidentStatusEnum'
+          readOnly: true
+        resolution:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        shipment:
+          type: integer
+        reporter:
+          type: integer
+          readOnly: true
+        resolved_by:
+          type: integer
+          readOnly: true
+          nullable: true
+      required:
+      - code
+      - created_at
+      - description
+      - id
+      - kind
+      - reporter
+      - resolution
+      - resolved_by
+      - shipment
+      - status
+      - updated_at
+    IncidentKindEnum:
+      enum:
+      - delay
+      - breakdown
+      - damage
+      - shortage
+      - other
+      type: string
+      description: |-
+        * `delay` - تأخیر
+        * `breakdown` - خرابی خودرو
+        * `damage` - آسیب بار
+        * `shortage` - کسری بار
+        * `other` - سایر
+    IncidentStatusEnum:
+      enum:
+      - open
+      - investigating
+      - resolved
+      type: string
+      description: |-
+        * `open` - باز
+        * `investigating` - در دست بررسی
+        * `resolved` - رفع شده
+    Inspection:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        stage:
+          $ref: '#/components/schemas/InspectionStageEnum'
+        packaging_ok:
+          type: boolean
+        weight_ok:
+          type: boolean
+        vehicle_ok:
+          type: boolean
+        seal_number:
+          type: string
+          maxLength: 60
+        notes:
+          type: string
+          maxLength: 2000
+        passed:
+          type: boolean
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        inspector_name:
+          type: string
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - inspector_name
+      - packaging_ok
+      - passed
+      - seal_number
+      - stage
+      - vehicle_ok
+      - weight_ok
+    InspectionStageEnum:
+      enum:
+      - loading
+      - delivery
+      type: string
+      description: |-
+        * `loading` - بارگیری
+        * `delivery` - تحویل
+    Invoice:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        shipment:
+          type: integer
+        code:
+          type: string
+          readOnly: true
+        route:
+          type: string
+          readOnly: true
+        amount:
+          type: integer
+          maximum: 18446744073709551615
+          minimum: 0
+          format: int64
+        status:
+          $ref: '#/components/schemas/InvoiceStatusEnum'
+        reference:
+          type: string
+          maxLength: 100
+        paid_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        paid_total:
+          type: integer
+          readOnly: true
+        balance:
+          type: integer
+          readOnly: true
+        payments:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+      required:
+      - amount
+      - balance
+      - code
+      - created_at
+      - id
+      - paid_total
+      - payments
+      - route
+      - shipment
+    InvoiceStatusEnum:
+      enum:
+      - unpaid
+      - paid
+      type: string
+      description: |-
+        * `unpaid` - پرداخت نشده
+        * `paid` - تسویه شده
+    Lead:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        activities:
+          type: array
+          items:
+            $ref: '#/components/schemas/Activity'
+          readOnly: true
+        assigned_name:
+          type: string
+          readOnly: true
+          default: ''
+        assigned_to:
+          type: integer
+          nullable: true
+        name:
+          type: string
+          maxLength: 120
+        company:
+          type: string
+          maxLength: 120
+        phone:
+          type: string
+          pattern: ^09\d{9}$
+          maxLength: 11
+        stage:
+          $ref: '#/components/schemas/LeadStageEnum'
+        source:
+          type: string
+          maxLength: 40
+        description:
+          type: string
+          maxLength: 3000
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        contact_request:
+          type: integer
+          readOnly: true
+          nullable: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+      required:
+      - activities
+      - assigned_name
+      - contact_request
+      - created_at
+      - created_by
+      - id
+      - name
+      - phone
+      - updated_at
+    LeadStageEnum:
+      enum:
+      - new
+      - qualified
+      - proposal
+      - won
+      - lost
+      type: string
+      description: |-
+        * `new` - جدید
+        * `qualified` - نیازسنجی
+        * `proposal` - پیشنهاد ارسال شده
+        * `won` - تبدیل به مشتری
+        * `lost` - از دست رفته
+    Location:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        latitude:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+        longitude:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+        accuracy:
+          type: integer
+          maximum: 100000
+          minimum: 0
+        observed_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - latitude
+      - longitude
+    LoginRequest:
+      type: object
+      properties:
+        code:
+          type: string
+          maxLength: 6
+        username:
+          type: string
+        password:
+          type: string
+          writeOnly: true
+        role:
+          $ref: '#/components/schemas/UserRoleEnum'
+      required:
+      - password
+      - username
+    MFARequest:
+      type: object
+      properties:
+        password:
+          type: string
+        code:
+          type: string
+          pattern: ^\d{6}$
+    Message:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        author_name:
+          type: string
+          readOnly: true
+        role:
+          type: string
+          readOnly: true
+        body:
+          type: string
+          maxLength: 4000
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - author_name
+      - body
+      - created_at
+      - id
+      - role
+    Notification:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          maxLength: 180
+        shipment:
+          type: integer
+          nullable: true
+        read:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - title
+    Offer:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        driver:
+          type: integer
+          readOnly: true
+        driver_name:
+          type: string
+          readOnly: true
+        amount:
+          type: integer
+          maximum: 18446744073709551615
+          minimum: 1000
+          format: int64
+        note:
+          type: string
+          maxLength: 500
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - amount
+      - created_at
+      - driver
+      - driver_name
+      - id
+    PaginatedAddressList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Address'
+    PaginatedArticleList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Article'
+    PaginatedFollowUpList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/FollowUp'
+    PaginatedIncidentList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Incident'
+    PaginatedInvoiceList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Invoice'
+    PaginatedLeadList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Lead'
+    PaginatedNotificationList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Notification'
+    PaginatedShipmentList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Shipment'
+    PaginatedTicketList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Ticket'
+    PasswordRequest:
+      type: object
+      properties:
+        old_password:
+          type: string
+          writeOnly: true
+        new_password:
+          type: string
+          writeOnly: true
+      required:
+      - new_password
+      - old_password
+    PatchedAddress:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        label:
+          type: string
+          maxLength: 100
+        city:
+          type: string
+          maxLength: 80
+        address:
+          type: string
+          maxLength: 1000
+        recipient_name:
+          type: string
+          maxLength: 100
+        phone:
+          type: string
+          pattern: ^09\d{9}$
+          maxLength: 11
+    PatchedArticle:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        body:
+          type: string
+          maxLength: 50000
+        title:
+          type: string
+          maxLength: 180
+        slug:
+          type: string
+          maxLength: 180
+          pattern: ^[-a-zA-Z0-9_]+$
+        summary:
+          type: string
+          maxLength: 350
+        category:
+          type: string
+          maxLength: 60
+        status:
+          $ref: '#/components/schemas/ArticleStatusEnum'
+        published_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedFollowUp:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        assigned_to:
+          type: integer
+        lead_name:
+          type: string
+          readOnly: true
+          default: ''
+        title:
+          type: string
+          maxLength: 180
+        due_at:
+          type: string
+          format: date-time
+        done:
+          type: boolean
+        completed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        lead:
+          type: integer
+          nullable: true
+        shipment:
+          type: integer
+          nullable: true
+        created_by:
+          type: integer
+          readOnly: true
+    PatchedLead:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        activities:
+          type: array
+          items:
+            $ref: '#/components/schemas/Activity'
+          readOnly: true
+        assigned_name:
+          type: string
+          readOnly: true
+          default: ''
+        assigned_to:
+          type: integer
+          nullable: true
+        name:
+          type: string
+          maxLength: 120
+        company:
+          type: string
+          maxLength: 120
+        phone:
+          type: string
+          pattern: ^09\d{9}$
+          maxLength: 11
+        stage:
+          $ref: '#/components/schemas/LeadStageEnum'
+        source:
+          type: string
+          maxLength: 40
+        description:
+          type: string
+          maxLength: 3000
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        contact_request:
+          type: integer
+          readOnly: true
+          nullable: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+    PatchedProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        national_id:
+          type: string
+          maxLength: 10
+        birth_date:
+          type: string
+          format: date
+          nullable: true
+        license_expiry:
+          type: string
+          format: date
+          nullable: true
+        insurance_expiry:
+          type: string
+          format: date
+          nullable: true
+        emergency_name:
+          type: string
+          maxLength: 100
+        emergency_phone:
+          type: string
+          pattern: ^09\d{9}$
+          maxLength: 11
+        address:
+          type: string
+          maxLength: 1000
+        status:
+          allOf:
+          - $ref: '#/components/schemas/ProfileStatusEnum'
+          readOnly: true
+        review_note:
+          type: string
+          readOnly: true
+        submitted_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        reviewed_by:
+          type: integer
+          readOnly: true
+          nullable: true
+    PatchedShipment:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        owner_name:
+          type: string
+          readOnly: true
+        driver_name:
+          type: string
+          readOnly: true
+          default: ''
+        inspector_name:
+          type: string
+          readOnly: true
+          default: ''
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/Event'
+          readOnly: true
+        offers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Offer'
+          readOnly: true
+        inspections:
+          type: array
+          items:
+            $ref: '#/components/schemas/Inspection'
+          readOnly: true
+        documents:
+          type: array
+          items:
+            $ref: '#/components/schemas/Document'
+          readOnly: true
+        locations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Location'
+          readOnly: true
+        code:
+          type: string
+          readOnly: true
+        title:
+          type: string
+          maxLength: 140
+        origin:
+          type: string
+          maxLength: 80
+        destination:
+          type: string
+          maxLength: 80
+        origin_address:
+          type: string
+          maxLength: 1000
+        destination_address:
+          type: string
+          maxLength: 1000
+        recipient_name:
+          type: string
+          maxLength: 100
+        recipient_phone:
+          type: string
+          pattern: ^09\d{9}$
+          maxLength: 11
+        weight:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,2})?$
+        vehicle_type:
+          $ref: '#/components/schemas/VehicleKindEnum'
+        cargo_value:
+          type: integer
+          maximum: 18446744073709551615
+          minimum: 0
+          format: int64
+        price:
+          type: integer
+          maximum: 18446744073709551615
+          minimum: 1000
+          format: int64
+        pickup_date:
+          type: string
+          format: date
+        notes:
+          type: string
+          maxLength: 2000
+        status:
+          allOf:
+          - $ref: '#/components/schemas/ShipmentStatusEnum'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        owner:
+          type: integer
+          readOnly: true
+        driver:
+          type: integer
+          readOnly: true
+          nullable: true
+        inspector:
+          type: integer
+          readOnly: true
+          nullable: true
+    PatchedUser:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          readOnly: true
+          title: نام کاربری
+          description: الزامی. 150 کاراکتر یا کمتر. فقط شامل حروف، اعداد، و علامات
+            @/./+/-/_
+        name:
+          type: string
+          readOnly: true
+        first_name:
+          type: string
+          title: نام
+          maxLength: 150
+        last_name:
+          type: string
+          title: نام خانوادگی
+          maxLength: 150
+        phone:
+          type: string
+          pattern: ^09\d{9}$
+          maxLength: 11
+        email:
+          type: string
+          format: email
+          title: آدرس ایمیل
+          maxLength: 254
+        company:
+          type: string
+          maxLength: 120
+        role:
+          allOf:
+          - $ref: '#/components/schemas/UserRoleEnum'
+          readOnly: true
+        verified:
+          type: boolean
+          readOnly: true
+        driver_market_enabled:
+          type: boolean
+          readOnly: true
+        capabilities:
+          readOnly: true
+        vehicle:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+    Payment:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        amount:
+          type: integer
+          maximum: 18446744073709551615
+          minimum: 1
+          format: int64
+        reference:
+          type: string
+          maxLength: 100
+          minLength: 5
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - amount
+      - created_at
+      - id
+      - reference
+    PriorityEnum:
+      enum:
+      - normal
+      - urgent
+      type: string
+      description: |-
+        * `normal` - عادی
+        * `urgent` - فوری
+    ProfileStatusEnum:
+      enum:
+      - draft
+      - submitted
+      - approved
+      - rejected
+      type: string
+      description: |-
+        * `draft` - پیش‌نویس
+        * `submitted` - در انتظار بررسی
+        * `approved` - تأیید شده
+        * `rejected` - نیازمند اصلاح
+    RecoveryConfirmRequest:
+      type: object
+      properties:
+        uid:
+          type: string
+        token:
+          type: string
+        new_password:
+          type: string
+          writeOnly: true
+      required:
+      - new_password
+      - token
+      - uid
+    RecoveryRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+      required:
+      - email
+    Registration:
+      type: object
+      properties:
+        username:
+          type: string
+          title: نام کاربری
+          description: الزامی. 150 کاراکتر یا کمتر. فقط شامل حروف، اعداد، و علامات
+            @/./+/-/_
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        password:
+          type: string
+          writeOnly: true
+        first_name:
+          type: string
+          title: نام
+          maxLength: 150
+        last_name:
+          type: string
+          title: نام خانوادگی
+          maxLength: 150
+        phone:
+          type: string
+          pattern: ^09\d{9}$
+          maxLength: 11
+        email:
+          type: string
+          format: email
+          title: آدرس ایمیل
+          maxLength: 254
+        role:
+          $ref: '#/components/schemas/RegistrationRoleEnum'
+        company:
+          type: string
+          maxLength: 120
+      required:
+      - password
+      - phone
+      - role
+      - username
+    RegistrationRoleEnum:
+      enum:
+      - owner
+      - driver
+      type: string
+      description: |-
+        * `owner` - صاحب بار
+        * `driver` - راننده
+    SettlementRequest:
+      type: object
+      properties:
+        reference:
+          type: string
+          maxLength: 100
+          minLength: 5
+      required:
+      - reference
+    SeverityEnum:
+      enum:
+      - normal
+      - critical
+      type: string
+      description: |-
+        * `normal` - عادی
+        * `critical` - بحرانی
+    Shipment:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        owner_name:
+          type: string
+          readOnly: true
+        driver_name:
+          type: string
+          readOnly: true
+          default: ''
+        inspector_name:
+          type: string
+          readOnly: true
+          default: ''
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/Event'
+          readOnly: true
+        offers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Offer'
+          readOnly: true
+        inspections:
+          type: array
+          items:
+            $ref: '#/components/schemas/Inspection'
+          readOnly: true
+        documents:
+          type: array
+          items:
+            $ref: '#/components/schemas/Document'
+          readOnly: true
+        locations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Location'
+          readOnly: true
+        code:
+          type: string
+          readOnly: true
+        title:
+          type: string
+          maxLength: 140
+        origin:
+          type: string
+          maxLength: 80
+        destination:
+          type: string
+          maxLength: 80
+        origin_address:
+          type: string
+          maxLength: 1000
+        destination_address:
+          type: string
+          maxLength: 1000
+        recipient_name:
+          type: string
+          maxLength: 100
+        recipient_phone:
+          type: string
+          pattern: ^09\d{9}$
+          maxLength: 11
+        weight:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,2})?$
+        vehicle_type:
+          $ref: '#/components/schemas/VehicleKindEnum'
+        cargo_value:
+          type: integer
+          maximum: 18446744073709551615
+          minimum: 0
+          format: int64
+        price:
+          type: integer
+          maximum: 18446744073709551615
+          minimum: 1000
+          format: int64
+        pickup_date:
+          type: string
+          format: date
+        notes:
+          type: string
+          maxLength: 2000
+        status:
+          allOf:
+          - $ref: '#/components/schemas/ShipmentStatusEnum'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        owner:
+          type: integer
+          readOnly: true
+        driver:
+          type: integer
+          readOnly: true
+          nullable: true
+        inspector:
+          type: integer
+          readOnly: true
+          nullable: true
+      required:
+      - code
+      - created_at
+      - destination
+      - destination_address
+      - documents
+      - driver
+      - driver_name
+      - events
+      - id
+      - inspections
+      - inspector
+      - inspector_name
+      - locations
+      - offers
+      - origin
+      - origin_address
+      - owner
+      - owner_name
+      - pickup_date
+      - price
+      - recipient_name
+      - recipient_phone
+      - status
+      - title
+      - updated_at
+      - vehicle_type
+      - weight
+    ShipmentStatusEnum:
+      enum:
+      - pending
+      - approved
+      - assigned
+      - loading
+      - in_transit
+      - delivered
+      - completed
+      - cancelled
+      type: string
+      description: |-
+        * `pending` - در انتظار بررسی
+        * `approved` - آماده تخصیص
+        * `assigned` - راننده تخصیص یافت
+        * `loading` - در حال بارگیری
+        * `in_transit` - در مسیر
+        * `delivered` - تحویل شده
+        * `completed` - تکمیل شده
+        * `cancelled` - لغو شده
+    Ticket:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        subject:
+          type: string
+          maxLength: 140
+        priority:
+          $ref: '#/components/schemas/PriorityEnum'
+        status:
+          allOf:
+          - $ref: '#/components/schemas/TicketStatusEnum'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/Message'
+          readOnly: true
+        user_name:
+          type: string
+          readOnly: true
+        body:
+          type: string
+          writeOnly: true
+          maxLength: 4000
+      required:
+      - body
+      - created_at
+      - id
+      - messages
+      - status
+      - subject
+      - updated_at
+      - user_name
+    TicketStatusEnum:
+      enum:
+      - open
+      - closed
+      type: string
+      description: |-
+        * `open` - باز
+        * `closed` - بسته
+    TrackingResponse:
+      type: object
+      properties:
+        code:
+          type: string
+        origin:
+          type: string
+        destination:
+          type: string
+        status:
+          type: string
+        updated_at:
+          type: string
+          format: date-time
+      required:
+      - code
+      - destination
+      - origin
+      - status
+      - updated_at
+    TransitionRequest:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/TransitionRequestStatusEnum'
+        note:
+          type: string
+          maxLength: 1000
+      required:
+      - status
+    TransitionRequestStatusEnum:
+      enum:
+      - approved
+      - loading
+      - in_transit
+      - delivered
+      - completed
+      - cancelled
+      type: string
+      description: |-
+        * `approved` - approved
+        * `loading` - loading
+        * `in_transit` - in_transit
+        * `delivered` - delivered
+        * `completed` - completed
+        * `cancelled` - cancelled
+    UploadRequest:
+      type: object
+      properties:
+        file:
+          type: string
+          format: uri
+      required:
+      - file
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          readOnly: true
+          title: نام کاربری
+          description: الزامی. 150 کاراکتر یا کمتر. فقط شامل حروف، اعداد، و علامات
+            @/./+/-/_
+        name:
+          type: string
+          readOnly: true
+        first_name:
+          type: string
+          title: نام
+          maxLength: 150
+        last_name:
+          type: string
+          title: نام خانوادگی
+          maxLength: 150
+        phone:
+          type: string
+          pattern: ^09\d{9}$
+          maxLength: 11
+        email:
+          type: string
+          format: email
+          title: آدرس ایمیل
+          maxLength: 254
+        company:
+          type: string
+          maxLength: 120
+        role:
+          allOf:
+          - $ref: '#/components/schemas/UserRoleEnum'
+          readOnly: true
+        verified:
+          type: boolean
+          readOnly: true
+        driver_market_enabled:
+          type: boolean
+          readOnly: true
+        capabilities:
+          readOnly: true
+        vehicle:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+      required:
+      - capabilities
+      - driver_market_enabled
+      - id
+      - name
+      - phone
+      - role
+      - username
+      - vehicle
+      - verified
+    UserRoleEnum:
+      enum:
+      - owner
+      - driver
+      - operator
+      - inspector
+      type: string
+      description: |-
+        * `owner` - owner
+        * `driver` - driver
+        * `operator` - operator
+        * `inspector` - inspector
+    Vehicle:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        kind:
+          $ref: '#/components/schemas/VehicleKindEnum'
+        plate:
+          type: string
+          maxLength: 25
+        capacity:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,4}(?:\.\d{0,2})?$
+        license_number:
+          type: string
+          maxLength: 40
+        available:
+          type: boolean
+      required:
+      - capacity
+      - id
+      - kind
+      - license_number
+      - plate
+    VehicleKindEnum:
+      enum:
+      - trailer
+      - truck
+      - pickup
+      - refrigerated
+      type: string
+      description: |-
+        * `trailer` - تریلی
+        * `truck` - کامیون
+        * `pickup` - وانت
+        * `refrigerated` - یخچال‌دار
+    VerifyRequest:
+      type: object
+      properties:
+        verified:
+          type: boolean
+      required:
+      - verified
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: alamut_session

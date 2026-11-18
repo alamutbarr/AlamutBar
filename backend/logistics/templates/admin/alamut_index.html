@@ -1,0 +1,10 @@
+{% extends "admin/index.html" %}
+{% block content %}
+<nav class="alamut-shortcuts" aria-label="دسترسی سریع">
+    {% if user.role == 'operator' %}<a class="alamut-card" href="{% url 'admin:alamut_operations' %}"><strong>عملیات حمل</strong><span>بارها، پرداخت‌ها و پیگیری‌ها</span></a>{% endif %}
+    {% if user.is_superuser or 'verification' in user.capabilities %}<a class="alamut-card" href="{% url 'admin:logistics_driverprofile_changelist' %}?status__exact=submitted"><strong>پرونده‌های در انتظار بررسی</strong><span>مشخصات و مدارک رانندگان</span></a>{% endif %}
+    {% if user.is_superuser or 'monitoring' in user.capabilities %}<a class="alamut-card" href="{% url 'admin:alamut_driver_map' %}"><strong>نقشهٔ رانندگان در مسیر</strong><span>آخرین موقعیت سفرهای فعال</span></a>{% endif %}
+    <a class="alamut-card" href="{% url 'admin:alamut_security' %}"><strong>امنیت حساب</strong><span>تنظیم ورود دومرحله‌ای</span></a>
+</nav>
+{{ block.super }}
+{% endblock %}

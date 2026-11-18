@@ -1,0 +1,35 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+<p><a href="{% url 'admin:index' %}">بازگشت به مدیریت</a></p>
+{% if enabled %}
+  <p>ورود دومرحله‌ای فعال است.</p>
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="disable">
+    <p><label>رمز عبور فعلی <input name="password" type="password" autocomplete="current-password" required></label></p>
+    <p><label>کد برنامهٔ رمزساز <input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" required></label></p>
+    <input type="submit" value="غیرفعال‌سازی ورود دومرحله‌ای">
+  </form>
+{% else %}
+  {% if setup %}
+    <p>کلید را در برنامهٔ رمزساز به‌صورت دستی اضافه کنید و کد ۶ رقمی برنامه را وارد کنید.</p>
+    <p><code dir="ltr">{{ setup.secret }}</code></p>
+  {% else %}
+    <p>برای دریافت کلید فعال‌سازی، رمز عبور فعلی را وارد کنید.</p>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="setup">
+      <p><label>رمز عبور فعلی <input name="password" type="password" autocomplete="current-password" required></label></p>
+      <input type="submit" value="دریافت کلید">
+    </form>
+  {% endif %}
+  {% if pending %}
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="enable">
+      <p><label>کد برنامهٔ رمزساز <input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" required></label></p>
+      <input type="submit" value="فعال‌سازی ورود دومرحله‌ای">
+    </form>
+  {% endif %}
+{% endif %}
+{% endblock %}

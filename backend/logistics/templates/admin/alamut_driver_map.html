@@ -1,0 +1,8 @@
+{% extends "admin/base_site.html" %}
+{% block extrastyle %}{{ block.super }}{% include "admin/alamut_map_assets.html" %}{% endblock %}
+{% block content %}
+<p>آخرین موقعیت دریافتی هر سفر در مسیر نمایش داده می‌شود. موقعیت‌های قدیمی با رنگ کهربایی مشخص‌اند. نقشه هر ۳۰ ثانیه به‌روز می‌شود.</p>
+<p><a href="{% url 'admin:logistics_locationping_changelist' %}">مشاهدهٔ تاریخچهٔ موقعیت‌ها</a></p>
+{% url 'admin:alamut_driver_map_positions' as feed %}
+{% include "admin/alamut_map_panel.html" with map_feed=feed %}
+{% endblock %}

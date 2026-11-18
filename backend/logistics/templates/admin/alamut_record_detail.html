@@ -1,0 +1,5 @@
+{% extends "admin/change_form.html" %}
+{% block object-tools-items %}
+    {% if operation_url %}<li><a href="{{ operation_url }}">عملیات این رکورد</a></li>{% endif %}
+    {{ block.super }}
+{% endblock %}

@@ -1,0 +1,7 @@
+<section class="alamut-card alamut-map-card" data-driver-map{% if map_feed %} data-feed="{{ map_feed }}"{% endif %}>
+    <div class="alamut-map-canvas" role="region" aria-label="نقشهٔ آخرین موقعیت راننده"></div>
+    <p class="alamut-help alamut-map-message" role="status"></p>
+    <ul class="alamut-map-positions"></ul>
+    {{ map_points|json_script:"alamut-map-data" }}
+    <noscript>برای نمایش نقشه، جاوااسکریپت مرورگر را فعال کنید.</noscript>
+</section>
