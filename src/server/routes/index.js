@@ -15,6 +15,7 @@ router.use('/driver', require('./driverPanel'));
 router.use('/location', require('./driverLocation'));
 router.use('/chat', require('./chatRoutes'));
 router.use('/admin', require('../admin/routes'));
+router.use('/', require('./publicDesk'));
 router.use('/v1/driver', require('../mobile/driverApi'));
 router.use('/v1/inspector', require('../inspector/routes'));
 

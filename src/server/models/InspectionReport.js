@@ -16,6 +16,11 @@ const InspectionReport = sequelize.define('InspectionReport', {
   discrepancies: { type: DataTypes.JSON, allowNull: true },
   decision: { type: DataTypes.STRING(20), allowNull: false, defaultValue: 'PENDING' },
   decisionNote: { type: DataTypes.TEXT, allowNull: true },
+  stage: { type: DataTypes.STRING(12), allowNull: false, defaultValue: 'loading' },
+  packagingOk: { type: DataTypes.BOOLEAN, allowNull: true },
+  weightOk: { type: DataTypes.BOOLEAN, allowNull: true },
+  vehicleOk: { type: DataTypes.BOOLEAN, allowNull: true },
+  sealNumber: { type: DataTypes.STRING(60), allowNull: true },
 }, { tableName: 'inspection_reports', underscored: true });
 
 module.exports = InspectionReport;

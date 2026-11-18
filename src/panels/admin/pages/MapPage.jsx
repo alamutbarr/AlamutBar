@@ -7,8 +7,10 @@ import { ALERT_LABELS, when } from '../format';
 import { Badge, Page, SkeletonRows } from '../components/ui';
 
 export default function MapPage() {
-  const [vehicles, setVehicles] = useState(null);
-  const load = () => api('/map').then(setVehicles);
+  const [snapshot, setSnapshot] = useState(null);
+  const vehicles = snapshot?.vehicles || null;
+  const missing = snapshot?.missing || [];
+  const load = () => api('/map').then((data) => setSnapshot(Array.isArray(data) ? { vehicles: data, missing: [] } : data));
   useEffect(() => {
     load().catch((error) => toast.error(error.message));
     const token = getAccess();
@@ -18,13 +20,11 @@ export default function MapPage() {
     socket.onmessage = (event) => {
       const payload = JSON.parse(event.data);
       if (payload.type === 'location') {
-        setVehicles((current) => {
-          const list = current || [];
+        setSnapshot((current) => {
+          const list = current?.vehicles || [];
           const index = list.findIndex((item) => item.id === payload.vehicle.id);
-          if (index === -1) return [...list, payload.vehicle];
-          const next = [...list];
-          next[index] = { ...next[index], ...payload.vehicle };
-          return next;
+          const next = index === -1 ? [...list, payload.vehicle] : list.map((item, i) => (i === index ? { ...item, ...payload.vehicle } : item));
+          return { ...(current || { missing: [] }), vehicles: next };
         });
       }
     };
@@ -54,10 +54,18 @@ export default function MapPage() {
               <strong>{item.fullName}</strong>
               <div className="muted">{item.plate} — {item.shipment?.origin} به {item.shipment?.destination}</div>
               <div>آخرین موقعیت: {when(item.lastLocationAt)}</div>
-              <Badge tone={item.tone === 'crit' ? 'crit' : item.tone === 'warn' ? 'warn' : 'progress'}>{item.isGpsActive ? 'زنده' : 'قطع GPS'}</Badge>
+              <Badge tone={item.tone === 'crit' ? 'crit' : item.tone === 'warn' ? 'warn' : 'progress'}>{item.stale ? 'قدیمی؛ نیازمند پیگیری' : item.isGpsActive ? 'زنده' : 'قطع GPS'}</Badge>
             </article>
           ))}
-          {vehicles.length === 0 && <p className="muted">خودروی فعالی روی نقشه نیست.</p>}
+          {missing.length > 0 && <h2>در مسیر، بدون موقعیت</h2>}
+          {missing.map((item) => (
+            <article key={item.id} className="card" style={{ padding: 12 }}>
+              <strong>{item.trackingCode}</strong>
+              <div className="muted">{item.origin} به {item.destination}</div>
+              <Badge tone="warn">بدون موقعیت</Badge>
+            </article>
+          ))}
+          {vehicles.length === 0 && missing.length === 0 && <p className="muted">خودروی فعالی روی نقشه نیست.</p>}
         </div>
       </div>
     </Page>

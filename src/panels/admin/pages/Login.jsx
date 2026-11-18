@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { api } from '../api';
 import { useAdmin } from '../auth';
 import BrandMark from '../../owner/components/common/BrandMark';
 
@@ -13,19 +14,64 @@ const schema = z.object({
 
 export default function Login() {
   const navigate = useNavigate();
-  const { login } = useAdmin();
+  const { login, confirmMfa } = useAdmin();
   const [error, setError] = useState('');
+  const [ticket, setTicket] = useState('');
+  const [code, setCode] = useState('');
+  const [recovery, setRecovery] = useState(false);
+  const [recoveryCode, setRecoveryCode] = useState('');
+  const [nextPassword, setNextPassword] = useState('');
   const form = useForm({ resolver: zodResolver(schema) });
 
   const submit = form.handleSubmit(async (values) => {
     setError('');
     try {
-      await login(values.username, values.password);
+      const result = await login(values.username, values.password);
+      if (result?.mfaRequired) {
+        setTicket(result.ticket);
+        return;
+      }
       navigate('/admin');
     } catch (err) {
       setError(err.message);
     }
   });
+
+  async function submitCode(event) {
+    event.preventDefault();
+    setError('');
+    try {
+      await confirmMfa(ticket, code);
+      navigate('/admin');
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function sendRecovery(event) {
+    event.preventDefault();
+    setError('');
+    try {
+      const username = form.getValues('username');
+      const data = await api('/auth/recovery', { method: 'POST', body: { username } });
+      setRecovery(true);
+      setError(data.devCode ? `کد بازیابی: ${data.devCode}` : 'کد بازیابی در صف ایمیل قرار گرفت.');
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function finishRecovery(event) {
+    event.preventDefault();
+    setError('');
+    try {
+      await api('/auth/recovery/confirm', { method: 'POST', body: { username: form.getValues('username'), code: recoveryCode, password: nextPassword } });
+      setRecovery(false);
+      setError('رمز تازه ذخیره شد. دوباره وارد شوید.');
+    } catch (err) {
+      setError(err.message);
+    }
+  }
 
   return (
     <div className="admin-login">
@@ -51,6 +97,23 @@ export default function Login() {
         </div>
       </aside>
       <div className="admin-login-form">
+        {ticket ? (
+          <form onSubmit={submitCode}>
+            <h1>کد ورود دو مرحله‌ای</h1>
+            <p className="muted">کد شش‌رقمی برنامه احراز هویت را وارد کنید.</p>
+            <input className="field" inputMode="numeric" value={code} onChange={(event) => setCode(event.target.value)} placeholder="123456" />
+            {error && <p style={{ color: 'var(--alamut-crit)' }}>{error}</p>}
+            <button className="btn" type="submit" style={{ width: '100%', marginTop: 8 }}>تأیید</button>
+          </form>
+        ) : recovery ? (
+          <form onSubmit={finishRecovery}>
+            <h1>بازیابی حساب</h1>
+            <input className="field" placeholder="کد ایمیل" value={recoveryCode} onChange={(event) => setRecoveryCode(event.target.value)} />
+            <input className="field" type="password" placeholder="رمز تازه" value={nextPassword} onChange={(event) => setNextPassword(event.target.value)} />
+            {error && <p style={{ color: 'var(--alamut-crit)' }}>{error}</p>}
+            <button className="btn" type="submit" style={{ width: '100%', marginTop: 8 }}>ذخیره رمز</button>
+          </form>
+        ) : (
         <form onSubmit={submit}>
           <h1>خوش اومدی</h1>
           <p className="muted">نام کاربری و رمز عبور اپراتور را وارد کنید.</p>
@@ -60,7 +123,9 @@ export default function Login() {
           <input id="admin-password" className="field" type="password" autoComplete="current-password" placeholder="رمز عبور" {...form.register('password')} />
           {error && <p style={{ color: 'var(--alamut-crit)' }}>{error}</p>}
           <button className="btn" type="submit" style={{ width: '100%', marginTop: 8 }}>ورود</button>
+          <button className="btn secondary" type="button" style={{ width: '100%', marginTop: 8 }} onClick={sendRecovery}>بازیابی با ایمیل</button>
         </form>
+        )}
       </div>
     </div>
   );

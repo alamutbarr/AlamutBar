@@ -8,6 +8,7 @@ const { logEvent } = require('./audit');
 const { publish } = require('./realtime');
 const { refreshPriority, driverName, num } = require('./orderOps');
 const { normalizePoint, pickLatestPoint } = require('./locationPoint');
+const { locationIsStale } = require('./deskRules');
 
 const orderIncludes = [
   { model: City, as: 'originCity' },
@@ -184,15 +185,25 @@ async function mapSnapshot() {
     byShipment[alert.shipmentId] = byShipment[alert.shipmentId] || [];
     byShipment[alert.shipmentId].push(alert.severity);
   }
-  return rows.filter((row) => row.driver).map((row) => {
+  const vehicles = rows.filter((row) => row.driver).map((row) => {
     const severities = byShipment[row.id] || [];
+    const stale = locationIsStale(row.driver.lastLocationAt, new Date(), 5);
     let tone = 'progress';
     if (!row.driver.isGpsActive || severities.includes('critical')) tone = 'crit';
-    else if (severities.includes('warning')) tone = 'warn';
+    else if (stale || severities.includes('warning')) tone = 'warn';
     else if (row.workflow_status === 'IN_TRANSIT') tone = 'progress';
     else tone = 'ok';
-    return { ...vehicleOf(row.driver, row), tone, openAlerts: severities.length };
+    return { ...vehicleOf(row.driver, row), tone, stale, openAlerts: severities.length };
   });
+  const missing = rows
+    .filter((row) => !row.driver || row.driver.lastLat == null)
+    .map((row) => ({
+      id: row.id,
+      trackingCode: row.tracking_code,
+      origin: row.originCity?.name || '',
+      destination: row.destCity?.name || '',
+    }));
+  return { vehicles, missing };
 }
 
 module.exports = {

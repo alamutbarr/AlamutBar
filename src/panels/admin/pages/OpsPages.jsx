@@ -59,6 +59,9 @@ function Inspections() {
                 <Badge tone={report.decision === 'STOPPED' ? 'crit' : report.decision === 'PENDING' ? 'warn' : 'ok'}>{DECISIONS[report.decision] || report.decision}</Badge>
               </div>
               <p className="muted">{report.inspectorName || 'بدون متصدی'} — خالص {report.weightNet ?? '—'} کیلو{report.recordedCargoValue ? ` — ارزش دقیق ${Number(report.recordedCargoValue).toLocaleString('fa-IR')}` : ''}</p>
+              {(report.stage || report.sealNumber || report.packagingOk != null) && (
+                <p>مرحله {report.stage === 'delivery' ? 'تحویل' : 'بارگیری'} — پلمب {report.sealNumber || '—'} — بسته‌بندی {report.packagingOk ? 'سالم' : 'بررسی نشده'} — وزن {report.weightOk ? 'مطابق' : 'بررسی نشده'} — خودرو {report.vehicleOk ? 'مناسب' : 'بررسی نشده'}</p>
+              )}
               {listOf(report.discrepancies).length > 0 && <p>مغایرت: {listOf(report.discrepancies).map((item) => (typeof item === 'string' ? item : item.note || item.field || '')).filter(Boolean).join('، ')}</p>}
               {listOf(report.photos).length > 0 && (
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', margin: '8px 0' }}>
@@ -181,9 +184,15 @@ function Reports() {
           <div className="stat-grid" style={{ marginBottom: 12 }}>
             <article className="card" style={{ padding: 14 }}><div className="muted">تعداد</div><strong>{(data.summary.count || 0).toLocaleString('fa-IR')}</strong></article>
             {data.summary.completed != null && <article className="card" style={{ padding: 14 }}><div className="muted">تکمیل‌شده</div><strong>{data.summary.completed.toLocaleString('fa-IR')}</strong></article>}
+            {data.summary.inProgress != null && <article className="card" style={{ padding: 14 }}><div className="muted">در جریان</div><strong>{data.summary.inProgress.toLocaleString('fa-IR')}</strong></article>}
+            {data.summary.deliveryRate != null && <article className="card" style={{ padding: 14 }}><div className="muted">نرخ تحویل</div><strong>{data.summary.deliveryRate}٪</strong></article>}
+            {data.summary.openTickets != null && <article className="card" style={{ padding: 14 }}><div className="muted">تیکت باز</div><strong>{data.summary.openTickets.toLocaleString('fa-IR')}</strong></article>}
             {data.summary.freight != null && <article className="card" style={{ padding: 14 }}><div className="muted">کرایه</div><strong>{money(data.summary.freight)}</strong></article>}
             {data.summary.penalties != null && <article className="card" style={{ padding: 14 }}><div className="muted">جریمه</div><strong>{money(data.summary.penalties)}</strong></article>}
           </div>
+          {Array.isArray(data.summary.byStatus) && data.summary.byStatus.length > 0 && (
+            <p>{data.summary.byStatus.map((item) => `${item.label}: ${item.count}`).join(' · ')}</p>
+          )}
           <div className="card table-wrap">
             <table className="data">
               <thead>

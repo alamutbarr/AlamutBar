@@ -10,13 +10,22 @@ import { useAdmin } from '../auth';
 const LINKS = [
   { to: '/admin', end: true, label: 'داشبورد', icon: LayoutGrid, perm: 'dashboard', mobile: true },
   { to: '/admin/orders', label: 'سفارش‌ها', icon: ClipboardList, perm: 'orders.read', mobile: true },
+  { to: '/admin/control', label: 'اتاق کنترل', icon: Map, perm: 'control' },
   { to: '/admin/map', label: 'نقشه', icon: Map, perm: 'map', mobile: true },
   { to: '/admin/alerts', label: 'هشدارها', icon: Bell, perm: 'alerts.read', mobile: true },
   { to: '/admin/drivers', label: 'رانندگان', icon: Truck, perm: 'drivers.read' },
+  { to: '/admin/team', label: 'کاربران', icon: Users, perm: 'team.read' },
+  { to: '/admin/crm', label: 'CRM', icon: Users, perm: 'crm' },
+  { to: '/admin/incidents', label: 'رخدادها', icon: Shield, perm: 'incidents' },
+  { to: '/admin/finance', label: 'امور مالی', icon: ClipboardList, perm: 'finance' },
+  { to: '/admin/tickets', label: 'پشتیبانی', icon: MessageCircle, perm: 'tickets' },
+  { to: '/admin/notifications', label: 'اعلان‌ها', icon: Bell, perm: 'notifications' },
+  { to: '/admin/contacts', label: 'درخواست‌ها', icon: MessageCircle, perm: 'contacts' },
+  { to: '/admin/articles', label: 'مقالات', icon: ClipboardList, perm: 'content' },
   { to: '/admin/chats', label: 'گفتگوها', icon: MessageCircle, perm: 'dashboard' },
   { to: '/admin/inspections', label: 'بازرسی', icon: Shield, perm: 'inspections' },
   { to: '/admin/customers', label: 'مشتریان', icon: Users, perm: 'owners.read' },
-  { to: '/admin/complaints', label: 'تیکت‌ها', icon: Bell, perm: 'complaints' },
+  { to: '/admin/complaints', label: 'شکایت‌ها', icon: Bell, perm: 'complaints' },
   { to: '/admin/reports', label: 'گزارش‌ها', icon: ClipboardList, perm: 'reports.operations' },
   { to: '/admin/settings', label: 'تنظیمات', icon: Settings, perm: 'settings.manage' },
   { to: '/admin/admins', label: 'اپراتورها', icon: Users, perm: 'admins.manage' },
@@ -85,6 +94,12 @@ export default function Shell() {
               <Bell size={18} />
               {alerts > 0 && <i>{alerts.toLocaleString('fa-IR')}</i>}
             </button>
+            {can('notifications') && (
+              <button type="button" className="btn secondary bell" onClick={() => navigate('/admin/notifications')} aria-label="اعلان‌ها">
+                <MessageCircle size={18} />
+                {user?.openNotices > 0 && <i>{user.openNotices.toLocaleString('fa-IR')}</i>}
+              </button>
+            )}
             <button type="button" className="btn secondary" onClick={toggleTheme} aria-label="تغییر تم">
               {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
             </button>
@@ -104,6 +119,12 @@ export default function Shell() {
             <Bell size={18} />
             {alerts > 0 && <i>{alerts.toLocaleString('fa-IR')}</i>}
           </button>
+          {can('notifications') && (
+            <button type="button" className="btn secondary bell" onClick={() => navigate('/admin/notifications')} aria-label="اعلان‌ها">
+              <MessageCircle size={18} />
+              {user?.openNotices > 0 && <i>{user.openNotices.toLocaleString('fa-IR')}</i>}
+            </button>
+          )}
           <button type="button" className="btn secondary admin-mobile-brand" onClick={toggleTheme} aria-label="تغییر تم">
             {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
           </button>

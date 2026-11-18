@@ -1,7 +1,8 @@
 const { Op } = require('sequelize');
 const {
   Shipment, City, Zone, VehicleType, Driver, User, CargoOwner,
-  Alert, OrderEvent, InspectionReport, Inspector, Complaint,
+  Alert, OrderEvent, InspectionReport, Inspector, Complaint, Rating,
+  ShipmentOffer, ShipmentDocument, Invoice, InvoicePayment, Incident,
 } = require('../models');
 const AppError = require('../utils/AppError');
 const { audit, logEvent, pageOf } = require('./audit');
@@ -21,6 +22,9 @@ const {
   waybillForOperator,
 } = require('../services/waybill.service');
 const { present } = require('./documents');
+const { marketOpen, checklistPassed, movementBlocked, invoiceLedger, readFleet } = require('./deskRules');
+const { driverMatchesOffer, VEHICLE_MISMATCH } = require('../services/vehicleOfferMatch');
+const desk = require('./desk');
 
 const includes = [
   { model: City, as: 'originCity' },
@@ -32,6 +36,7 @@ const includes = [
   { model: Driver, as: 'offeredDriver' },
   { model: User, as: 'owner', include: [CargoOwner] },
   { model: Inspector, as: 'inspector' },
+  { model: Rating, as: 'rating' },
 ];
 
 function num(value) {
@@ -84,6 +89,17 @@ function presentDriver(driver) {
     documents: kyc.documents,
     documentList: kyc.documents,
     rejectionReason: row.rejectionReason,
+    birthDate: row.birthDate || null,
+    licenseExpiry: row.licenseExpiry || null,
+    insuranceExpiry: row.insuranceExpiry || null,
+    emergencyName: row.emergencyName || '',
+    emergencyPhone: row.emergencyPhone || '',
+    homeAddress: row.homeAddress || '',
+    dossierStatus: row.dossierStatus || 'approved',
+    reviewNote: row.reviewNote || '',
+    accountVerified: row.accountVerified !== false,
+    marketOpen: marketOpen(row),
+    fleet: Object.values(readFleet(row.fleetDocuments)),
     lastLocation: row.lastLat != null ? { lat: num(row.lastLat), lng: num(row.lastLng) } : null,
     lastLocationAt: row.lastLocationAt,
     isGpsActive: Boolean(row.isGpsActive),
@@ -128,6 +144,11 @@ function presentOrder(row, extra = {}) {
     forceMajeure: Boolean(data.force_majeure),
     forceMajeureReason: data.force_majeure_reason,
     vehicleType: data.vehicleType?.title || null,
+    vehicleTypeId: data.vehicle_type_id,
+    originCityId: data.origin_city_id,
+    destCityId: data.dest_city_id,
+    originZoneId: data.origin_zone_id,
+    destZoneId: data.dest_zone_id,
     vehicleVariants: data.vehicle_variants || [],
     cargo: {
       type: data.cargo_type === 'other' ? (data.cargo_type_other || 'سایر') : data.cargo_type,
@@ -161,7 +182,17 @@ function presentOrder(row, extra = {}) {
       lng: num(data.dest_lng),
       receiverName: data.receiver_name,
       receiverPhone: data.receiver_phone,
+      receiverNationalId: data.receiver_national_id || '',
+      receiverPostalCode: data.receiver_postal_code || '',
+      method: data.unloading_method || '',
     },
+    loadingMethod: data.loading_method || '',
+    insuranceRequested: Boolean(data.insurance_requested),
+    rating: data.rating ? {
+      driverScore: data.rating.driver_score,
+      inspectorScore: data.rating.dispatcher_score,
+      comment: data.rating.comment || '',
+    } : null,
     eta: data.eta,
     owner: presentOwner(data.owner),
     driver: presentDriver(data.driver),
@@ -185,6 +216,10 @@ function presentOrder(row, extra = {}) {
     alertItems: extra.alertItems,
     events: extra.events,
     inspections: extra.inspections,
+    offers: extra.offers || [],
+    documents: extra.documents || [],
+    invoice: extra.invoice || null,
+    incidents: extra.incidents || [],
     createdAt: data.createdAt,
     updatedAt: data.updatedAt,
   };
@@ -270,6 +305,7 @@ async function setWorkflow(shipment, workflowStatus, { admin, reason, metadata, 
     shipment.final_price = shipment.operator_price || shipment.proposed_price;
   }
   await shipment.save();
+  if (workflowStatus === 'COMPLETED') await desk.ensureInvoice(shipment);
   await logEvent(shipment.id, {
     type: 'STATUS_CHANGED',
     description: `وضعیت از «${WORKFLOW_LABELS[previous] || previous}» به «${WORKFLOW_LABELS[workflowStatus]}» تغییر کرد.${reason ? ` دلیل: ${reason}` : ''}`,
@@ -349,7 +385,7 @@ async function listOrders(query) {
 
 async function getOrder(id) {
   const row = await loadOrder(id);
-  const [events, alerts, inspections] = await Promise.all([
+  const [events, alerts, inspections, offers, documents, invoice, incidents] = await Promise.all([
     OrderEvent.findAll({
       where: { shipmentId: row.id },
       include: [{ model: require('../models').Admin, as: 'actor' }],
@@ -361,7 +397,12 @@ async function getOrder(id) {
       include: [{ model: Inspector, as: 'inspector' }],
       order: [['createdAt', 'DESC']],
     }),
+    ShipmentOffer.findAll({ where: { shipmentId: row.id }, include: [{ model: Driver }], order: [['createdAt', 'DESC']] }),
+    ShipmentDocument.findAll({ where: { shipmentId: row.id }, order: [['createdAt', 'DESC']] }),
+    Invoice.findOne({ where: { shipmentId: row.id }, include: [{ model: InvoicePayment, as: 'payments' }] }),
+    Incident.findAll({ where: { shipmentId: row.id }, order: [['createdAt', 'DESC']] }),
   ]);
+  const ledger = invoice ? invoiceLedger(invoice.amount, invoice.payments || []) : null;
   return presentOrder(row, {
     openAlerts: alerts.filter((item) => !item.isResolved).length,
     alertItems: alerts.map(presentAlert),
@@ -375,6 +416,25 @@ async function getOrder(id) {
       location: event.lat != null ? { lat: num(event.lat), lng: num(event.lng) } : null,
     })),
     inspections: inspections.map(presentInspection),
+    offers: offers.map((offer) => ({
+      id: offer.id,
+      driverId: offer.driverId,
+      driverName: driverName(offer.Driver),
+      amount: Number(offer.amount),
+      note: offer.note || '',
+      status: offer.status,
+      createdAt: offer.createdAt,
+    })),
+    documents: documents.map((doc) => ({ id: doc.id, name: doc.name, url: doc.url, createdAt: doc.createdAt })),
+    invoice: ledger ? { id: invoice.id, ...ledger, status: ledger.settled ? 'paid' : invoice.status } : null,
+    incidents: incidents.map((item) => ({
+      id: item.id,
+      kind: item.kind,
+      severity: item.severity,
+      status: item.status,
+      description: item.description,
+      resolution: item.resolution || '',
+    })),
   });
 }
 
@@ -407,6 +467,12 @@ function presentInspection(report) {
     discrepancies: jsonList(row.discrepancies),
     decision: row.decision,
     decisionNote: row.decisionNote,
+    stage: row.stage || 'loading',
+    packagingOk: row.packagingOk,
+    weightOk: row.weightOk,
+    vehicleOk: row.vehicleOk,
+    sealNumber: row.sealNumber || '',
+    passed: checklistPassed(row),
     createdAt: row.createdAt,
   };
 }
@@ -428,6 +494,11 @@ async function changeStatus(admin, id, body) {
   if (next === 'WAYBILL_ISSUED' || (['IN_TRANSIT', 'COMPLETED'].includes(next) && !shipment.waybill_photo_url)) {
     await assertInspectionClear(shipment);
   }
+  if (['IN_TRANSIT', 'COMPLETED'].includes(next) && movementBlocked(await desk.openCritical(shipment.id))) {
+    throw new AppError('ابتدا رخداد بحرانی این محموله باید رفع شود.', 400);
+  }
+  if (next === 'IN_TRANSIT') await assertStageChecklist(shipment, 'loading');
+  if (next === 'COMPLETED') await assertStageChecklist(shipment, 'delivery');
   await setWorkflow(shipment, next, { admin, reason });
   await refreshPriority(shipment);
   await audit(admin, 'order.status', 'shipment', shipment.id, { workflowStatus: next, reason });
@@ -441,6 +512,49 @@ async function inspectionIsClear(shipment) {
     where: { shipmentId: shipment.id, decision: { [Op.in]: ['APPROVED', 'CORRECTED'] } },
   });
   return Boolean(report);
+}
+
+async function assertStageChecklist(shipment, stage) {
+  const report = await InspectionReport.findOne({
+    where: { shipmentId: shipment.id, stage },
+    order: [['createdAt', 'DESC']],
+  });
+  if (!report) return;
+  if (!checklistPassed(report)) {
+    throw new AppError(
+      stage === 'loading'
+        ? 'بازرسی بارگیری باید بسته‌بندی، وزن و خودرو را تأیید کند.'
+        : 'بازرسی تحویل باید بسته‌بندی، وزن و خودرو را تأیید کند.',
+      400,
+    );
+  }
+}
+
+async function assertDriverEligible(driver, shipment) {
+  if (!driver) throw new AppError('راننده پیدا نشد.', 404);
+  if (!marketOpen(driver)) {
+    throw new AppError('پرونده، اعتبار مدارک یا تأیید حساب این راننده برای گرفتن بار بسته است.', 400);
+  }
+  if (driver.availability !== 'READY') {
+    throw new AppError('فقط راننده تأییدشده و آماده را می‌توان انتخاب کرد.', 400);
+  }
+  if (!driverMatchesOffer(driver, {
+    vehicleTitle: shipment.vehicleType?.title,
+    variants: shipment.vehicle_variants,
+    lengthCm: shipment.length_cm,
+    widthCm: shipment.width_cm,
+    heightCm: shipment.height_cm,
+  })) {
+    throw new AppError(VEHICLE_MISMATCH, 400);
+  }
+  const active = await Shipment.count({
+    where: {
+      driver_id: driver.id,
+      id: { [Op.ne]: shipment.id },
+      workflow_status: { [Op.in]: ACTIVE_TRIP },
+    },
+  });
+  if (active) throw new AppError('راننده یک سفر فعال دارد.', 400);
 }
 
 async function assertInspectionClear(shipment) {
@@ -490,10 +604,7 @@ async function assignDriver(admin, id, driverId, reasonText) {
     throw new AppError('این بار راننده دارد. برای تغییر، از جایگزینی راننده استفاده کنید.', 400);
   }
   const driver = await Driver.findByPk(driverId);
-  if (!driver) throw new AppError('راننده پیدا نشد.', 404);
-  if (driver.verificationStatus !== 'VERIFIED' || driver.availability !== 'READY') {
-    throw new AppError('فقط راننده تأییدشده و آماده را می‌توان پیشنهاد داد.', 400);
-  }
+  await assertDriverEligible(driver, shipment);
   shipment.offered_driver_id = driver.id;
   await shipment.save();
   await logEvent(shipment.id, {
@@ -520,11 +631,23 @@ async function acceptDriverOffer(driverId, shipmentId) {
   }
   if (shipment.driver_id) throw new AppError('این بار قبلاً ثبت شده است.', 409);
   const driver = await Driver.findByPk(driverId);
+  if (!marketOpen(driver)) {
+    throw new AppError('بازار بار پس از تأیید پرونده و اعتبار مدارک باز می‌شود.', 403);
+  }
   if (!driver || driver.verificationStatus !== 'VERIFIED') {
     throw new AppError('فقط راننده تأییدشده می‌تواند بار را بپذیرد.', 403);
   }
   if (driver.availability !== 'READY') {
     throw new AppError('الان مأموریت فعال دارید و نمی‌توانید بار جدید را بپذیرید.', 400);
+  }
+  if (!driverMatchesOffer(driver, {
+    vehicleTitle: shipment.vehicleType?.title,
+    variants: shipment.vehicle_variants,
+    lengthCm: shipment.length_cm,
+    widthCm: shipment.width_cm,
+    heightCm: shipment.height_cm,
+  })) {
+    throw new AppError(VEHICLE_MISMATCH, 400);
   }
   shipment.driver_id = driver.id;
   shipment.offered_driver_id = null;
@@ -582,9 +705,7 @@ async function replaceDriver(admin, id, body) {
   let nextDriver = null;
   if (body.driverId) {
     nextDriver = await Driver.findByPk(body.driverId);
-    if (!nextDriver || nextDriver.verificationStatus !== 'VERIFIED' || nextDriver.availability !== 'READY') {
-      throw new AppError('راننده جایگزین باید تأییدشده و آماده باشد.', 400);
-    }
+    await assertDriverEligible(nextDriver, shipment);
     shipment.driver_id = nextDriver.id;
     nextDriver.availability = 'BUSY';
     await nextDriver.save();
@@ -755,6 +876,131 @@ async function applyPenalty(admin, id, body) {
   return { order: await getOrder(shipment.id), penalty: result };
 }
 
+async function createOrder(admin, body) {
+  const { createShipmentSchema } = require('../validations/shipmentValidation');
+  const shipmentService = require('../services/shipment.service');
+  const ownerId = Number(body.ownerId);
+  const owner = await User.findByPk(ownerId);
+  if (!owner || owner.role !== 'cargo_owner') throw new AppError('صاحب کالا را انتخاب کنید.', 400);
+  const { error, value } = createShipmentSchema.validate(body, { abortEarly: false, stripUnknown: true });
+  if (error) throw new AppError(error.details.map((item) => item.message).join(' '), 400);
+  const { shipment } = await shipmentService.createShipment(owner.id, value);
+  shipment.status = 'pending_review';
+  shipment.workflow_status = 'REQUEST_REGISTERED';
+  shipment.insurance_requested = Boolean(body.insurance_requested);
+  if (body.unloading_method) shipment.unloading_method = body.unloading_method;
+  await shipment.save();
+  await logEvent(shipment.id, {
+    type: 'NOTE',
+    description: 'اپراتور درخواست حمل را ثبت کرد و بار در انتظار بررسی است.',
+    adminId: admin.id,
+  });
+  await audit(admin, 'order.create', 'shipment', shipment.id, { ownerId: owner.id });
+  return getOrder(shipment.id);
+}
+
+async function editOrder(admin, id, body) {
+  const shipment = await loadOrder(id);
+  const workflow = deriveWorkflow(shipment);
+  if (shipment.driver_id || !['REQUEST_REGISTERED', 'UNDER_REVIEW'].includes(workflow)) {
+    throw new AppError('ویرایش تنها پیش از تأیید و تخصیص راننده مجاز است.', 400);
+  }
+  const { createShipmentSchema } = require('../validations/shipmentValidation');
+  const merged = {
+    ...shipment.toJSON(),
+    ...body,
+    origin_city_id: body.origin_city_id ?? shipment.origin_city_id,
+    dest_city_id: body.dest_city_id ?? shipment.dest_city_id,
+  };
+  const { error, value } = createShipmentSchema.validate(merged, { abortEarly: false, stripUnknown: true });
+  if (error) throw new AppError(error.details.map((item) => item.message).join(' '), 400);
+  Object.assign(shipment, value);
+  if (body.insurance_requested != null) shipment.insurance_requested = Boolean(body.insurance_requested);
+  if (body.unloading_method) shipment.unloading_method = body.unloading_method;
+  shipment.changed('vehicle_variants', true);
+  shipment.changed('photo_urls', true);
+  await shipment.save();
+  await audit(admin, 'order.edit', 'shipment', shipment.id, {});
+  return getOrder(shipment.id);
+}
+
+async function acceptFareOffer(admin, id, body) {
+  const reason = requireReason(body.reason || 'پذیرش پیشنهاد کرایه');
+  const shipment = await loadOrder(id);
+  if (shipment.driver_id) throw new AppError('این بار راننده دارد.', 400);
+  const offer = await ShipmentOffer.findByPk(body.offerId, { include: [Driver] });
+  if (!offer || Number(offer.shipmentId) !== Number(shipment.id) || offer.status !== 'pending') {
+    throw new AppError('پیشنهاد معتبر نیست.', 404);
+  }
+  const inspector = await Inspector.findByPk(body.inspectorId);
+  if (!inspector || inspector.isActive === false) throw new AppError('متصدی معتبر انتخاب کنید.', 400);
+  const driver = offer.Driver || await Driver.findByPk(offer.driverId);
+  await assertDriverEligible(driver, shipment);
+  shipment.driver_id = driver.id;
+  shipment.assigned_inspector_id = inspector.id;
+  shipment.offered_driver_id = null;
+  shipment.operator_price = Number(offer.amount);
+  shipment.final_price = Number(offer.amount);
+  driver.availability = 'BUSY';
+  await driver.save();
+  offer.status = 'accepted';
+  await offer.save();
+  await ShipmentOffer.update(
+    { status: 'declined' },
+    { where: { shipmentId: shipment.id, status: 'pending', id: { [Op.ne]: offer.id } } },
+  );
+  await shipment.save();
+  await setWorkflow(shipment, 'DRIVER_ACCEPTED', { admin, reason, driverId: driver.id });
+  await logEvent(shipment.id, {
+    type: 'DRIVER_ASSIGNED',
+    description: `پیشنهاد ${Number(offer.amount).toLocaleString('fa-IR')} تومانی ${driverName(driver)} با متصدی ${inspector.fullName} پذیرفته شد.`,
+    adminId: admin.id,
+  });
+  await audit(admin, 'order.accept_offer', 'shipment', shipment.id, { offerId: offer.id, inspectorId: inspector.id });
+  return getOrder(shipment.id);
+}
+
+async function recordChecklist(admin, id, body) {
+  const shipment = await loadOrder(id);
+  const stage = body.stage === 'delivery' ? 'delivery' : 'loading';
+  const packagingOk = Boolean(body.packagingOk);
+  const weightOk = Boolean(body.weightOk);
+  const vehicleOk = Boolean(body.vehicleOk);
+  const passed = packagingOk && weightOk && vehicleOk;
+  await InspectionReport.create({
+    shipmentId: shipment.id,
+    inspectorId: shipment.assigned_inspector_id,
+    assignedByAdminId: admin.id,
+    stage,
+    packagingOk,
+    weightOk,
+    vehicleOk,
+    sealNumber: String(body.sealNumber || '').trim().slice(0, 60),
+    decision: passed ? 'APPROVED' : 'PENDING',
+    decisionNote: String(body.notes || '').trim().slice(0, 2000),
+  });
+  await logEvent(shipment.id, {
+    type: 'INSPECTION',
+    description: `چک‌لیست ${stage === 'loading' ? 'بارگیری' : 'تحویل'} ${passed ? 'تأیید شد' : 'نیازمند اصلاح است'}. پلمب: ${String(body.sealNumber || '—')}`,
+    adminId: admin.id,
+  });
+  await audit(admin, 'inspection.checklist', 'shipment', shipment.id, { stage, passed });
+  return getOrder(shipment.id);
+}
+
+async function addShipmentDocument(admin, id, file) {
+  const shipment = await loadOrder(id);
+  if (!file) throw new AppError('فایل سند را انتخاب کنید.', 400);
+  const doc = await ShipmentDocument.create({
+    shipmentId: shipment.id,
+    name: String(file.originalname || file.filename).slice(0, 180),
+    url: `/uploads/${file.filename}`,
+    adminId: admin.id,
+  });
+  await audit(admin, 'document.upload', 'shipment', shipment.id, { name: doc.name });
+  return { id: doc.id, name: doc.name, url: doc.url };
+}
+
 async function listReadyDrivers() {
   const rows = await Driver.findAll({
     where: { verificationStatus: 'VERIFIED', availability: 'READY' },
@@ -790,5 +1036,10 @@ module.exports = {
   releaseAfterInspection,
   applyPenalty,
   listReadyDrivers,
+  createOrder,
+  editOrder,
+  acceptFareOffer,
+  recordChecklist,
+  addShipmentDocument,
   num,
 };

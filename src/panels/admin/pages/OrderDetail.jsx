@@ -21,6 +21,9 @@ export default function OrderDetail() {
   const [inspectors, setInspectors] = useState([]);
   const [waybillFile, setWaybillFile] = useState(null);
   const [waybillBusy, setWaybillBusy] = useState(false);
+  const [offerPick, setOfferPick] = useState({ offerId: '', inspectorId: '', reason: '' });
+  const [check, setCheck] = useState({ stage: 'loading', packagingOk: false, weightOk: false, vehicleOk: false, sealNumber: '' });
+  const [docFile, setDocFile] = useState(null);
   const parentRef = useRef(null);
 
   useEffect(() => () => {
@@ -135,7 +138,94 @@ export default function OrderDetail() {
             <p>متصدی: {order.inspector?.fullName || '—'}</p>
             <p>قیمت تخمینی {money(order.estimatedPrice)} / نهایی {money(order.finalPrice)}</p>
             <p>بارنامه {waybill.number || order.waybillNumber || '—'} / کد تحویل {order.deliveryOtp || '—'}</p>
+            <p>بسته‌بندی: {order.cargo.packaging || '—'} — ابعاد {order.cargo.lengthCm || '—'} × {order.cargo.widthCm || '—'} × {order.cargo.heightCm || '—'} سانتی‌متر</p>
+            <p>فوریت: {order.urgency || '—'} — بارگیری {order.loading.date || '—'} از {order.loading.from || '—'} تا {order.loading.to || '—'}</p>
+            <p>روش بارگیری: {order.loadingMethod || '—'} — روش تخلیه: {order.unloading.method || '—'}</p>
+            <p>گیرنده: {order.unloading.receiverName || '—'} — {order.unloading.receiverPhone || '—'} — کد ملی {order.unloading.receiverNationalId || '—'} — کد پستی {order.unloading.receiverPostalCode || '—'}</p>
+            <p>خودرو: {order.vehicleType || '—'} {(order.vehicleVariants || []).join('، ')}</p>
+            <p>بیمه بار: {order.insuranceRequested ? 'درخواست شده' : 'ندارد'}</p>
+            {order.cargo.notes && <p>توضیحات: {order.cargo.notes}</p>}
+            {(order.cargo.photos || []).length > 0 && (
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {order.cargo.photos.map((photo) => <a key={photo} href={photo}><img src={photo} alt="بار" style={{ width: 96, height: 72, objectFit: 'cover', borderRadius: 8 }} /></a>)}
+              </div>
+            )}
+            {order.rating && <p>امتیاز راننده {order.rating.driverScore ?? '—'} — امتیاز متصدی {order.rating.inspectorScore ?? '—'} {order.rating.comment && `— ${order.rating.comment}`}</p>}
           </article>
+          {(order.offers || []).length > 0 && (
+            <article className="card" style={{ padding: 16 }}>
+              <h2 style={{ marginTop: 0 }}>پیشنهاد کرایه رانندگان</h2>
+              {order.offers.map((offer) => <p key={offer.id}>{offer.driverName} — {money(offer.amount)} — {offer.status === 'accepted' ? 'پذیرفته' : offer.status === 'declined' ? 'رد شده' : 'در انتظار'} {offer.note}</p>)}
+              {can('offers') && (
+                <div className="form-grid">
+                  <select className="select" value={offerPick.offerId} onChange={(e) => setOfferPick({ ...offerPick, offerId: e.target.value })}>
+                    <option value="">پیشنهاد</option>
+                    {order.offers.filter((offer) => offer.status === 'pending').map((offer) => <option key={offer.id} value={offer.id}>{offer.driverName} — {money(offer.amount)}</option>)}
+                  </select>
+                  <select className="select" value={offerPick.inspectorId} onChange={(e) => setOfferPick({ ...offerPick, inspectorId: e.target.value })} onFocus={() => { if (!inspectors.length) api('/inspectors').then(setInspectors).catch(() => {}); }}>
+                    <option value="">متصدی همراه</option>
+                    {inspectors.map((item) => <option key={item.id} value={item.id}>{item.fullName}</option>)}
+                  </select>
+                  <input className="field" placeholder="دلیل پذیرش" value={offerPick.reason} onChange={(e) => setOfferPick({ ...offerPick, reason: e.target.value })} />
+                  <button type="button" className="btn" onClick={async () => {
+                    try {
+                      await api(`/orders/${id}/offers`, { method: 'POST', body: { offerId: Number(offerPick.offerId), inspectorId: Number(offerPick.inspectorId), reason: offerPick.reason } });
+                      toast.success('پیشنهاد پذیرفته و راننده با متصدی تخصیص شد');
+                      load();
+                    } catch (error) { toast.error(error.message); }
+                  }}>پذیرش پیشنهاد</button>
+                </div>
+              )}
+            </article>
+          )}
+          <article className="card" style={{ padding: 16 }}>
+            <h2 style={{ marginTop: 0 }}>بایگانی مدارک محموله</h2>
+            {(order.documents || []).map((doc) => <p key={doc.id}><a href={doc.url}>{doc.name}</a></p>)}
+            {(order.documents || []).length === 0 && <p className="muted">مدرکی در بایگانی نیست.</p>}
+            {can('orders.documents') && (
+              <div className="form-grid">
+                <input type="file" accept="application/pdf,image/jpeg,image/png" onChange={(e) => setDocFile(e.target.files?.[0] || null)} />
+                <button type="button" className="btn secondary" disabled={!docFile} onClick={async () => {
+                  try { await upload(`/orders/${id}/documents`, docFile); toast.success('مدرک بایگانی شد'); setDocFile(null); load(); }
+                  catch (error) { toast.error(error.message); }
+                }}>بارگذاری PDF یا تصویر تا ۱۰ مگابایت</button>
+              </div>
+            )}
+          </article>
+          {order.invoice && (
+            <article className="card" style={{ padding: 16 }}>
+              <h2 style={{ marginTop: 0 }}>صورتحساب</h2>
+              <p>مبلغ {money(order.invoice.amount)} — پرداخت‌شده {money(order.invoice.paid)} — مانده {money(order.invoice.remaining)} — {order.invoice.status === 'paid' ? 'تسویه شده' : 'مانده دارد'}</p>
+            </article>
+          )}
+          {(order.incidents || []).length > 0 && (
+            <article className="card" style={{ padding: 16 }}>
+              <h2 style={{ marginTop: 0 }}>رخدادهای این بار</h2>
+              {order.incidents.map((item) => <p key={item.id}><Badge tone={item.severity === 'critical' ? 'crit' : 'warn'}>{item.kind}</Badge> {item.description} — {item.status}</p>)}
+            </article>
+          )}
+          {can('inspections') && (
+            <article className="card" style={{ padding: 16 }}>
+              <h2 style={{ marginTop: 0 }}>چک‌لیست بازرسی</h2>
+              <div className="form-grid">
+                <select className="select" value={check.stage} onChange={(e) => setCheck({ ...check, stage: e.target.value })}>
+                  <option value="loading">بارگیری</option>
+                  <option value="delivery">تحویل</option>
+                </select>
+                <label><input type="checkbox" checked={check.packagingOk} onChange={(e) => setCheck({ ...check, packagingOk: e.target.checked })} /> بسته‌بندی سالم</label>
+                <label><input type="checkbox" checked={check.weightOk} onChange={(e) => setCheck({ ...check, weightOk: e.target.checked })} /> وزن مطابق</label>
+                <label><input type="checkbox" checked={check.vehicleOk} onChange={(e) => setCheck({ ...check, vehicleOk: e.target.checked })} /> خودرو مناسب</label>
+                <input className="field" placeholder="شماره پلمب" value={check.sealNumber} onChange={(e) => setCheck({ ...check, sealNumber: e.target.value })} />
+                <button type="button" className="btn" onClick={async () => {
+                  try { await api(`/orders/${id}/checklist`, { method: 'POST', body: check }); toast.success('چک‌لیست ثبت شد'); load(); }
+                  catch (error) { toast.error(error.message); }
+                }}>ثبت چک‌لیست</button>
+              </div>
+              {(order.inspections || []).filter((item) => item.stage).map((item) => (
+                <p key={item.id} className="muted">{item.stage === 'delivery' ? 'تحویل' : 'بارگیری'} — پلمب {item.sealNumber || '—'} — {item.passed ? 'قبول' : 'ناقص'}</p>
+              ))}
+            </article>
+          )}
           {can('orders.waybill') && (
             <article className="card" style={{ padding: 16 }}>
               <h2 style={{ marginTop: 0 }}>بارنامه</h2>

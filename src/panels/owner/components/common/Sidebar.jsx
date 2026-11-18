@@ -6,6 +6,7 @@ import {
   History,
   Bell,
   ShieldAlert,
+  LifeBuoy,
   User,
 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
@@ -19,6 +20,7 @@ const links = [
   { to: "/owner/shipments", label: "بارهای من", icon: History },
   { to: "/owner/notifications", label: "اعلان‌ها", icon: Bell, badgeKey: "unread" },
   { to: "/owner/complaints", label: "ثبت شکایت", icon: ShieldAlert },
+  { to: "/owner/support", label: "پشتیبانی", icon: LifeBuoy },
   { to: "/owner/profile", label: "پروفایل", icon: User },
 ];
 

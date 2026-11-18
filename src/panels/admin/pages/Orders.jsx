@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { flexRender } from '@tanstack/react-table';
 import { getCoreRowModel, useLegacyTable as useReactTable } from '@tanstack/react-table/legacy';
 import * as Hover from '@radix-ui/react-hover-card';
 import { api } from '../api';
 import { WORKFLOW_LABELS, money, toneOfStatus, when } from '../format';
 import { Badge, Page, SkeletonRows } from '../components/ui';
+import { useAdmin } from '../auth';
 
 export default function Orders() {
   const navigate = useNavigate();
+  const { can } = useAdmin();
   const [query, setQuery] = useState({ page: 1, status: '', q: '', city: '', hasAlert: false });
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
@@ -48,7 +50,7 @@ export default function Orders() {
   if (!data) return <SkeletonRows />;
 
   return (
-    <Page title="سفارش‌ها">
+    <Page title="سفارش‌ها" action={can('orders.create') ? <Link className="btn" to="/admin/orders/new">ثبت درخواست حمل</Link> : null}>
       <div className="form-grid" style={{ marginBottom: 12 }}>
         <input className="field" placeholder="جستجوی کد، بارنامه یا گیرنده" value={query.q} onChange={(event) => setQuery({ ...query, page: 1, q: event.target.value })} />
         <input className="field" placeholder="شهر مبدأ" value={query.city} onChange={(event) => setQuery({ ...query, page: 1, city: event.target.value })} />

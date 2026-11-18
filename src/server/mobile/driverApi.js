@@ -10,6 +10,8 @@ const { signDriver, DRIVER_OTP, hashToken, registrationIssue } = require('../rou
 const { validateVehicleSelection } = require('../services/vehicleConfig');
 const { applyLegacyDriverStatus } = require('./driverActions');
 const { isOfferedVisibleToDriver } = require('../services/vehicleOfferMatch');
+const { marketOpen } = require('../admin/deskRules');
+const desk = require('../admin/desk');
 const { canRevealExactDestination } = require('./missionPolicy');
 const { waybillForDriver } = require('../services/waybill.service');
 const { confirmWaybillCode } = require('../admin/orderOps');
@@ -169,6 +171,7 @@ router.post('/auth/register', asyncHandler(async (req, res) => {
     plate,
     vehicleSpecs: vehicle.sanitizedSpecs,
     profileStep: 4,
+    dossierStatus: 'submitted',
     verificationStatus: 'PENDING_VERIFICATION',
     availability: 'OFFLINE',
   });
@@ -216,7 +219,11 @@ router.get('/missions', requireDriver, asyncHandler(async (req, res) => {
     };
   const driver = await Driver.findByPk(req.user.id);
   const rows = await Shipment.findAll({ where, include: includes, order: [['createdAt', 'DESC']] });
-  const missions = rows.filter((row) => isOfferedVisibleToDriver(row, driver, req.user.id)).map((row) => toMission(row, req.user.id));
+  const missions = rows.filter((row) => {
+    if (row.driver_id && String(row.driver_id) === String(req.user.id)) return true;
+    if (!marketOpen(driver)) return false;
+    return isOfferedVisibleToDriver(row, driver, req.user.id);
+  }).map((row) => toMission(row, req.user.id));
   ok(res, { missions });
 }));
 
@@ -317,6 +324,26 @@ router.post('/documents', requireDriver, asyncHandler(async (req, res, next) => 
   if (driver.verificationStatus === 'REJECTED') driver.verificationStatus = 'PENDING_VERIFICATION';
   await driver.save();
   ok(res, { documents: present(driver.documents) }, 'مدرک ثبت شد و در صف بررسی است.');
+}));
+
+router.post('/fleet', requireDriver, asyncHandler(async (req, res, next) => {
+  const settings = await getSettings();
+  const upload = imageUpload((Number(settings.image_max_kb) || 300) * 1024);
+  upload.single('file')(req, res, (error) => {
+    if (error) return next(error);
+    return next();
+  });
+}), asyncHandler(async (req, res) => {
+  if (!req.file) throw new AppError('تصویر مدرک را انتخاب کنید.', 400);
+  const driver = await Driver.findByPk(req.user.id);
+  const fleet = await desk.uploadFleet(driver, req.body.key, `/uploads/${req.file.filename}`);
+  ok(res, { fleet }, 'مدرک ناوگان ثبت شد.');
+}));
+
+router.post('/missions/:id/bid', requireDriver, asyncHandler(async (req, res) => {
+  const driver = await Driver.findByPk(req.user.id);
+  const offer = await desk.placeOffer(driver, req.params.id, req.body);
+  ok(res, { offer }, 'پیشنهاد کرایه ثبت شد.');
 }));
 
 router.post('/missions/:id/photos', requireDriver, asyncHandler(async (req, res, next) => {

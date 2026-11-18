@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { CircleMarker, MapContainer, Popup, TileLayer } from "react-leaflet";
-import { api } from "../api";
+import { toast } from "sonner";
+import { api, upload } from "../api";
 import { useAdmin } from "../auth";
 import { DRIVER_STATUS_LABELS, WORKFLOW_LABELS, money, when } from "../format";
 import { describeVehicle } from "../../driver/vehicleConfig";
@@ -241,6 +242,48 @@ export default function DriverDetail() {
       {error && (
         <div className="bg-red-50 text-red-600 p-4 rounded-lg mb-6">{error}</div>
       )}
+
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+        <h2 className="font-bold text-slate-800 mb-2">پرونده ناوگان</h2>
+        <p className="text-sm text-slate-500 mb-3">
+          وضعیت پرونده: {driver.dossierStatus === "submitted" ? "در انتظار بررسی" : driver.dossierStatus === "rejected" ? "نیازمند اصلاح" : "تأیید شده"}
+          {" — "}بازار: {driver.marketOpen ? "باز" : "قفل"}
+          {driver.reviewNote ? ` — ${driver.reviewNote}` : ""}
+        </p>
+        <p className="text-sm text-slate-600">تولد {driver.birthDate || "—"} — انقضای گواهینامه {driver.licenseExpiry || "—"} — انقضای بیمه {driver.insuranceExpiry || "—"}</p>
+        <p className="text-sm text-slate-600">اضطراری: {driver.emergencyName || "—"} {driver.emergencyPhone || ""} — نشانی {driver.homeAddress || "—"}</p>
+        {can("drivers.documents") && (
+          <div className="grid gap-2 mt-3">
+            {(driver.fleet || []).map((doc) => (
+              <div key={doc.key} className="flex flex-wrap items-center gap-2 text-sm">
+                <strong>{doc.title}</strong>
+                <span>{doc.status === "APPROVED" ? "تأیید" : doc.status === "REJECTED" ? "رد" : doc.status === "PENDING" ? "در انتظار" : "ندارد"}</span>
+                {doc.url && <a className="text-teal-700" href={doc.url}>مشاهده</a>}
+                <input type="file" accept="application/pdf,image/jpeg,image/png" onChange={async (event) => {
+                  const file = event.target.files?.[0];
+                  if (!file) return;
+                  try { await upload(`/team/drivers/${id}/fleet`, file, { key: doc.key }); toast.success("مدرک بارگذاری شد"); load(); }
+                  catch (err) { toast.error(err.message); }
+                }} />
+                <button type="button" className="btn secondary" onClick={async () => {
+                  try { await api(`/team/drivers/${id}/fleet/review`, { method: "POST", body: { key: doc.key, decision: "APPROVED" } }); load(); }
+                  catch (err) { toast.error(err.message); }
+                }}>تأیید مدرک</button>
+              </div>
+            ))}
+            <button type="button" className="btn" onClick={async () => {
+              try { await api(`/team/drivers/${id}/dossier`, { method: "POST", body: { decision: "approved" } }); toast.success("پرونده تأیید شد"); load(); }
+              catch (err) { toast.error(err.message); }
+            }}>تأیید کل پرونده</button>
+            <button type="button" className="btn secondary" onClick={async () => {
+              const note = window.prompt("دلیل برگشت پرونده");
+              if (!note) return;
+              try { await api(`/team/drivers/${id}/dossier`, { method: "POST", body: { decision: "rejected", note } }); load(); }
+              catch (err) { toast.error(err.message); }
+            }}>برگشت برای اصلاح</button>
+          </div>
+        )}
+      </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="bg-slate-100 px-6 py-3 border-b border-slate-200">

@@ -13,6 +13,10 @@ test('skips message patches when the table does not exist', async () => {
     complaints: false,
     shipments: false,
     driverNotifications: false,
+    drivers: false,
+    admins: false,
+    inspections: false,
+    insurance: false,
   });
 });
 
@@ -34,6 +38,10 @@ test('widens a varchar evidence_url so four complaint photos fit', async () => {
     complaints: true,
     shipments: false,
     driverNotifications: false,
+    drivers: false,
+    admins: false,
+    inspections: false,
+    insurance: false,
   });
   assert.ok(calls.some((sql) => /MODIFY evidence_url TEXT NULL/i.test(sql)));
 });

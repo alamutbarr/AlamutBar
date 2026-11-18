@@ -16,6 +16,8 @@ const { resolveDriverProvince } = require('../services/geocoding');
 const { latestInspections } = require('../inspector/summary');
 const driverNotificationService = require('../services/driverNotification.service');
 const orderOps = require('../admin/orderOps');
+const { marketOpen } = require('../admin/deskRules');
+const desk = require('../admin/desk');
 
 const router = express.Router();
 
@@ -188,7 +190,11 @@ async function openShipments(driverId) {
     include: includes,
     order: [['createdAt', 'DESC']],
   });
-  return rows.filter((row) => isOfferedVisibleToDriver(row, driver, driverId));
+  return rows.filter((row) => {
+    if (row.driver_id && String(row.driver_id) === String(driverId)) return true;
+    if (!marketOpen(driver)) return false;
+    return isOfferedVisibleToDriver(row, driver, driverId);
+  });
 }
 
 router.get('/profile', authMiddleware, async (req, res) => {
@@ -279,6 +285,29 @@ router.patch('/notifications/:id/read', authMiddleware, async (req, res) => {
   const notification = await driverNotificationService.markAsRead(req.user.id, req.params.id);
   if (!notification) return res.status(404).json({ message: 'اعلان پیدا نشد.' });
   return res.json({ notification });
+});
+
+router.post('/offers/:shipmentId/bid', authMiddleware, async (req, res) => {
+  if (!req.user?.id) return res.status(401).json({ message: 'لطفاً ابتدا وارد شوید.' });
+  try {
+    const driver = await Driver.findByPk(req.user.id);
+    const offer = await desk.placeOffer(driver, req.params.shipmentId, req.body);
+    return res.status(201).json({ message: 'پیشنهاد کرایه ثبت شد.', offer });
+  } catch (error) {
+    return res.status(error.statusCode || 400).json({ message: error.message || 'ثبت پیشنهاد ناموفق بود.' });
+  }
+});
+
+router.post('/fleet', authMiddleware, documentUpload.single('file'), async (req, res) => {
+  if (!req.user?.id) return res.status(401).json({ message: 'لطفاً ابتدا وارد شوید.' });
+  try {
+    const driver = await Driver.findByPk(req.user.id);
+    if (!driver || !req.file) return res.status(400).json({ message: 'فایل مدرک را انتخاب کنید.' });
+    const fleet = await desk.uploadFleet(driver, req.body.key, `/uploads/${req.file.filename}`);
+    return res.status(201).json({ fleet });
+  } catch (error) {
+    return res.status(error.statusCode || 400).json({ message: error.message || 'بارگذاری مدرک ناموفق بود.' });
+  }
 });
 
 router.post('/offers/:shipmentId/accept', authMiddleware, async (req, res) => {

@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { Route, Routes } from 'react-router-dom';
 import Landing from './landing/Home.jsx';
+import Article from './landing/Article.jsx';
 import { AuthProvider as OwnerAuth } from './panels/owner/context/AuthContext.jsx';
 import { ToastProvider } from './panels/owner/context/ToastContext.jsx';
 import { AuthProvider as DriverAuth } from './panels/driver/contexts/AuthContext.jsx';
@@ -29,6 +30,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<Landing />} />
+      <Route path="/articles/:slug" element={<Article />} />
       <Route
         path="/owner/*"
         element={panel(
