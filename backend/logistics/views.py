@@ -29,12 +29,20 @@ from .schema import *
 from .models import *
 from .serializers import *
 from .services import (
+    add_note,
     assign,
     audit,
+    confirm_waybill,
     driver_documents_valid,
     driver_market_enabled,
     event,
+    issue_waybill,
     owner_block_message,
+    record_penalty,
+    replace_driver,
+    resolve_alert,
+    save_waybill_photo,
+    scan_alerts,
     transition,
 )
 
@@ -237,6 +245,75 @@ class ShipmentViewSet(viewsets.ModelViewSet):
             serializer.validated_data.get("note", ""),
         )
         return Response(self.get_serializer(result).data)
+
+    @extend_schema(request=OpenApiTypes.OBJECT, responses=ShipmentSerializer)
+    @action(detail=True, methods=["post"])
+    def waybill(self, request, pk=None):
+        shipment = self.get_object()
+        action_name = request.data.get("action")
+        if action_name == "send":
+            result = issue_waybill(shipment.pk, request.user)
+        elif action_name == "confirm":
+            result = confirm_waybill(shipment.pk, request.user, request.data.get("code", ""))
+        elif action_name == "photo":
+            result = save_waybill_photo(shipment.pk, request.user, request.FILES.get("photo"))
+        else:
+            raise ValidationError("عملیات بارنامه نامعتبر است.")
+        return Response(self.get_serializer(result).data)
+
+    @extend_schema(request=OpenApiTypes.OBJECT, responses=ShipmentSerializer)
+    @action(detail=True, methods=["post"])
+    def penalty(self, request, pk=None):
+        shipment = self.get_object()
+        result = record_penalty(
+            shipment.pk,
+            request.user,
+            request.data.get("delay_minutes", 0),
+            bool(request.data.get("force_majeure")),
+            request.data.get("reason", ""),
+        )
+        return Response(self.get_serializer(result).data)
+
+    @extend_schema(request=OpenApiTypes.OBJECT, responses=ShipmentSerializer)
+    @action(detail=True, methods=["post"])
+    def replace(self, request, pk=None):
+        shipment = self.get_object()
+        result = replace_driver(shipment.pk, request.user, request.data.get("reason", ""))
+        return Response(self.get_serializer(result).data)
+
+    @extend_schema(request=OpenApiTypes.OBJECT, responses=ShipmentSerializer)
+    @action(detail=True, methods=["post"])
+    def note(self, request, pk=None):
+        shipment = self.get_object()
+        result = add_note(shipment.pk, request.user, request.data.get("body", ""))
+        return Response(self.get_serializer(result).data)
+
+    @extend_schema(responses={(200, "text/html"): OpenApiTypes.STR})
+    @action(detail=True, methods=["get"])
+    def dossier(self, request, pk=None):
+        if request.user.role != "operator":
+            raise PermissionDenied("پرونده فقط برای اپراتور است.")
+        shipment = self.get_object()
+        rows = [
+            f"کد: {shipment.code}",
+            f"عنوان: {shipment.title}",
+            f"مسیر: {shipment.origin} به {shipment.destination}",
+            f"وضعیت: {shipment.get_status_display()}",
+            f"صاحب بار: {shipment.owner.get_full_name()}",
+            f"راننده: {shipment.driver.get_full_name() if shipment.driver_id else '—'}",
+            f"متصدی: {shipment.inspector.get_full_name() if shipment.inspector_id else '—'}",
+            f"کرایه: {shipment.price}",
+            f"جریمه: {shipment.penalty_amount}",
+            f"بارنامه تأیید شده: {'بله' if shipment.waybill_verified_at else 'خیر'}",
+        ]
+        body = "".join(f"<li>{line}</li>" for line in rows)
+        html = (
+            "<!doctype html><html lang='fa' dir='rtl'><meta charset='utf-8'>"
+            f"<title>پرونده {shipment.code}</title><body><h1>پرونده محموله</h1><ul>{body}</ul></body></html>"
+        )
+        response = HttpResponse(html, content_type="text/html; charset=utf-8")
+        response["Content-Disposition"] = f'attachment; filename="dossier-{shipment.code}.html"'
+        return response
 
     @extend_schema(request=OfferSerializer, responses={201: OfferSerializer})
     @action(detail=True, methods=["post"])
@@ -1044,6 +1121,9 @@ def dashboard(request):
             "notifications": Notification.objects.filter(
                 user=request.user, read=False
             ).count(),
+            "open_alerts": (
+                scan_alerts() if request.user.role == "operator" else 0
+            ),
             "open_tickets": Ticket.objects.filter(
                 Q() if request.user.role == "operator" else Q(user=request.user),
                 status="open",
@@ -1094,6 +1174,38 @@ class ContactView(APIView):
         return Response(
             {"detail": "درخواست شما ثبت شد؛ تیم عملیات آن را بررسی می‌کند."}, status=201
         )
+
+
+@extend_schema(responses=OpenApiTypes.OBJECT)
+@api_view(["GET"])
+def alerts(request):
+    if request.user.role != "operator":
+        raise PermissionDenied()
+    scan_alerts()
+    rows = OperationalAlert.objects.select_related("shipment").filter(is_resolved=False)[:100]
+    return Response(
+        [
+            {
+                "id": row.id,
+                "kind": row.kind,
+                "severity": row.severity,
+                "message": row.message,
+                "shipment": row.shipment_id,
+                "code": row.shipment.code,
+                "created_at": row.created_at,
+            }
+            for row in rows
+        ]
+    )
+
+
+@extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)
+@api_view(["POST"])
+def resolve_operational_alert(request, pk):
+    if request.user.role != "operator":
+        raise PermissionDenied()
+    row = resolve_alert(pk, request.user, request.data.get("resolution", ""))
+    return Response({"id": row.id, "is_resolved": row.is_resolved})
 
 
 @extend_schema(responses=OpenApiTypes.OBJECT)

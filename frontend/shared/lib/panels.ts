@@ -84,6 +84,7 @@ export function validPanelRoute(
       "crm",
       "incidents",
       "operations",
+      "alerts",
       "driver-review",
       "articles",
       "complaints",

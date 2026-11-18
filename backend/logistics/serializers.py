@@ -265,6 +265,10 @@ class ShipmentSerializer(serializers.ModelSerializer):
                 data.pop(key, None)
         if user.role == "driver":
             data.pop("recipient_national_id", None)
+            data.pop("waybill_code", None)
+            data.pop("delivery_otp", None)
+        data["waybill_sent"] = bool(obj.waybill_sent_at)
+        data["waybill_verified"] = bool(obj.waybill_verified_at)
         try:
             rating = obj.rating
         except ShipmentRating.DoesNotExist:
@@ -358,6 +362,16 @@ class ShipmentSerializer(serializers.ModelSerializer):
             "operator_price",
             "price_status",
             "hold_resume",
+            "waybill_code",
+            "waybill_sent_at",
+            "waybill_verified_at",
+            "waybill_photo",
+            "delivery_otp",
+            "delivery_otp_verified_at",
+            "penalty_amount",
+            "delay_minutes",
+            "force_majeure",
+            "force_majeure_reason",
         ]
 
 

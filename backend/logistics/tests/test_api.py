@@ -1,3 +1,4 @@
+import base64
 import tempfile, shutil
 from datetime import timedelta
 from django.test import TestCase, override_settings
@@ -322,6 +323,28 @@ class FreightTests(TestCase):
             400,
         )
 
+    def issue_waybill(self, s):
+        self.as_role("operator")
+        sent = self.post(f"shipments/{s.pk}/waybill/", {"action": "send"})
+        self.as_role("driver")
+        self.post(
+            f"shipments/{s.pk}/waybill/",
+            {"action": "confirm", "code": sent.data["waybill_code"]},
+        )
+        self.as_role("operator")
+        photo = SimpleUploadedFile(
+            "waybill.png",
+            base64.b64decode(
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+            ),
+            content_type="image/png",
+        )
+        return self.client.post(
+            f"/api/shipments/{s.pk}/waybill/",
+            {"action": "photo", "photo": photo},
+            format="multipart",
+        )
+
     def inspection(self, s, stage="loading", passed=True):
         self.as_role("inspector")
         return self.post(
@@ -359,6 +382,7 @@ class FreightTests(TestCase):
             400,
         )
         self.assertEqual(self.inspection(s).status_code, 201)
+        self.assertEqual(self.issue_waybill(s).status_code, 200)
         self.as_role("driver")
         self.assertEqual(
             self.post(

@@ -104,6 +104,11 @@ def tracking_code():
     return "AL-" + uuid.uuid4().hex[:10].upper()
 
 
+def waybill_path(instance, filename):
+    extension = filename.rsplit(".", 1)[-1].lower() if "." in filename else "jpg"
+    return f"waybills/{instance.pk}/{uuid.uuid4().hex}.{extension}"
+
+
 class Shipment(models.Model):
     class Status(models.TextChoices):
         PENDING = "pending", "در انتظار بررسی"
@@ -294,6 +299,32 @@ class Shipment(models.Model):
     )
     hold_resume = models.CharField(
         max_length=20, blank=True, default="", verbose_name="وضعیت پیش از توقف"
+    )
+    waybill_code = models.CharField(
+        max_length=5, blank=True, default="", verbose_name="کد پیامک بارنامه"
+    )
+    waybill_sent_at = models.DateTimeField(
+        null=True, blank=True, verbose_name="زمان ارسال کد بارنامه"
+    )
+    waybill_verified_at = models.DateTimeField(
+        null=True, blank=True, verbose_name="زمان تأیید کد بارنامه"
+    )
+    waybill_photo = models.ImageField(
+        upload_to=waybill_path, null=True, blank=True, verbose_name="عکس بارنامه"
+    )
+    delivery_otp = models.CharField(
+        max_length=6, blank=True, default="", verbose_name="کد تحویل"
+    )
+    delivery_otp_verified_at = models.DateTimeField(
+        null=True, blank=True, verbose_name="زمان تأیید کد تحویل"
+    )
+    penalty_amount = models.PositiveBigIntegerField(
+        default=0, verbose_name="جریمه تأخیر (تومان)"
+    )
+    delay_minutes = models.PositiveIntegerField(default=0, verbose_name="دقیقه تأخیر")
+    force_majeure = models.BooleanField(default=False, verbose_name="فورس‌ماژور")
+    force_majeure_reason = models.CharField(
+        max_length=500, blank=True, default="", verbose_name="دلیل فورس‌ماژور"
     )
     status = models.CharField(
         max_length=20,
@@ -809,6 +840,50 @@ class LocationPing(models.Model):
 
     def __str__(self):
         return f"موقعیت {self.pk}"
+
+
+class OperationalAlert(models.Model):
+    class Kind(models.TextChoices):
+        GPS_CUT = "gps_cut", "قطع GPS"
+        ROUTE_DEVIATION = "route_deviation", "انحراف از مسیر"
+        DELAY = "delay", "تأخیر اعزام"
+        INSPECTOR_ABSENT = "inspector_absent", "غیبت متصدی"
+        OTHER = "other", "سایر"
+
+    shipment = models.ForeignKey(
+        Shipment,
+        on_delete=models.CASCADE,
+        related_name="alerts",
+        verbose_name="بار",
+    )
+    kind = models.CharField(max_length=24, choices=Kind.choices, verbose_name="نوع")
+    severity = models.CharField(
+        max_length=12,
+        choices=[("warning", "هشدار"), ("critical", "بحرانی")],
+        default="warning",
+        verbose_name="شدت",
+    )
+    message = models.CharField(max_length=300, verbose_name="شرح")
+    is_resolved = models.BooleanField(default=False, verbose_name="رفع شده")
+    resolution = models.CharField(max_length=500, blank=True, verbose_name="اقدام")
+    resolved_by = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="resolved_alerts",
+        verbose_name="رفع‌کننده",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="زمان ثبت")
+    resolved_at = models.DateTimeField(null=True, blank=True, verbose_name="زمان رفع")
+
+    class Meta:
+        verbose_name = "هشدار عملیات"
+        verbose_name_plural = "هشدارهای عملیات"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.get_kind_display()} {self.shipment_id}"
 
 
 class DriverProfile(models.Model):

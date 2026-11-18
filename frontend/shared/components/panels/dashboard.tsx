@@ -137,6 +137,17 @@ export default function Overview({
             i: CheckCircle2,
             s: "رسیده به مقصد",
           },
+          ...(role === "operator"
+            ? [
+                {
+                  t: "هشدار باز",
+                  v: dash.open_alerts || 0,
+                  i: MessageSquare,
+                  s: "GPS، انحراف، تأخیر",
+                  active: (dash.open_alerts || 0) > 0,
+                },
+              ]
+            : []),
           {
             t: role === "inspector" ? "نیازمند پیگیری" : "مانده صورتحساب",
             v: role === "inspector" ? dash.open_tickets : dash.unpaid,
