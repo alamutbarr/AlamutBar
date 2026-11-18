@@ -27,6 +27,9 @@ export default function Auth({
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [show, setShow] = useState(false),
+    [otp, setOtp] = useState(false),
+    [sent, setSent] = useState(false),
+    [remember, setRemember] = useState(true),
     [demo, setDemo] = useState(false);
   const driverRegistration = register && role === "driver";
   useEffect(() => {
@@ -122,6 +125,67 @@ export default function Auth({
                 ))}
             </div>
           )}
+          {!register && role === "driver" && (
+            <div className="otp-box">
+              <button type="button" className="text-link" onClick={() => setOtp((v) => !v)}>
+                {otp ? "ورود با رمز عبور" : "ورود با کد پیامکی"}
+              </button>
+              {otp && (
+                <form
+                  onSubmit={async (event) => {
+                    event.preventDefault();
+                    const data = new FormData(event.currentTarget);
+                    const phone = String(data.get("phone") || "");
+                    const code = String(data.get("code") || "");
+                    setBusy(true);
+                    setError("");
+                    try {
+                      if (!sent) {
+                        await api("auth/otp/request/", "POST", { phone });
+                        setSent(true);
+                      } else {
+                        const user = await api<User>("auth/otp/verify/", "POST", {
+                          phone,
+                          code,
+                          remember,
+                          role: "driver",
+                        });
+                        if (onSignedIn) onSignedIn(user);
+                        else router.push("/driver");
+                      }
+                    } catch (err) {
+                      setError(err instanceof Error ? err.message : "ورود انجام نشد.");
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                >
+                  <label>
+                    شماره موبایل
+                    <input name="phone" required dir="ltr" autoComplete="tel" />
+                  </label>
+                  {sent && (
+                    <label>
+                      کد چهار رقمی
+                      <input name="code" required dir="ltr" inputMode="numeric" maxLength={4} />
+                    </label>
+                  )}
+                  <label className="check-line">
+                    <input
+                      type="checkbox"
+                      checked={remember}
+                      onChange={(e) => setRemember(e.target.checked)}
+                    />
+                    مرا روی این دستگاه به خاطر بسپار
+                  </label>
+                  <button className="btn" disabled={busy}>
+                    {sent ? "تأیید و ورود" : "ارسال کد"}
+                  </button>
+                </form>
+              )}
+            </div>
+          )}
+          {!otp && (
           <form onSubmit={submit}>
             {register && (
               <div className="form-grid">
@@ -255,6 +319,7 @@ export default function Auth({
               <ArrowLeft size={18} />
             </button>
           </form>
+          )}
           {demo && !register && (
             <div className="demo-note">
               <b>محیط آزمایشی با داده‌های نمونه</b>

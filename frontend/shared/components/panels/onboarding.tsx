@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "@/lib/navigation";
 import { api, vehicles, number, type User } from "@/lib/api";
 import { ActionForm, type Field } from "../forms";
+import VehicleWizard from "./vehicle-wizard";
+import { describeVehicle } from "@/lib/vehicle-config";
 import { Loading } from "../ui";
 type Credential = {
   id: number;
@@ -31,6 +33,10 @@ type Vehicle = {
   capacity: number;
   license_number: string;
   available: boolean;
+  tractor_type?: string;
+  trailer_type?: string;
+  smart_card_number?: string;
+  specs?: Record<string, string>;
 };
 type RecordData = {
   user: User;
@@ -47,13 +53,23 @@ const labels: Record<string, string> = {
   pending: "در انتظار بررسی",
 };
 const kinds: Record<string, string> = {
-  national_card: "کارت ملی",
+  national_card: "روی کارت ملی",
+  national_card_selfie: "سلفی با کارت ملی",
+  shenasnameh: "روی شناسنامه",
+  shenasnameh_selfie: "سلفی با شناسنامه",
   license: "گواهینامه رانندگی",
   vehicle_card: "کارت خودرو",
   insurance: "بیمه‌نامه معتبر",
   smart_card: "کارت هوشمند",
   health: "کارت سلامت",
+  identity: "یکی از مدارک هویتی همراه سلفی",
 };
+const identityKinds = [
+  "national_card",
+  "national_card_selfie",
+  "shenasnameh",
+  "shenasnameh_selfie",
+];
 const steps = ["هویت و تماس", "خودرو", "مدارک", "بازبینی و ارسال"];
 export default function Onboarding({
   driverId,
@@ -174,12 +190,15 @@ export default function Onboarding({
     },
   ];
   const identityDone = fields.every((field) => field.value);
-  const missing = data.required_documents.filter(
-    (kind) =>
-      !data.documents.some(
-        (doc) => doc.kind === kind && doc.status !== "rejected",
-      ),
-  );
+  const hasDoc = (kind: string) =>
+    data.documents.some((doc) => doc.kind === kind && doc.status !== "rejected");
+  const identityReady =
+    (hasDoc("national_card") && hasDoc("national_card_selfie")) ||
+    (hasDoc("shenasnameh") && hasDoc("shenasnameh_selfie"));
+  const missing = [
+    ...data.required_documents.filter((kind) => !hasDoc(kind)),
+    ...(identityReady ? [] : ["identity"]),
+  ];
   const savedStep = !identityDone
     ? 0
     : !data.vehicle
@@ -267,6 +286,46 @@ export default function Onboarding({
       {editable && step === 0 && (
         <section className="card form-card">
           <h2>اطلاعات هویتی و اعتبار مدارک</h2>
+          {!review && (
+            <div className="profile-summary">
+              {data.user.avatar_url ? (
+                <img className="avatar large" src={data.user.avatar_url} alt="" />
+              ) : (
+                <span className="avatar large">{data.user.first_name?.[0] || "ر"}</span>
+              )}
+              <div>
+                <label className="secondary-btn upload-btn">
+                  انتخاب عکس پروفایل
+                  <input
+                    className="sr-only"
+                    type="file"
+                    accept=".jpg,.jpeg,.png"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const body = new FormData();
+                      body.set("file", file);
+                      await api("onboarding/avatar/", "POST", body);
+                      await load();
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+                {data.user.avatar_url && (
+                  <button
+                    type="button"
+                    className="text-link"
+                    onClick={async () => {
+                      await api("onboarding/avatar/", "DELETE");
+                      await load();
+                    }}
+                  >
+                    حذف عکس
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
           <ActionForm
             fields={fields}
             submit="ذخیره و ادامه"
@@ -280,44 +339,15 @@ export default function Onboarding({
       )}
       {editable && step === 1 && (
         <section className="card form-card">
-          <h2>خودروی شما</h2>
-          <ActionForm
-            fields={[
-              {
-                name: "kind",
-                label: "نوع خودرو",
-                value: data.vehicle?.kind,
-                options: Object.entries(vehicles).map(([value, label]) => ({
-                  value,
-                  label,
-                })),
-                required: true,
-              },
-              {
-                name: "plate",
-                label: "پلاک خودرو",
-                value: data.vehicle?.plate,
-                required: true,
-                maxLength: 25,
-              },
-              {
-                name: "capacity",
-                label: "ظرفیت (تن)",
-                type: "number",
-                min: 0.1,
-                value: data.vehicle?.capacity,
-                required: true,
-              },
-              {
-                name: "license_number",
-                label: "شماره گواهینامه",
-                value: data.vehicle?.license_number,
-                required: true,
-              },
-            ]}
-            submit="ذخیره و ادامه"
-            onSubmit={async (d) => {
-              await api("vehicle/", "PUT", { ...d, available: true });
+          <h2>خودرو، پلاک و شماره هوشمند</h2>
+          <p className="muted">
+            شماره کارت هوشمند باید با پلاک همین خودرو یکی باشد. تطبیق خودکار با
+            سامانه دولتی انجام نمی‌شود.
+          </p>
+          <VehicleWizard
+            initial={data.vehicle || undefined}
+            onSubmit={async (payload) => {
+              await api("vehicle/", "PUT", payload);
               await load();
               setStep(2);
             }}
@@ -328,20 +358,25 @@ export default function Onboarding({
         <section className="card form-card">
           <h2>مدارک راننده و خودرو</h2>
           <p className="muted">
-            چهار مدرک نخست الزامی‌اند. PDF، JPG یا PNG معتبر، حداکثر ۱۰ مگابایت.
-            فایل‌ها فقط برای راننده و اپراتور قابل دریافت‌اند.
+            گواهینامه، کارت خودرو و بیمه‌نامه الزامی‌اند. برای هویت، یا کارت ملی
+            (رو و سلفی) یا شناسنامه (رو و سلفی) کافی است. کارت هوشمند و کارت
+            سلامت اختیاری‌اند. مدرک تأییدشده تا زمان ویرایش پرونده قفل است.
           </p>
           <div className="credential-grid">
-            {Object.entries(kinds).map(([kind, label]) => {
+            {Object.entries(kinds)
+              .filter(([kind]) => kind !== "identity")
+              .map(([kind, label]) => {
               const doc = data.documents.find((d) => d.kind === kind);
               return (
                 <article className="credential" key={kind}>
                   <div>
                     <h3>{label}</h3>
                     <small>
-                      {data.required_documents.includes(kind)
-                        ? "الزامی"
-                        : "اختیاری"}
+                      {identityKinds.includes(kind)
+                        ? "هویت: یکی از دو مجموعه"
+                        : data.required_documents.includes(kind)
+                          ? "الزامی"
+                          : "اختیاری"}
                     </small>
                   </div>
                   {doc ? (
@@ -353,6 +388,22 @@ export default function Onboarding({
                         {labels[doc.status] || doc.status}
                       </p>
                       {doc.note && <p className="error">{doc.note}</p>}
+                      {editable && !(doc.status === "approved" && !editing) && (
+                        <label className="secondary-btn upload-btn">
+                          جایگزینی مدرک
+                          <input
+                            className="sr-only"
+                            type="file"
+                            accept=".pdf,.png,.jpg,.jpeg"
+                            disabled={busy}
+                            onChange={(e) => {
+                              const f = e.target.files?.[0];
+                              if (f) void upload(kind, f);
+                              e.target.value = "";
+                            }}
+                          />
+                        </label>
+                      )}
                     </>
                   ) : (
                     <p className="muted">هنوز بارگذاری نشده</p>
@@ -456,12 +507,21 @@ export default function Onboarding({
               <dt>خودرو</dt>
               <dd>
                 {data.vehicle
-                  ? vehicles[data.vehicle.kind] +
+                  ? (data.vehicle.tractor_type
+                      ? describeVehicle(
+                          data.vehicle.tractor_type,
+                          data.vehicle.trailer_type || "",
+                          data.vehicle.specs || {},
+                        ).summary
+                      : vehicles[data.vehicle.kind]) +
                     " · " +
                     data.vehicle.plate +
                     " · " +
                     number(data.vehicle.capacity) +
-                    " تن"
+                    " تن" +
+                    (data.vehicle.smart_card_number
+                      ? " · هوشمند " + data.vehicle.smart_card_number
+                      : "")
                   : "ثبت نشده"}
               </dd>
             </div>

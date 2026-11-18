@@ -29,6 +29,8 @@ import Link from "@/lib/navigation";
 import { useState, type Dispatch, type FormEvent, type SetStateAction } from "react";
 import { Badge, Empty } from "../ui";
 import LiveLocation from "../live-location";
+import DriverTrip from "./driver-trip";
+import ShipmentChat from "./shipment-chat";
 export default function ShipmentDetail({
   shipment,
   user,
@@ -85,7 +87,9 @@ export default function ShipmentDetail({
     ["راننده", shipment.driver_name || "هنوز تخصیص نیافته"],
     ["متصدی", shipment.inspector_name || "هنوز تخصیص نیافته"],
     ["نشانی مبدأ", shipment.origin_address || "پس از تخصیص در دسترس است"],
-    ["نشانی مقصد", shipment.destination_address || "پس از تخصیص در دسترس است"],
+    ["نشانی مقصد", shipment.destination_locked
+      ? "آدرس دقیق پس از صدور بارنامه نمایش داده می‌شود."
+      : shipment.destination_address || "پس از تخصیص در دسترس است"],
     ["گیرنده", shipment.recipient_name || "—"],
     ["موبایل گیرنده", shipment.recipient_phone || "—"],
     ["کد ملی گیرنده", shipment.recipient_national_id || ""],
@@ -252,18 +256,29 @@ export default function ShipmentDetail({
                   </button>
                 )}
               {role === "driver" && shipment.status === "approved" && (
-                <button
-                  className="btn"
-                  onClick={() => setModal({ kind: "offer", data: shipment })}
-                >
-                  ثبت پیشنهاد کرایه
-                </button>
+                <>
+                  <button
+                    className="btn"
+                    disabled={busy}
+                    onClick={() =>
+                      void mutate("shipments/" + shipment.id + "/accept/", {})
+                    }
+                  >
+                    قبول مأموریت
+                  </button>
+                  <button
+                    className="danger-btn"
+                    disabled={busy}
+                    onClick={() =>
+                      void mutate("shipments/" + shipment.id + "/decline/", {})
+                    }
+                  >
+                    رد پیشنهاد
+                  </button>
+                </>
               )}
-              {(role === "operator" ||
-                (role === "driver" && shipment.driver === user?.id)) &&
-                ["assigned", "loading", "in_transit"].includes(
-                  shipment.status,
-                ) && (
+              {role === "operator" &&
+                ["assigned", "loading", "in_transit"].includes(shipment.status) && (
                   <button
                     className="btn"
                     disabled={
@@ -293,8 +308,54 @@ export default function ShipmentDetail({
                     <ArrowLeft size={17} />
                   </button>
                 )}
+              {role === "operator" &&
+                ["arrived_pickup", "loading", "waybill"].includes(shipment.status) && (
+                  <>
+                    <button
+                      className="secondary-btn"
+                      disabled={busy}
+                      onClick={async () => {
+                        const saved = (await mutate(
+                          "shipments/" + shipment.id + "/waybill-issue/",
+                          {},
+                          "کد بارنامه صادر شد.",
+                        )) as { code?: string } | false;
+                        if (saved && saved.code)
+                          setToast("کد بارنامه: " + saved.code);
+                      }}
+                    >
+                      صدور کد بارنامه
+                    </button>
+                    <label className="secondary-btn upload-btn">
+                      عکس بارنامه
+                      <input
+                        className="sr-only"
+                        type="file"
+                        accept=".pdf,.png,.jpg,.jpeg"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const data = new FormData();
+                          data.set("file", file);
+                          await mutate(
+                            "shipments/" + shipment.id + "/waybill-photo/",
+                            data,
+                          );
+                          e.target.value = "";
+                        }}
+                      />
+                    </label>
+                    {shipment.waybill?.code && (
+                      <p className="info-note">
+                        کد بارنامه: <b dir="ltr">{shipment.waybill.code}</b>
+                      </p>
+                    )}
+                  </>
+                )}
               {role === "inspector" &&
-                ["loading", "delivered"].includes(shipment.status) && (
+                ["loading", "arrived_pickup", "delivered", "near_destination"].includes(
+                  shipment.status,
+                ) && (
                   <button
                     className="btn"
                     onClick={() =>
@@ -335,6 +396,14 @@ export default function ShipmentDetail({
                 )}
             </div>
           </section>
+          {role === "driver" && shipment.driver === user?.id && (
+            <DriverTrip
+              shipment={shipment}
+              busy={busy}
+              mutate={mutate}
+              supportPhone={undefined}
+            />
+          )}
           {Boolean(shipment.offers?.length) && (
             <section className="card detail-section">
               <h2>پیشنهادهای حمل</h2>
@@ -402,9 +471,12 @@ export default function ShipmentDetail({
             canShare={
               role === "driver" &&
               shipment.driver === user?.id &&
-              shipment.status === "in_transit"
+              ["waybill", "in_transit", "near_destination"].includes(shipment.status)
             }
           />
+          {shipment.driver && ["driver", "operator"].includes(role) && shipment.status !== "approved" && (
+            <ShipmentChat shipmentId={shipment.id} />
+          )}
           <section className="card detail-section">
             <h2>گزارش‌های بازرسی</h2>
             {shipment.inspections?.length ? (

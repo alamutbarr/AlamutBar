@@ -22,6 +22,8 @@ import type {
   Ticket,
   Vehicle,
 } from "@/lib/workspace-types";
+import ThemeToggle from "./theme-toggle";
+import DriverDesk from "./panels/driver-desk";
 import {
   ArrowLeft,
   ArrowUpLeft,
@@ -136,7 +138,7 @@ const nav = [
 ];
 const appTabOrder: Record<Role, string[]> = {
   owner: ["shipments", "new", "invoices"],
-  driver: ["shipments", "market", "onboarding"],
+  driver: ["market", "shipments", "notifications"],
   operator: [
     "shipments",
     "control",
@@ -375,10 +377,10 @@ export default function Workspace({
   ) {
     setBusy(true);
     try {
-      await api(path, "POST", data);
+      const saved = await api(path, "POST", data);
       setToast(success);
       await load();
-      return true;
+      return saved;
     } catch (e) {
       setToast((e as Error).message);
       return false;
@@ -551,6 +553,7 @@ export default function Workspace({
     active: item.key === section && !(role === "owner" && isNew),
     shortLabel: appTabLabels[item.key],
     primary: item.key === (marketLocked ? "onboarding" : appPrimary[role]),
+    badge: item.key === "notifications" ? dash?.notifications || 0 : 0,
   }));
   const newRequest: WorkspaceLink = {
     key: "new",
@@ -620,6 +623,15 @@ export default function Workspace({
           setToast={setToast}
           setModal={setModal}
           mutate={mutate}
+        />
+      );
+    else if (role === "driver" && ["market", "shipments"].includes(section))
+      content = (
+        <DriverDesk
+          initialTab={section === "market" ? "offered" : "active"}
+          base={base}
+          section={section}
+          onChanged={() => void load()}
         />
       );
     else if (shipments)
@@ -858,6 +870,7 @@ export default function Workspace({
             </span>
           </div>
           <div>
+            <ThemeToggle />
             <button
               className="icon-btn"
               onClick={() => {
@@ -886,7 +899,11 @@ export default function Workspace({
               }
             >
               <span className="avatar" aria-hidden="true">
-                {user?.first_name?.[0] || "م"}
+                {user?.avatar_url ? (
+                  <img src={user.avatar_url} alt="" />
+                ) : (
+                  user?.first_name?.[0] || "م"
+                )}
               </span>
               <span>
                 <b>{user?.name || "حساب کاربری"}</b>

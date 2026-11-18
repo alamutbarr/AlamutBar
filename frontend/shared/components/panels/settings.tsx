@@ -31,13 +31,58 @@ export default function Account({
         <section className="card form-card">
           <h2>اطلاعات شخصی</h2>
           <div className="profile-summary">
-            <span className="avatar large">{user.first_name?.[0] || "م"}</span>
+            {user.avatar_url ? (
+              <img className="avatar large" src={user.avatar_url} alt="" />
+            ) : (
+              <span className="avatar large">{user.first_name?.[0] || "م"}</span>
+            )}
             <div>
               <b>{user.name || user.username}</b>
               <p>
                 {roles[role]} ·{" "}
                 {user.verified ? "احراز شده" : "در انتظار احراز"}
               </p>
+              {role === "driver" && (
+                <>
+                  <label className="secondary-btn upload-btn">
+                    عکس پروفایل
+                    <input
+                      className="sr-only"
+                      type="file"
+                      accept=".jpg,.jpeg,.png"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const body = new FormData();
+                        body.set("file", file);
+                        const saved = await api<{ user: User }>(
+                          "onboarding/avatar/",
+                          "POST",
+                          body,
+                        );
+                        setUser(saved.user);
+                        setToast("عکس پروفایل ذخیره شد.");
+                        e.target.value = "";
+                      }}
+                    />
+                  </label>
+                  {user.avatar_url && (
+                    <button
+                      type="button"
+                      className="text-link"
+                      onClick={async () => {
+                        const saved = await api<{ user: User }>(
+                          "onboarding/avatar/",
+                          "DELETE",
+                        );
+                        setUser(saved.user);
+                      }}
+                    >
+                      حذف عکس
+                    </button>
+                  )}
+                </>
+              )}
             </div>
           </div>
           <ActionForm
@@ -128,6 +173,16 @@ export default function Account({
         {role === "driver" && (
           <section className="card form-card full">
             <h2>خودرو و آمادگی حمل</h2>
+            {vehicle?.tractor_type && (
+              <p className="muted">
+                ناوگان ثبت‌شده: {vehicle.tractor_type}
+                {vehicle.trailer_type ? " / " + vehicle.trailer_type : ""}
+                {vehicle.smart_card_number
+                  ? " · هوشمند " + vehicle.smart_card_number
+                  : ""}
+                . تغییر نوع کشنده از پرونده همکاری انجام می‌شود.
+              </p>
+            )}
             <ActionForm
               fields={[
                 {

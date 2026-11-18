@@ -319,6 +319,15 @@ export function ShipmentForm({
       value: shipment?.insurance_requested ? "true" : "false",
     },
     {
+      name: "sensitive",
+      label: "بار حساس",
+      options: [
+        { value: "false", label: "عادی" },
+        { value: "true", label: "حساس (متصدی اجباری)" },
+      ],
+      value: shipment?.sensitive ? "true" : "false",
+    },
+    {
       name: "pickup_date",
       label: "تاریخ بارگیری",
       type: "date",
@@ -392,9 +401,9 @@ export function ShipmentForm({
           fields: fields.slice(3, 7),
           before: <SavedAddressPicker />,
         },
-        { title: "۳. وزن، ابعاد و خودرو", fields: fields.slice(7, 16) },
-        { title: "۴. زمان و روش جابه‌جایی", fields: fields.slice(16, 21) },
-        { title: "۵. گیرنده و توضیحات", fields: fields.slice(21) },
+        { title: "۳. وزن، ابعاد و خودرو", fields: fields.slice(7, 17) },
+        { title: "۴. زمان و روش جابه‌جایی", fields: fields.slice(17, 22) },
+        { title: "۵. گیرنده و توضیحات", fields: fields.slice(22) },
       ]}
       submit={shipment ? "ذخیره تغییرات" : "ثبت درخواست حمل"}
       onSubmit={async (data) => {

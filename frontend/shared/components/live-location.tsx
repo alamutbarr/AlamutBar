@@ -2,6 +2,33 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError, type Location, type Shipment } from "@/lib/api";
 import FleetMap from "./fleet-map";
+
+const GPS_STATUSES = ["waybill", "in_transit", "near_destination"];
+type GpsPoint = {
+  latitude: string;
+  longitude: string;
+  accuracy: number;
+  speed: number | null;
+  heading: number | null;
+  observed_at: string;
+};
+
+function queueKey(id: number) {
+  return "alamut_gps_queue:" + id;
+}
+
+function readQueue(id: number): GpsPoint[] {
+  try {
+    const rows = JSON.parse(localStorage.getItem(queueKey(id)) || "[]");
+    return Array.isArray(rows) ? rows : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeQueue(id: number, rows: GpsPoint[]) {
+  localStorage.setItem(queueKey(id), JSON.stringify(rows.slice(-5000)));
+}
 export default function LiveLocation({
   shipment,
   canShare,
@@ -15,12 +42,13 @@ export default function LiveLocation({
     [active, setActive] = useState(false),
     [message, setMessage] = useState(""),
     [loading, setLoading] = useState(false),
-    [checkedAt, setCheckedAt] = useState(() => Date.now());
+    [checkedAt, setCheckedAt] = useState(() => Date.now()),
+    [queued, setQueued] = useState(() => readQueue(shipment.id).length);
   const watch = useRef<number | null>(null),
     session = useRef(0),
     trackingSignal = useRef<AbortController | null>(null),
     last = useRef(0),
-    pending = useRef<Record<string, number | string> | null>(null),
+    pending = useRef<GpsPoint | null>(null),
     sending = useRef(false);
   const clearTracking = useCallback(() => {
     session.current++;
@@ -49,9 +77,9 @@ export default function LiveLocation({
         .then((s) => {
           if (!mounted) return;
           setPoints(s.locations || []);
-          if (s.status !== "in_transit" && watch.current !== null) {
+          if (!GPS_STATUSES.includes(s.status) && watch.current !== null) {
             stop();
-            setMessage("این سفر در مرحله حمل نیست؛ اشتراک موقعیت متوقف شد.");
+            setMessage("این سفر در مرحله ارسال موقعیت نیست؛ اشتراک متوقف شد.");
           }
         })
         .catch((e) => {
@@ -91,8 +119,14 @@ export default function LiveLocation({
         const retry =
           e instanceof ApiError &&
           (e.status === 0 || e.status >= 500 || e.status === 429);
-        if (!retry && pending.current === data) pending.current = null;
-        setMessage("ارسال موقعیت انجام نشد. " + (e as Error).message);
+        if (retry) {
+          const rows = readQueue(shipment.id);
+          rows.push(data);
+          writeQueue(shipment.id, rows);
+          setQueued(rows.length);
+          setMessage("اتصال قطع است. نقطه در صف آفلاین ماند.");
+        } else if (pending.current === data) pending.current = null;
+        if (!retry) setMessage("ارسال موقعیت انجام نشد. " + (e as Error).message);
       } finally {
         sending.current = false;
         if (pending.current && pending.current !== data) void sendPending();
@@ -125,6 +159,14 @@ export default function LiveLocation({
           latitude: p.coords.latitude.toFixed(6),
           longitude: p.coords.longitude.toFixed(6),
           accuracy: Math.round(p.coords.accuracy),
+          speed:
+            p.coords.speed == null || Number.isNaN(p.coords.speed)
+              ? null
+              : Math.round(p.coords.speed * 3.6),
+          heading:
+            p.coords.heading == null || Number.isNaN(p.coords.heading)
+              ? null
+              : Math.round(p.coords.heading),
           observed_at: new Date(p.timestamp).toISOString(),
         };
         void send();
@@ -143,13 +185,21 @@ export default function LiveLocation({
     stale =
       !newest ||
       checkedAt - new Date(newest.observed_at || newest.created_at).getTime() >
-        300000;
+        300000,
+    longOffline = stale && checkedAt - new Date(newest?.observed_at || newest?.created_at || 0).getTime() > 1800000,
+    gpsLabel = active
+      ? queued
+        ? "مشکل اتصال"
+        : "فعال"
+      : longOffline
+        ? "قطع طولانی"
+        : "قطع";
   return (
     <section className="card detail-section">
       <div className="card-head">
         <h2>نقشه و رصد موقعیت راننده</h2>
-        <span className={"badge " + (stale ? "pending" : "in_transit")}>
-          {newest ? (stale ? "موقعیت قدیمی" : "به‌روز") : "بدون موقعیت"}
+        <span className={"badge " + (active && !queued ? "in_transit" : stale ? "cancelled" : "pending")}>
+          {newest || active ? gpsLabel : "بدون موقعیت"}
         </span>
       </div>
       <p className="muted">
@@ -173,7 +223,16 @@ export default function LiveLocation({
           )}{" "}
           · دریافت {new Date(newest.created_at).toLocaleString("fa-IR")} · دقت{" "}
           {newest.accuracy} متر
+          {newest.speed != null ? " · " + newest.speed + " کیلومتر بر ساعت" : ""}
+          {newest.heading != null ? " · جهت " + newest.heading + " درجه" : ""}
         </p>
+      )}
+      {canShare && (
+        <ul className="gps-guide">
+          <li>موقعیت مکانی دستگاه را روشن بگذارید.</li>
+          <li>اینترنت باید وصل باشد؛ اگر قطع شد، نقطه‌ها تا ۵۰۰۰ مورد ذخیره می‌شوند.</li>
+          <li>بهینه‌سازی باتری را برای این صفحه خاموش کنید تا ردیابی در پس‌زمینه نماند.</li>
+        </ul>
       )}
       {canShare && (
         <div className="tracking-controls">
@@ -191,6 +250,30 @@ export default function LiveLocation({
                 ? "توقف اشتراک موقعیت"
                 : "شروع اشتراک موقعیت سفر"}
           </button>
+          {queued > 0 && (
+            <button
+              className="secondary-btn"
+              type="button"
+              onClick={async () => {
+                const rows = readQueue(shipment.id);
+                const chunk = rows.slice(0, 100);
+                try {
+                  await api("shipments/" + shipment.id + "/location-batch/", "POST", {
+                    points: chunk,
+                  });
+                  const left = rows.slice(100);
+                  writeQueue(shipment.id, left);
+                  setQueued(left.length);
+                  setMessage(left.length ? "بخشی از صف ارسال شد." : "صف آفلاین خالی شد.");
+                  onUpdate?.();
+                } catch (e) {
+                  setMessage("همگام‌سازی انجام نشد. " + (e as Error).message);
+                }
+              }}
+            >
+              همگام‌سازی {queued} نقطه
+            </button>
+          )}
         </div>
       )}
       {message && (

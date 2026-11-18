@@ -19,7 +19,13 @@ export type User = {
     plate: string;
     capacity: string;
     available: boolean;
+    license_number?: string;
+    tractor_type?: string;
+    trailer_type?: string;
+    smart_card_number?: string;
+    specs?: Record<string, string>;
   } | null;
+  avatar_url?: string;
 };
 export type Shipment = {
   id: number;
@@ -50,6 +56,24 @@ export type Shipment = {
   recipient_national_id: string;
   recipient_postal_code: string;
   insurance_requested: boolean;
+  sensitive?: boolean;
+  offer_expires_at?: string | null;
+  destination_locked?: boolean;
+  route_km?: number | null;
+  eta_hours?: number | null;
+  distance_km?: number | null;
+  waybill?: {
+    sms_sent: boolean;
+    code_verified: boolean;
+    photo_url: string;
+    code?: string;
+  } | null;
+  pod?: {
+    photo_count: number;
+    otp_sent: boolean;
+    verified: boolean;
+    exception_reason: string;
+  };
   rating: {
     driver_score: number;
     inspector_score: number | null;
@@ -102,6 +126,8 @@ export type Location = {
   latitude: string;
   longitude: string;
   accuracy: number;
+  speed?: number | null;
+  heading?: number | null;
   created_at: string;
 };
 export const roles: Record<Role, string> = {
@@ -120,8 +146,13 @@ export const statuses: Record<string, string> = {
   pending: "در انتظار بررسی",
   approved: "آماده تخصیص",
   assigned: "تخصیص یافته",
+  en_route_pickup: "در حرکت به بارگیری",
+  arrived_pickup: "رسیده به بارگیری",
   loading: "در حال بارگیری",
+  waybill: "بارنامه",
   in_transit: "در مسیر",
+  near_destination: "نزدیک مقصد",
+  on_hold: "متوقف به‌خاطر بازرسی",
   delivered: "تحویل شده",
   completed: "تکمیل شده",
   cancelled: "لغو شده",
