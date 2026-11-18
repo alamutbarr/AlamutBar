@@ -47,11 +47,13 @@ export default function PersianDate({
   label,
   value,
   required,
+  onChange,
 }: {
   name: string;
   label: string;
   value?: string | number;
   required?: boolean;
+  onChange?: (value: string) => void;
 }) {
   const now = persianParts(new Date()),
     parsed = value
@@ -66,6 +68,16 @@ export default function PersianDate({
   useEffect(() => {
     if (day > days) setDay(0);
   }, [days, day]);
+  function choose(next: { year?: number; month?: number; day?: number }) {
+    const nextYear = next.year ?? year;
+    const nextMonth = next.month ?? month;
+    const nextDay = next.day ?? day;
+    if (next.year !== undefined) setYear(next.year);
+    if (next.month !== undefined) setMonth(next.month);
+    if (next.day !== undefined) setDay(next.day);
+    const iso = persianToISO(nextYear, nextMonth, nextDay);
+    if (iso) onChange?.(iso);
+  }
   const min = name === "birth_date" ? now.year - 100 : now.year - 1,
     max = name === "birth_date" ? now.year - 18 : now.year + 20,
     years = Array.from({ length: max - min + 1 }, (_, i) => max - i);
@@ -79,7 +91,7 @@ export default function PersianDate({
           aria-label={label + " روز"}
           value={day || ""}
           required={required}
-          onChange={(e) => setDay(Number(e.target.value))}
+          onChange={(e) => choose({ day: Number(e.target.value) })}
         >
           <option value="">روز</option>
           {Array.from({ length: days }, (_, i) => (
@@ -92,7 +104,7 @@ export default function PersianDate({
           aria-label={label + " ماه"}
           value={month || ""}
           required={required}
-          onChange={(e) => setMonth(Number(e.target.value))}
+          onChange={(e) => choose({ month: Number(e.target.value) })}
         >
           <option value="">ماه</option>
           {months.map((m, i) => (
@@ -105,7 +117,7 @@ export default function PersianDate({
           aria-label={label + " سال"}
           value={year || ""}
           required={required}
-          onChange={(e) => setYear(Number(e.target.value))}
+          onChange={(e) => choose({ year: Number(e.target.value) })}
         >
           <option value="">سال</option>
           {years.map((y) => (

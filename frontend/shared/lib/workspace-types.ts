@@ -35,6 +35,7 @@ export type Ticket = {
 export type Notice = {
   id: number;
   title: string;
+  body?: string;
   shipment: number | null;
   read: boolean;
   created_at: string;

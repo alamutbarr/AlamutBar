@@ -19,6 +19,7 @@ router.register("crm/leads", o.LeadViewSet, basename="leads")
 router.register("crm/followups", o.FollowUpViewSet, basename="followups")
 router.register("incidents", o.IncidentViewSet, basename="incidents")
 router.register("addresses", o.AddressViewSet, basename="addresses")
+router.register("owner-identity", v.OwnerIdentityViewSet, basename="owner-identity")
 urlpatterns = [
     path("api/security/status/", s.security_status),
     path("api/security/mfa/setup/", s.mfa_setup),
@@ -39,6 +40,9 @@ urlpatterns = [
     path("api/", include(router.urls)),
     path("api/auth/csrf/", v.csrf),
     path("api/auth/login/", v.LoginView.as_view()),
+    path("api/auth/otp/", v.otp_start),
+    path("api/auth/otp/confirm/", v.otp_confirm),
+    path("api/auth/avatar/", v.avatar),
     path("api/auth/register/", v.RegisterView.as_view()),
     path("api/auth/logout/", v.signout),
     path("api/auth/me/", v.me),
@@ -54,6 +58,7 @@ urlpatterns = [
         v.complaint_photo,
         name="complaint-photo-download",
     ),
+    path("api/owner-kyc/<int:pk>/download/", v.owner_kyc_download, name="owner-kyc-download"),
     path("api/tracking/", v.track),
     path("api/contact/", v.ContactView.as_view()),
     path("api/operations/", v.operations),

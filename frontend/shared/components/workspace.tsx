@@ -37,8 +37,11 @@ import {
   MessageSquare,
   Package,
   Plus,
+  Moon,
+  PanelRight,
   RefreshCw,
   Route,
+  Sun,
   Search,
   Settings,
   ShieldAlert,
@@ -57,6 +60,9 @@ import {
   type ReactNode,
 } from "react";
 import { ActionForm, ShipmentForm } from "./forms";
+import { NationalIdGate, OwnerKycReview } from "./owner-identity";
+import OwnerShipmentWizard from "./owner-shipment-wizard";
+import { nationalIdOk } from "@/lib/national-id";
 import Overview from "./panels/dashboard";
 import Finance from "./panels/invoices";
 import Notifications from "./panels/notifications";
@@ -124,6 +130,12 @@ const nav = [
     label: "ثبت شکایت",
     icon: ShieldAlert,
     only: ["owner", "operator"],
+  },
+  {
+    key: "owner-kyc",
+    label: "احراز صاحب بار",
+    icon: ShieldCheck,
+    only: ["operator"],
   },
   {
     key: "operations",
@@ -197,7 +209,9 @@ export default function Workspace({
     [search, setSearch] = useState(""),
     [status, setStatus] = useState(""),
     [busy, setBusy] = useState(false),
-    [modal, setModal] = useState<{ kind: string; data?: Invoice | Shipment }>();
+    [modal, setModal] = useState<{ kind: string; data?: Invoice | Shipment }>(),
+    [collapsed, setCollapsed] = useState(false),
+    [dark, setDark] = useState(false);
   const isNew = detailId === "new";
   const [authError, setAuthError] = useState<unknown>(null),
     [authVersion, setAuthVersion] = useState(0);
@@ -364,6 +378,13 @@ export default function Workspace({
     void load();
   }, [load]);
   useEffect(() => {
+    const storedTheme = localStorage.getItem("alamut-theme") === "dark";
+    const storedMenu = localStorage.getItem("alamut-sidebar") === "collapsed";
+    setDark(storedTheme);
+    setCollapsed(storedMenu);
+    document.documentElement.dataset.theme = storedTheme ? "dark" : "light";
+  }, []);
+  useEffect(() => {
     if (!toast) return;
     const t = setTimeout(() => setToast(""), 5000);
     return () => clearTimeout(t);
@@ -376,7 +397,7 @@ export default function Workspace({
     setBusy(true);
     try {
       await api(path, "POST", data);
-      setToast(success);
+      if (success) setToast(success);
       await load();
       return true;
     } catch (e) {
@@ -479,6 +500,10 @@ export default function Workspace({
                   </div>
                   <small className="muted">
                     {vehicles[s.vehicle_type]} · {number(s.weight)} تن
+                    <small className="muted">
+                      {" "}
+                      ({number(Math.round(Number(s.weight) * 1000))} کیلوگرم)
+                    </small>
                   </small>
                 </td>
                 <td role="cell" data-label="بارگیری">
@@ -500,6 +525,14 @@ export default function Workspace({
                     <span className="app-record-action-label">جزئیات</span>
                     <ArrowUpLeft size={18} />
                   </Link>
+                  {role === "owner" && (
+                    <Link
+                      className="text-link small"
+                      href={base + "/shipments/new?repeat=" + s.id}
+                    >
+                      تکرار
+                    </Link>
+                  )}
                 </td>
               </tr>
             ))}
@@ -600,12 +633,24 @@ export default function Workspace({
               <ArrowLeft size={17} />
             </Link>
           </div>
-          <ShipmentForm
-            onDone={(s) => {
-              setToast("درخواست حمل ثبت شد.");
-              router.push(base + "/shipments/" + s.id);
-            }}
-          />
+          {role === "owner" && user ? (
+            <OwnerShipmentWizard
+              user={user}
+              demo={demo}
+              base={base}
+              onDone={(s) => {
+                setToast("درخواست حمل ثبت شد.");
+                router.push(base + "/shipments/" + s.id);
+              }}
+            />
+          ) : (
+            <ShipmentForm
+              onDone={(s) => {
+                setToast("درخواست حمل ثبت شد.");
+                router.push(base + "/shipments/" + s.id);
+              }}
+            />
+          )}
         </section>
       );
     } else if (detailId && shipment)
@@ -788,11 +833,30 @@ export default function Workspace({
   if (section === "addresses" && role === "owner") content = <Addresses />;
   if (section === "complaints" && ["owner", "operator"].includes(role))
     content = <Complaints role={role} />;
+  if (section === "owner-kyc" && role === "operator")
+    content = <OwnerKycReview />;
+  if (role === "owner" && user && !nationalIdOk(user.national_id))
+    content = <NationalIdGate onSaved={setUser} />;
   return (
-    <div className="workspace" data-role={role} data-section={section}>
+    <div
+      className={"workspace" + (collapsed ? " menu-collapsed" : "")}
+      data-role={role}
+      data-section={section}
+    >
       <aside className="sidebar">
         <div className="sidebar-brand">
           <Brand />
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label="جمع کردن منو"
+            onClick={() => {
+              setCollapsed(true);
+              localStorage.setItem("alamut-sidebar", "collapsed");
+            }}
+          >
+            <PanelRight size={18} />
+          </button>
         </div>
         <div className="workspace-label">
           <span className="teal-dot" />
@@ -858,6 +922,34 @@ export default function Workspace({
             </span>
           </div>
           <div>
+            <button
+              type="button"
+              className="icon-btn"
+              aria-label={collapsed ? "باز کردن منو" : "جمع کردن منو"}
+              onClick={() => {
+                const next = !collapsed;
+                setCollapsed(next);
+                localStorage.setItem(
+                  "alamut-sidebar",
+                  next ? "collapsed" : "open",
+                );
+              }}
+            >
+              <PanelRight size={18} />
+            </button>
+            <button
+              type="button"
+              className="icon-btn"
+              aria-label={dark ? "زمینه روشن" : "زمینه تیره"}
+              onClick={() => {
+                const next = !dark;
+                setDark(next);
+                document.documentElement.dataset.theme = next ? "dark" : "light";
+                localStorage.setItem("alamut-theme", next ? "dark" : "light");
+              }}
+            >
+              {dark ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
             <button
               className="icon-btn"
               onClick={() => {
@@ -1063,7 +1155,7 @@ export default function Workspace({
               fields={[
                 {
                   name: "note",
-                  label: "دلیل لغو",
+                  label: "دلیل لغو (حداقل ۵ نویسه)",
                   type: "textarea",
                   full: true,
                   required: true,
@@ -1071,12 +1163,14 @@ export default function Workspace({
                 },
               ]}
               submit="ثبت لغو درخواست"
-              onSubmit={(d) =>
-                submitted("shipments/" + modal.data?.id + "/transition/", {
+              onSubmit={async (d) => {
+                if (d.note.trim().length < 5)
+                  throw new Error("دلیل لغو حداقل ۵ نویسه باشد.");
+                await submitted("shipments/" + modal.data?.id + "/transition/", {
                   ...d,
                   status: "cancelled",
-                })
-              }
+                });
+              }}
             />
           )}
           {modal.kind === "inspect" && (

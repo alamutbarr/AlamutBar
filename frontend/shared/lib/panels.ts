@@ -87,6 +87,7 @@ export function validPanelRoute(
       "driver-review",
       "articles",
       "complaints",
+      "owner-kyc",
     ],
     inspector: [
       "app",

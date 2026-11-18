@@ -38,6 +38,12 @@ class FreightTests(TestCase):
             capacity=24,
             license_number="test-license",
         )
+        cls.users["owner"].national_id = "1234567891"
+        cls.users["owner"].postal_code = "1234567890"
+        cls.users["owner"].save(update_fields=["national_id", "postal_code"])
+        OwnerIdentity.objects.create(
+            user=cls.users["owner"], id_type="national_card", status="approved"
+        )
 
     def setUp(self):
         cache.clear()
@@ -688,11 +694,124 @@ class FreightTests(TestCase):
         self.assertEqual(reviewed.data["status"], "resolved")
         me = self.client.patch(
             "/api/auth/me/",
-            {"national_id": "1234567891", "postal_code": "1234567890"},
+            {"national_id": "1000000001", "postal_code": "1234567890"},
             format="json",
         )
         self.assertEqual(me.status_code, 200, me.data)
-        self.assertEqual(me.data["national_id"], "1234567891")
+        self.assertEqual(me.data["national_id"], "1000000001")
+
+    @override_settings(MEDIA_ROOT=tempfile.gettempdir() + "/alamut-tests-media")
+    def test_owner_panel_map_chat_price_hold_and_kyc(self):
+        created = self.post(
+            "shipments/",
+            self.payload(pickup_window="08-12,16-20", destination_address=""),
+        )
+        self.assertEqual(created.status_code, 201, created.data)
+        self.assertEqual(created.data["pickup_window"], "08-12,16-20")
+        self.assertEqual(
+            self.post(
+                "shipments/", self.payload(pickup_window="09-11")
+            ).status_code,
+            400,
+        )
+        shipment_id = created.data["id"]
+        self.assertEqual(
+            self.post(
+                f"shipments/{shipment_id}/messages/", {"body": "هماهنگ شد"}
+            ).status_code,
+            201,
+        )
+        self.as_role("driver")
+        self.assertIn(
+            self.post(
+                f"shipments/{shipment_id}/messages/", {"body": "نه"}
+            ).status_code,
+            (403, 404),
+        )
+        self.as_role("operator")
+        priced = self.post(
+            f"shipments/{shipment_id}/operator-price/", {"amount": 2500000}
+        )
+        self.assertEqual(priced.status_code, 200, priced.data)
+        held = self.post(f"shipments/{shipment_id}/hold/", {})
+        self.assertEqual(held.status_code, 200, held.data)
+        self.assertEqual(held.data["status"], "on_hold")
+        resumed = self.post(f"shipments/{shipment_id}/resume/", {})
+        self.assertEqual(resumed.data["status"], "pending")
+        self.as_role("owner")
+        accepted = self.post(
+            f"shipments/{shipment_id}/price-response/", {"accept": True}
+        )
+        self.assertEqual(accepted.status_code, 200, accepted.data)
+        self.assertEqual(accepted.data["price"], 2500000)
+        self.users["owner"].national_id = ""
+        self.users["owner"].save(update_fields=["national_id"])
+        self.assertEqual(
+            self.post("shipments/", self.payload(title="blocked")).status_code,
+            400,
+        )
+        self.users["owner"].national_id = "1234567891"
+        self.users["owner"].save(update_fields=["national_id"])
+        identity = OwnerIdentity.objects.get(user=self.users["owner"])
+        identity.status = "pending"
+        identity.save(update_fields=["status"])
+        self.users["owner"].refresh_from_db()
+        self.users["owner"].__dict__.pop("owner_identity", None)
+        self.assertEqual(
+            self.post("shipments/", self.payload(title="waiting")).status_code,
+            400,
+        )
+        identity.status = "rejected"
+        identity.save(update_fields=["status"])
+        saved = self.client.post(
+            "/api/owner-identity/",
+            {"id_type": "national_card"},
+            format="json",
+        )
+        self.assertIn(saved.status_code, (200, 201), saved.data)
+        png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 24
+        document = self.client.post(
+            f"/api/owner-identity/{identity.id}/files/",
+            {
+                "slot": "document",
+                "file": SimpleUploadedFile("card.png", png, content_type="image/png"),
+            },
+            format="multipart",
+        )
+        self.assertEqual(document.status_code, 200, document.data)
+        selfie = self.client.post(
+            f"/api/owner-identity/{identity.id}/files/",
+            {
+                "slot": "selfie",
+                "file": SimpleUploadedFile("selfie.png", png, content_type="image/png"),
+            },
+            format="multipart",
+        )
+        self.assertEqual(selfie.status_code, 200, selfie.data)
+        self.assertEqual(selfie.data["status"], "pending")
+        self.as_role("operator")
+        reviewed = self.client.post(
+            f"/api/owner-identity/{identity.id}/review/",
+            {"status": "approved", "note": "ok"},
+            format="json",
+        )
+        self.assertEqual(reviewed.status_code, 200, reviewed.data)
+        self.assertEqual(reviewed.data["status"], "approved")
+
+    @override_settings(DEMO_ENABLED=True)
+    def test_owner_otp_login(self):
+        self.client.force_authenticate(user=None)
+        started = self.client.post(
+            "/api/auth/otp/", {"phone": "09120000000"}, format="json"
+        )
+        self.assertEqual(started.status_code, 200, started.data)
+        confirmed = self.client.post(
+            "/api/auth/otp/confirm/",
+            {"phone": "09120000000", "code": started.data["demo_code"]},
+            format="json",
+        )
+        self.assertEqual(confirmed.status_code, 200, confirmed.data)
+        self.assertEqual(confirmed.data["username"], "owner")
 
 
 @override_settings(DEMO_ENABLED=False)

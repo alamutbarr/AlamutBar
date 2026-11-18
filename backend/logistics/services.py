@@ -10,12 +10,15 @@ def audit(user, action, obj, detail=None):
     )
 
 
-def notify(shipment, title):
+def notify(shipment, title, body=""):
     ids = {shipment.owner_id, shipment.driver_id, shipment.inspector_id} - {None}
     Notification.objects.bulk_create(
         [
             Notification(
-                user_id=i, shipment=shipment, title=f"{shipment.code} · {title}"
+                user_id=i,
+                shipment=shipment,
+                title=f"{shipment.code} · {title}",
+                body=body[:500],
             )
             for i in ids
         ]
@@ -41,6 +44,43 @@ def driver_documents_valid(user):
         and profile.insurance_expiry
         and profile.insurance_expiry > today
     )
+
+
+def national_id_ok(value):
+    if not value or len(value) != 10 or not value.isdigit() or len(set(value)) == 1:
+        return False
+    total = sum(int(value[i]) * (10 - i) for i in range(9)) % 11
+    return int(value[9]) == (total if total < 2 else 11 - total)
+
+
+def owner_ready(user):
+    if user.role != "owner":
+        return True
+    if not national_id_ok(user.national_id):
+        return False
+    postal = user.postal_code or ""
+    if not (len(postal) == 10 and postal.isdigit()):
+        return False
+    try:
+        identity = user.owner_identity
+    except OwnerIdentity.DoesNotExist:
+        identity = None
+    if identity is not None:
+        return identity.status == "approved"
+    from django.conf import settings
+
+    return bool(settings.DEMO_ENABLED and user.username.endswith(".demo"))
+
+
+def owner_block_message(user):
+    if owner_ready(user):
+        return ""
+    if not national_id_ok(user.national_id):
+        return "برای ثبت بار، کد ملی معتبر لازم است."
+    postal = user.postal_code or ""
+    if not (len(postal) == 10 and postal.isdigit()):
+        return "برای ثبت بار، کد پستی ۱۰ رقمی لازم است."
+    return "تا تأیید احراز هویت، ثبت بار ممکن نیست."
 
 
 def driver_market_enabled(user):
@@ -87,6 +127,7 @@ def transition(shipment_id, user, target, note=""):
             raise ValidationError("این بار در مرحله قابل لغو نیست.")
         if not note.strip():
             raise ValidationError("دلیل لغو الزامی است.")
+        shipment.cancel_reason = note.strip()[:1000]
     else:
         rule = TRANSITIONS.get(target)
         if not rule or user.role not in rule[1]:
@@ -99,7 +140,7 @@ def transition(shipment_id, user, target, note=""):
             if not latest or not latest.passed:
                 raise ValidationError("تأیید بازرسی این مرحله الزامی است.")
     shipment.status = target
-    shipment.save(update_fields=["status", "updated_at"])
+    shipment.save(update_fields=["status", "updated_at", "cancel_reason"])
     if target == "completed":
         Invoice.objects.get_or_create(
             shipment=shipment, defaults={"amount": shipment.price}

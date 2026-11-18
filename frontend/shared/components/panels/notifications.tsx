@@ -1,9 +1,9 @@
 "use client";
-import { date, type Page } from "@/lib/api";
+import { ago, type Page } from "@/lib/api";
 import type { Mutate, Notice } from "@/lib/workspace-types";
 import { ArrowLeft, Bell, Check } from "lucide-react";
 import Link from "@/lib/navigation";
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { Empty } from "../ui";
 export default function Notifications({
   notices,
@@ -18,6 +18,12 @@ export default function Notifications({
   base: string;
   pager: (count: number) => ReactNode;
 }) {
+  const marked = useRef(false);
+  useEffect(() => {
+    if (marked.current || !notices.results.some((item) => !item.read)) return;
+    marked.current = true;
+    void mutate("notifications/read_all/", {}, "");
+  }, [notices]);
   return (
     <>
       <div className="page-heading">
@@ -43,7 +49,8 @@ export default function Notifications({
               </span>
               <div>
                 <b>{n.title}</b>
-                <small>{date(n.created_at)}</small>
+                {n.body && <p>{n.body}</p>}
+                <small>{ago(n.created_at)}</small>
               </div>
               {n.shipment && (
                 <Link

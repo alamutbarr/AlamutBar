@@ -1,4 +1,5 @@
-import csv, io
+import csv, io, secrets
+from django.core.cache import cache
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.password_validation import validate_password
@@ -33,6 +34,7 @@ from .services import (
     driver_documents_valid,
     driver_market_enabled,
     event,
+    owner_block_message,
     transition,
 )
 
@@ -202,6 +204,9 @@ class ShipmentViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         if self.request.user.role not in ["owner", "operator"]:
             raise PermissionDenied("ثبت بار فقط برای صاحب بار و اپراتور مجاز است.")
+        blocked = owner_block_message(self.request.user)
+        if blocked:
+            raise ValidationError(blocked)
         shipment = serializer.save(owner=self.request.user)
         event(shipment, self.request.user, "درخواست حمل ثبت شد و در انتظار بررسی است.")
 
@@ -373,6 +378,135 @@ class ShipmentViewSet(viewsets.ModelViewSet):
         audit(request.user, "shipment.rate", locked)
         return Response(self.get_serializer(locked).data)
 
+    def _chat_allowed(self, shipment, user):
+        return user.role == "operator" or (
+            (user.role == "owner" and shipment.owner_id == user.id)
+            or (user.role == "driver" and shipment.driver_id == user.id)
+            or (user.role == "inspector" and shipment.inspector_id == user.id)
+        )
+
+    @extend_schema(responses=ShipmentMessageSerializer(many=True))
+    @action(detail=True, methods=["get", "post"])
+    def messages(self, request, pk=None):
+        shipment = self.get_object()
+        if not self._chat_allowed(shipment, request.user):
+            raise PermissionDenied()
+        if request.method == "GET":
+            return Response(
+                ShipmentMessageSerializer(
+                    list(reversed(shipment.messages.order_by("-id")[:80])),
+                    many=True,
+                ).data
+            )
+        body = (request.data.get("body") or "").strip()
+        if not body or len(body) > 2000:
+            raise ValidationError("متن گفتگو را بنویسید.")
+        message = ShipmentMessage.objects.create(
+            shipment=shipment, author=request.user, body=body
+        )
+        if request.user.role == "owner":
+            Notification.objects.bulk_create(
+                [
+                    Notification(
+                        user=operator,
+                        shipment=shipment,
+                        title=f"{shipment.code} · پیام صاحب بار",
+                        body=body[:180],
+                    )
+                    for operator in User.objects.filter(role="operator", is_active=True)[:15]
+                ]
+            )
+        else:
+            Notification.objects.create(
+                user=shipment.owner,
+                shipment=shipment,
+                title=f"{shipment.code} · پیام جدید در گفتگوی بار",
+                body=body[:180],
+            )
+        return Response(ShipmentMessageSerializer(message).data, status=201)
+
+    @extend_schema(request=None, responses=ShipmentSerializer)
+    @action(detail=True, methods=["post"], url_path="operator-price")
+    @transaction.atomic
+    def operator_price(self, request, pk=None):
+        if request.user.role != "operator":
+            raise PermissionDenied("فقط اپراتور می‌تواند قیمت نهایی پیشنهاد کند.")
+        shipment = Shipment.objects.select_for_update().get(pk=self.get_object().pk)
+        if shipment.status not in ["pending", "approved", "assigned"]:
+            raise ValidationError("در این مرحله قیمت قابل پیشنهاد نیست.")
+        try:
+            amount = int(request.data.get("amount"))
+        except (TypeError, ValueError):
+            raise ValidationError("مبلغ معتبر وارد کنید.")
+        if amount < 1000:
+            raise ValidationError("مبلغ پیشنهاد خیلی کم است.")
+        shipment.operator_price = amount
+        shipment.price_status = "proposed"
+        shipment.save(update_fields=["operator_price", "price_status", "updated_at"])
+        Notification.objects.create(
+            user=shipment.owner,
+            shipment=shipment,
+            title=f"{shipment.code} · قیمت نهایی پیشنهاد شد",
+            body="قیمت پیشنهادی اپراتور را در جزئیات بار تأیید یا رد کنید.",
+        )
+        audit(request.user, "shipment.operator_price", shipment, {"amount": amount})
+        return Response(self.get_serializer(shipment).data)
+
+    @extend_schema(request=None, responses=ShipmentSerializer)
+    @action(detail=True, methods=["post"], url_path="price-response")
+    @transaction.atomic
+    def price_response(self, request, pk=None):
+        shipment = Shipment.objects.select_for_update().get(pk=self.get_object().pk)
+        if request.user.role != "owner" or shipment.owner_id != request.user.id:
+            raise PermissionDenied()
+        if shipment.price_status != "proposed" or not shipment.operator_price:
+            raise ValidationError("پیشنهاد قیمتی برای تأیید وجود ندارد.")
+        accept = request.data.get("accept") in [True, "true", "1", 1]
+        shipment.price_status = "accepted" if accept else "rejected"
+        if accept:
+            shipment.price = shipment.operator_price
+        shipment.save(update_fields=["price_status", "price", "updated_at"])
+        event(
+            shipment,
+            request.user,
+            "قیمت اپراتور تأیید شد." if accept else "قیمت اپراتور رد شد.",
+        )
+        return Response(self.get_serializer(shipment).data)
+
+    @extend_schema(request=None, responses=ShipmentSerializer)
+    @action(detail=True, methods=["post"])
+    @transaction.atomic
+    def hold(self, request, pk=None):
+        if request.user.role != "operator":
+            raise PermissionDenied()
+        shipment = Shipment.objects.select_for_update().get(pk=self.get_object().pk)
+        if shipment.status not in ["pending", "approved", "assigned"]:
+            raise ValidationError("این مرحله قابل توقف نیست.")
+        shipment.hold_resume = shipment.status
+        shipment.status = "on_hold"
+        shipment.save(update_fields=["hold_resume", "status", "updated_at"])
+        event(shipment, request.user, "بار موقتاً متوقف شد.")
+        return Response(self.get_serializer(shipment).data)
+
+    @extend_schema(request=None, responses=ShipmentSerializer)
+    @action(detail=True, methods=["post"])
+    @transaction.atomic
+    def resume(self, request, pk=None):
+        if request.user.role != "operator":
+            raise PermissionDenied()
+        shipment = Shipment.objects.select_for_update().get(pk=self.get_object().pk)
+        if shipment.status != "on_hold" or shipment.hold_resume not in [
+            "pending",
+            "approved",
+            "assigned",
+        ]:
+            raise ValidationError("این بار متوقف نیست.")
+        shipment.status = shipment.hold_resume
+        shipment.hold_resume = ""
+        shipment.save(update_fields=["hold_resume", "status", "updated_at"])
+        event(shipment, request.user, "توقف بار برداشته شد.")
+        return Response(self.get_serializer(shipment).data)
+
     @extend_schema(request=LocationSerializer, responses={201: LocationSerializer})
     @action(detail=True, methods=["post"])
     @transaction.atomic
@@ -448,6 +582,88 @@ def complaint_photo(request, pk):
         from rest_framework.exceptions import NotFound
 
         raise NotFound("فایل این مدرک پیدا نشد.") from error
+
+
+@extend_schema(responses={(200, "application/octet-stream"): OpenApiTypes.BINARY})
+@api_view(["GET"])
+def owner_kyc_download(request, pk):
+    document = get_object_or_404(OwnerKycFile, pk=pk)
+    if request.user.role != "operator" and document.identity.user_id != request.user.id:
+        raise PermissionDenied()
+    try:
+        return FileResponse(document.file.open("rb"), as_attachment=True)
+    except FileNotFoundError as error:
+        from rest_framework.exceptions import NotFound
+
+        raise NotFound("فایل مدرک پیدا نشد.") from error
+
+
+@extend_schema(request=UploadRequest, responses=UserSerializer)
+@api_view(["GET", "POST"])
+def avatar(request):
+    if request.method == "GET":
+        if not request.user.avatar:
+            raise ValidationError("تصویری ثبت نشده است.")
+        try:
+            return FileResponse(request.user.avatar.open("rb"))
+        except FileNotFoundError as error:
+            from rest_framework.exceptions import NotFound
+
+            raise NotFound("فایل تصویر پیدا نشد.") from error
+    file = request.FILES.get("file")
+    if not file or file.size > 5 * 1024 * 1024:
+        raise ValidationError("تصویر پروفایل حداکثر ۵ مگابایت است.")
+    signature = file.read(12)
+    file.seek(0)
+    ext = file.name.rsplit(".", 1)[-1].lower()
+    if not (
+        (ext in ["jpg", "jpeg"] and signature.startswith(b"\xff\xd8\xff"))
+        or (ext == "png" and signature.startswith(b"\x89PNG\r\n\x1a\n"))
+    ):
+        raise ValidationError("فقط JPG و PNG برای تصویر پروفایل پذیرفته می‌شود.")
+    request.user.avatar = file
+    request.user.save(update_fields=["avatar"])
+    return Response(UserSerializer(request.user).data)
+
+
+@extend_schema(request=None, responses=DetailResponse)
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def otp_start(request):
+    if not settings.DEMO_ENABLED:
+        raise ValidationError(
+            "ورود پیامکی در این محیط فعال نیست. با نام کاربری و رمز وارد شوید."
+        )
+    phone = str(request.data.get("phone") or "")
+    phone = phone.translate(str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789"))
+    if len(phone) != 11 or not phone.startswith("09") or not phone.isdigit():
+        raise ValidationError("شماره موبایل معتبر وارد کنید.")
+    user = User.objects.filter(phone=phone, role="owner", is_active=True).first()
+    if not user:
+        return Response({"detail": "اگر این شماره برای صاحب بار باشد، کد ساخته می‌شود."})
+    code = f"{secrets.randbelow(900000) + 100000}"
+    cache.set("owner-otp:" + phone, code, 120)
+    return Response({"detail": "کد آزمایشی ساخته شد.", "demo_code": code})
+
+
+@extend_schema(request=None, responses=UserSerializer)
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def otp_confirm(request):
+    if not settings.DEMO_ENABLED:
+        raise ValidationError("ورود پیامکی در این محیط فعال نیست.")
+    phone = str(request.data.get("phone") or "")
+    phone = phone.translate(str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789"))
+    code = str(request.data.get("code") or "")
+    if cache.get("owner-otp:" + phone) != code:
+        raise ValidationError("کد تأیید درست نیست یا منقضی شده است.")
+    user = User.objects.filter(phone=phone, role="owner", is_active=True).first()
+    if not user:
+        raise ValidationError("حساب صاحب بار با این شماره پیدا نشد.")
+    cache.delete("owner-otp:" + phone)
+    login(request, user)
+    audit(user, "auth.otp", user)
+    return Response(UserSerializer(user).data)
 
 
 @extend_schema(request=VehicleSerializer, responses=VehicleSerializer)
@@ -680,6 +896,90 @@ class ComplaintViewSet(viewsets.ModelViewSet):
         )
         audit(request.user, "complaint.photo", photo)
         return Response(ComplaintPhotoSerializer(photo).data, status=201)
+
+
+class OwnerIdentityViewSet(viewsets.ModelViewSet):
+    queryset = OwnerIdentity.objects.none()
+    serializer_class = OwnerIdentitySerializer
+    http_method_names = ["get", "post", "head", "options"]
+
+    def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return OwnerIdentity.objects.none()
+        qs = OwnerIdentity.objects.select_related("user").prefetch_related("files")
+        if self.request.user.role == "operator":
+            return qs
+        return qs.filter(user=self.request.user)
+
+    @transaction.atomic
+    def create(self, request, *args, **kwargs):
+        if request.user.role != "owner":
+            raise PermissionDenied("احراز هویت صاحب بار فقط برای همین نقش است.")
+        id_type = request.data.get("id_type")
+        if id_type not in ["national_card", "birth_certificate"]:
+            raise ValidationError("شناسنامه یا کارت ملی را انتخاب کنید.")
+        identity, created = OwnerIdentity.objects.get_or_create(
+            user=request.user,
+            defaults={"id_type": id_type, "status": "missing"},
+        )
+        if identity.status == "approved":
+            raise ValidationError("هویت تأییدشده را نمی‌توان عوض کرد.")
+        identity.id_type = id_type
+        if identity.files.exists():
+            identity.status = "pending"
+        identity.save()
+        return Response(
+            OwnerIdentitySerializer(identity).data,
+            status=201 if created else 200,
+        )
+
+    @action(detail=True, methods=["post"])
+    def files(self, request, pk=None):
+        identity = self.get_object()
+        if identity.user_id != request.user.id or identity.status == "approved":
+            raise PermissionDenied()
+        slot = request.data.get("slot")
+        if slot not in ["document", "selfie"]:
+            raise ValidationError("بخش مدرک معتبر نیست.")
+        file = request.FILES.get("file")
+        if not file or file.size > 8 * 1024 * 1024:
+            raise ValidationError("تصویر معتبر با حجم حداکثر ۸ مگابایت انتخاب کنید.")
+        signature = file.read(16)
+        file.seek(0)
+        ext = file.name.rsplit(".", 1)[-1].lower()
+        valid = (
+            (ext in ["jpg", "jpeg"] and signature.startswith(b"\xff\xd8\xff"))
+            or (ext == "png" and signature.startswith(b"\x89PNG\r\n\x1a\n"))
+            or (
+                ext == "webp"
+                and signature.startswith(b"RIFF")
+                and signature[8:12] == b"WEBP"
+            )
+        )
+        if not valid:
+            raise ValidationError("فقط JPG، PNG و WEBP پذیرفته می‌شود.")
+        OwnerKycFile.objects.update_or_create(
+            identity=identity, slot=slot, defaults={"file": file}
+        )
+        identity.status = "pending"
+        identity.save(update_fields=["status", "updated_at"])
+        return Response(OwnerIdentitySerializer(identity).data)
+
+    @action(detail=True, methods=["post"])
+    def review(self, request, pk=None):
+        if request.user.role != "operator":
+            raise PermissionDenied()
+        identity = self.get_object()
+        status_value = request.data.get("status")
+        if status_value not in ["approved", "rejected"]:
+            raise ValidationError("نتیجه بررسی معتبر نیست.")
+        if status_value == "approved" and identity.files.count() < 2:
+            raise ValidationError("مدرک و سلفی هر دو باید بارگذاری شده باشند.")
+        identity.status = status_value
+        identity.note = (request.data.get("note") or "")[:500]
+        identity.save(update_fields=["status", "note", "updated_at"])
+        audit(request.user, "owner.kyc", identity, {"status": status_value})
+        return Response(OwnerIdentitySerializer(identity).data)
 
 
 class NotificationViewSet(viewsets.ReadOnlyModelViewSet):

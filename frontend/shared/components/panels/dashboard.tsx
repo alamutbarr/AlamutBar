@@ -85,12 +85,22 @@ export default function Overview({
           </small>
         </div>
       </div>
-      {role === "owner" && user && !user.national_id && (
+      {role === "owner" && user && !/^\d{10}$/.test(user.postal_code || "") && (
         <p className="info-note">
-          کد ملی حساب شما کامل نیست. برای احراز هویت، آن را در{" "}
-          <Link href={base + "/settings"}>حساب کاربری</Link> ثبت کنید.
+          برای ثبت بار، کد پستی ۱۰ رقمی را در{" "}
+          <Link href={base + "/settings"}>حساب کاربری</Link> ذخیره کنید.
         </p>
       )}
+      {role === "owner" &&
+        user &&
+        user.kyc_status &&
+        user.kyc_status !== "approved" &&
+        user.kyc_status !== "missing" && (
+          <p className="info-note">
+            احراز هویت شما {user.kyc_status === "rejected" ? "رد شده" : "در انتظار بررسی"} است.
+            تا تأیید اپراتور، ثبت بار بسته می‌ماند.
+          </p>
+        )}
       {mobileAction && (
         <Link className="app-dashboard-action" href={mobileAction.href}>
           <span className="app-action-icon">

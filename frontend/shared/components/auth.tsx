@@ -27,7 +27,11 @@ export default function Auth({
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [show, setShow] = useState(false),
-    [demo, setDemo] = useState(false);
+    [demo, setDemo] = useState(false),
+    [sms, setSms] = useState(false),
+    [phone, setPhone] = useState(""),
+    [otp, setOtp] = useState(""),
+    [demoCode, setDemoCode] = useState("");
   const driverRegistration = register && role === "driver";
   useEffect(() => {
     api<{ demo_enabled: boolean }>("auth/csrf/")
@@ -122,6 +126,81 @@ export default function Auth({
                 ))}
             </div>
           )}
+          {sms && role === "owner" && !register ? (
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                setBusy(true);
+                setError("");
+                void (demoCode
+                  ? api<User>("auth/otp/confirm/", "POST", { phone, code: otp })
+                  : api<{ detail: string; demo_code?: string }>(
+                      "auth/otp/",
+                      "POST",
+                      { phone },
+                    )
+                )
+                  .then((result) => {
+                    if ("username" in result) {
+                      if (onSignedIn) onSignedIn(result);
+                      else router.push("/" + panelPaths[result.role]);
+                      return;
+                    }
+                    setDemoCode(result.demo_code || "");
+                    setError(result.demo_code ? "" : result.detail);
+                  })
+                  .catch((reason) => setError((reason as Error).message))
+                  .finally(() => setBusy(false));
+              }}
+            >
+              <label>
+                موبایل صاحب بار
+                <input
+                  value={phone}
+                  dir="ltr"
+                  required
+                  inputMode="tel"
+                  onChange={(event) => setPhone(event.target.value)}
+                />
+              </label>
+              {demoCode && (
+                <>
+                  <p className="demo-note">
+                    کد آزمایشی: <code>{demoCode}</code>
+                  </p>
+                  <label>
+                    کد تأیید
+                    <input
+                      value={otp}
+                      dir="ltr"
+                      required
+                      inputMode="numeric"
+                      maxLength={6}
+                      onChange={(event) => setOtp(event.target.value)}
+                    />
+                  </label>
+                </>
+              )}
+              {error && (
+                <p className="error" role="alert">
+                  {error}
+                </p>
+              )}
+              <button className="btn block" disabled={busy}>
+                {demoCode ? "تأیید و ورود" : "دریافت کد"}
+              </button>
+              <button
+                type="button"
+                className="text-link"
+                onClick={() => {
+                  setSms(false);
+                  setError("");
+                }}
+              >
+                ورود با نام کاربری
+              </button>
+            </form>
+          ) : (
           <form onSubmit={submit}>
             {register && (
               <div className="form-grid">
@@ -255,7 +334,26 @@ export default function Auth({
               <ArrowLeft size={18} />
             </button>
           </form>
-          {demo && !register && (
+          )}
+          {role === "owner" && !register && !sms && (
+            <button
+              type="button"
+              className="secondary-btn block"
+              onClick={() => {
+                if (!demo) {
+                  setError(
+                    "ورود پیامکی در این محیط فعال نیست. با نام کاربری و رمز وارد شوید.",
+                  );
+                  return;
+                }
+                setSms(true);
+                setError("");
+              }}
+            >
+              ورود با پیامک
+            </button>
+          )}
+          {demo && !register && !sms && (
             <div className="demo-note">
               <b>محیط آزمایشی با داده‌های نمونه</b>
               <p>

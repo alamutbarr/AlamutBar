@@ -40,6 +40,15 @@ class Command(BaseCommand):
                 user.set_password(password)
                 user.save()
             users[role] = user
+        owner = users["owner"]
+        if not owner.national_id:
+            owner.national_id = "1234567891"
+            owner.postal_code = "1419733111"
+            owner.save(update_fields=["national_id", "postal_code"])
+        OwnerIdentity.objects.get_or_create(
+            user=owner,
+            defaults={"id_type": "national_card", "status": "approved"},
+        )
         Vehicle.objects.get_or_create(
             driver=users["driver"],
             defaults={

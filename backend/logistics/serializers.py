@@ -5,17 +5,14 @@ from rest_framework import serializers
 from drf_spectacular.utils import extend_schema_field
 from drf_spectacular.types import OpenApiTypes
 from .models import *
-from .services import driver_market_enabled
+from .services import driver_market_enabled, national_id_ok
 
 
 def clean_national_id(value):
     if not value:
         return ""
-    if len(value) != 10 or not value.isdigit() or len(set(value)) == 1:
+    if not national_id_ok(value):
         raise serializers.ValidationError("کد ملی ۱۰ رقمی معتبر وارد کنید.")
-    total = sum(int(value[i]) * (10 - i) for i in range(9)) % 11
-    if int(value[9]) != (total if total < 2 else 11 - total):
-        raise serializers.ValidationError("کد ملی معتبر نیست.")
     return value
 
 
@@ -23,6 +20,22 @@ class UserSerializer(serializers.ModelSerializer):
     name = serializers.CharField(source="get_full_name", read_only=True)
     vehicle = serializers.SerializerMethodField()
     driver_market_enabled = serializers.SerializerMethodField()
+    avatar_url = serializers.SerializerMethodField()
+    kyc_status = serializers.SerializerMethodField()
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if getattr(self.instance, "role", None) == "owner":
+            self.fields["phone"].read_only = True
+
+    def get_avatar_url(self, obj) -> str:
+        return "/api/auth/avatar/" if obj.avatar else ""
+
+    def get_kyc_status(self, obj) -> str:
+        try:
+            return obj.owner_identity.status
+        except OwnerIdentity.DoesNotExist:
+            return "missing"
 
     def get_driver_market_enabled(self, obj) -> bool:
         return driver_market_enabled(obj)
@@ -56,6 +69,8 @@ class UserSerializer(serializers.ModelSerializer):
             "driver_market_enabled",
             "capabilities",
             "vehicle",
+            "avatar_url",
+            "kyc_status",
         ]
         read_only_fields = ["id", "username", "role", "verified", "capabilities"]
 
@@ -242,6 +257,10 @@ class ShipmentSerializer(serializers.ModelSerializer):
                 "notes",
                 "recipient_national_id",
                 "recipient_postal_code",
+                "origin_lat",
+                "origin_lng",
+                "destination_lat",
+                "destination_lng",
             ]:
                 data.pop(key, None)
         if user.role == "driver":
@@ -265,7 +284,17 @@ class ShipmentSerializer(serializers.ModelSerializer):
     def to_internal_value(self, data):
         if isinstance(data, dict):
             data = data.copy()
-            for key in ("package_count", "length_m", "width_m", "height_m"):
+            for key in (
+                "package_count",
+                "length_m",
+                "width_m",
+                "height_m",
+                "origin_lat",
+                "origin_lng",
+                "destination_lat",
+                "destination_lng",
+                "operator_price",
+            ):
                 if data.get(key) == "":
                     data[key] = None
         return super().to_internal_value(data)
@@ -288,6 +317,16 @@ class ShipmentSerializer(serializers.ModelSerializer):
         if value and (len(value) != 10 or not value.isdigit()):
             raise serializers.ValidationError("کد پستی ۱۰ رقمی وارد کنید.")
         return value
+
+    def validate_pickup_window(self, value):
+        allowed = {"08-12", "12-16", "16-20", "20-24"}
+        parts = [part for part in value.split(",") if part]
+        if any(part not in allowed for part in parts):
+            raise serializers.ValidationError("بازه بارگیری معتبر نیست.")
+        return ",".join(dict.fromkeys(parts))
+
+    def validate_cargo_note(self, value):
+        return value.strip()
 
     def validate_pickup_date(self, value):
         if value < timezone.localdate():
@@ -315,6 +354,10 @@ class ShipmentSerializer(serializers.ModelSerializer):
             "status",
             "created_at",
             "updated_at",
+            "cancel_reason",
+            "operator_price",
+            "price_status",
+            "hold_resume",
         ]
 
 
@@ -400,7 +443,7 @@ class TicketSerializer(serializers.ModelSerializer):
 class NotificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notification
-        fields = ["id", "title", "shipment", "read", "created_at"]
+        fields = ["id", "title", "body", "shipment", "read", "created_at"]
 
 
 class ContactSerializer(serializers.ModelSerializer):
@@ -481,3 +524,41 @@ class ComplaintStatusSerializer(serializers.Serializer):
     status = serializers.ChoiceField(
         choices=["pending", "reviewed", "resolved", "rejected"]
     )
+
+
+class ShipmentMessageSerializer(serializers.ModelSerializer):
+    author_name = serializers.CharField(source="author.get_full_name", read_only=True)
+    role = serializers.CharField(source="author.role", read_only=True)
+
+    class Meta:
+        model = ShipmentMessage
+        fields = ["id", "author_name", "role", "body", "created_at"]
+
+
+class OwnerKycFileSerializer(serializers.ModelSerializer):
+    url = serializers.SerializerMethodField()
+
+    def get_url(self, obj) -> str:
+        return f"/api/owner-kyc/{obj.id}/download/"
+
+    class Meta:
+        model = OwnerKycFile
+        fields = ["id", "slot", "url", "created_at"]
+
+
+class OwnerIdentitySerializer(serializers.ModelSerializer):
+    files = OwnerKycFileSerializer(many=True, read_only=True)
+    user_name = serializers.CharField(source="user.get_full_name", read_only=True)
+
+    class Meta:
+        model = OwnerIdentity
+        fields = [
+            "id",
+            "id_type",
+            "status",
+            "note",
+            "updated_at",
+            "user_name",
+            "files",
+        ]
+        read_only_fields = ["id", "status", "note", "updated_at"]

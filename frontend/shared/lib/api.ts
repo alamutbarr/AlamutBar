@@ -14,6 +14,8 @@ export type User = {
   verified: boolean;
   driver_market_enabled: boolean;
   capabilities: string[];
+  avatar_url?: string;
+  kyc_status?: string;
   vehicle?: {
     kind: string;
     plate: string;
@@ -50,6 +52,19 @@ export type Shipment = {
   recipient_national_id: string;
   recipient_postal_code: string;
   insurance_requested: boolean;
+  cargo_note?: string;
+  origin_zone?: string;
+  destination_zone?: string;
+  origin_lat?: string | null;
+  origin_lng?: string | null;
+  destination_lat?: string | null;
+  destination_lng?: string | null;
+  trailer_type?: string;
+  requires_inspector?: boolean;
+  cancel_reason?: string;
+  operator_price?: number | null;
+  price_status?: string;
+  hold_resume?: string;
   rating: {
     driver_score: number;
     inspector_score: number | null;
@@ -124,6 +139,7 @@ export const statuses: Record<string, string> = {
   in_transit: "در مسیر",
   delivered: "تحویل شده",
   completed: "تکمیل شده",
+  on_hold: "متوقف",
   cancelled: "لغو شده",
 };
 export const vehicles: Record<string, string> = {
@@ -134,7 +150,18 @@ export const vehicles: Record<string, string> = {
 };
 export const urgencies: Record<string, string> = {
   urgent: "فوری",
-  scheduled: "زمان‌بندی‌شده",
+  scheduled: "با فرصت",
+};
+export const trailerTypes: Record<string, string> = {
+  روباز: "روباز",
+  "بغل‌بازشو": "بغل‌بازشو",
+  مسقف: "مسقف",
+  کمپرسی: "کمپرسی",
+  "یخچال‌دار": "یخچال‌دار",
+  کفی: "کفی",
+  "لبه‌دار": "لبه‌دار",
+  "ترانزیت چادری": "ترانزیت چادری",
+  کانتینربر: "کانتینربر",
 };
 export const pickupWindows: Record<string, string> = {
   "08-12": "۸ تا ۱۲",
@@ -166,6 +193,17 @@ export const number = (n: number | string | undefined) =>
   Number(n || 0).toLocaleString("fa-IR");
 export const date = (s: string) =>
   s ? new Date(s).toLocaleDateString("fa-IR") : "—";
+export const ago = (s: string) => {
+  const minutes = Math.floor((Date.now() - new Date(s).getTime()) / 60000);
+  if (!s || Number.isNaN(minutes)) return "—";
+  if (minutes < 1) return "همین حالا";
+  if (minutes < 60) return number(minutes) + " دقیقه پیش";
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return number(hours) + " ساعت پیش";
+  const days = Math.floor(hours / 24);
+  if (days < 7) return number(days) + " روز پیش";
+  return date(s);
+};
 export const money = (n: number | string) => number(n) + " تومان";
 export class ApiError extends Error {
   constructor(

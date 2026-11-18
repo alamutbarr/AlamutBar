@@ -302,6 +302,9 @@ for model in [
     ComplaintMessage,
     ComplaintPhoto,
     ShipmentRating,
+    ShipmentMessage,
+    OwnerIdentity,
+    OwnerKycFile,
 ]:
     admin.site.register(
         model,
