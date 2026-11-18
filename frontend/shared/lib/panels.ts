@@ -54,6 +54,7 @@ export function validPanelRoute(
       "settings",
       "incidents",
       "addresses",
+      "complaints",
     ],
     driver: [
       "app",
@@ -85,6 +86,7 @@ export function validPanelRoute(
       "operations",
       "driver-review",
       "articles",
+      "complaints",
     ],
     inspector: [
       "app",

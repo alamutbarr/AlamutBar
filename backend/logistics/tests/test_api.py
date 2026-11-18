@@ -607,6 +607,93 @@ class FreightTests(TestCase):
         ]:
             self.assertIn(self.client.get("/api/" + path).status_code, [401, 403])
 
+    def test_owner_cargo_details_complaint_and_rating(self):
+        r = self.post(
+            "shipments/",
+            self.payload(
+                cargo_type="ورق فولادی",
+                packaging="پالت",
+                package_count=4,
+                length_m="2.50",
+                width_m="1.20",
+                height_m="1.00",
+                urgency="scheduled",
+                pickup_window="08-12",
+                loading_method="forklift",
+                unloading_method="manual",
+                recipient_national_id="1234567891",
+                recipient_postal_code="1234567890",
+                insurance_requested=True,
+            ),
+        )
+        self.assertEqual(r.status_code, 201, r.data)
+        self.assertEqual(r.data["cargo_type"], "ورق فولادی")
+        self.assertTrue(r.data["insurance_requested"])
+        self.assertIsNone(r.data["rating"])
+        shipment = Shipment.objects.get(pk=r.data["id"])
+        shipment.driver = self.users["driver"]
+        shipment.status = "completed"
+        shipment.save()
+        self.as_role("driver")
+        hidden = self.client.get(f"/api/shipments/{shipment.pk}/").data
+        self.assertNotIn("recipient_national_id", hidden)
+        self.as_role("owner")
+        pending = self.shipment()
+        denied = self.post(f"shipments/{pending.pk}/rate/", {"driver_score": 4})
+        self.assertEqual(denied.status_code, 400)
+        rated = self.post(
+            f"shipments/{shipment.pk}/rate/",
+            {"driver_score": 5, "inspector_score": 4, "comment": "حمل منظم بود."},
+        )
+        self.assertEqual(rated.status_code, 200, rated.data)
+        self.assertEqual(rated.data["rating"]["driver_score"], 5)
+        again = self.post(f"shipments/{shipment.pk}/rate/", {"driver_score": 3})
+        self.assertEqual(again.status_code, 400)
+        complaint = self.post(
+            "complaints/",
+            {
+                "type": "delay",
+                "shipment": shipment.pk,
+                "description": "محموله با تأخیر به مقصد رسید.",
+            },
+        )
+        self.assertEqual(complaint.status_code, 201, complaint.data)
+        foreign_shipment = Shipment.objects.create(
+            owner=self.other, **self.payload(title="Foreign cargo")
+        )
+        foreign = self.post(
+            "complaints/",
+            {
+                "type": "cargo",
+                "shipment": foreign_shipment.pk,
+                "description": "این محموله متعلق به من نیست.",
+            },
+        )
+        self.assertEqual(foreign.status_code, 400)
+        self.as_role("driver")
+        self.assertEqual(
+            self.post(
+                "complaints/",
+                {"type": "other", "description": "راننده نمی‌تواند شکایت ثبت کند."},
+            ).status_code,
+            403,
+        )
+        self.as_role("operator")
+        reviewed = self.client.post(
+            f"/api/complaints/{complaint.data['id']}/review/",
+            {"status": "resolved"},
+            format="json",
+        )
+        self.assertEqual(reviewed.status_code, 200, reviewed.data)
+        self.assertEqual(reviewed.data["status"], "resolved")
+        me = self.client.patch(
+            "/api/auth/me/",
+            {"national_id": "1234567891", "postal_code": "1234567890"},
+            format="json",
+        )
+        self.assertEqual(me.status_code, 200, me.data)
+        self.assertEqual(me.data["national_id"], "1234567891")
+
 
 @override_settings(DEMO_ENABLED=False)
 class AuthTests(TestCase):

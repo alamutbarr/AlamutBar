@@ -40,6 +40,12 @@ class User(AbstractUser):
         verbose_name="شمارهٔ همراه",
     )
     company = models.CharField(max_length=120, blank=True, verbose_name="شرکت")
+    national_id = models.CharField(
+        max_length=10, blank=True, default="", verbose_name="کد ملی"
+    )
+    postal_code = models.CharField(
+        max_length=10, blank=True, default="", verbose_name="کد پستی"
+    )
     verified = models.BooleanField(default=False, verbose_name="تأییدشده")
     capabilities = models.JSONField(
         default=default_capabilities,
@@ -165,6 +171,75 @@ class Shipment(models.Model):
     )
     pickup_date = models.DateField(verbose_name="تاریخ بارگیری")
     notes = models.TextField(blank=True, max_length=2000, verbose_name="توضیحات")
+    cargo_type = models.CharField(max_length=80, blank=True, default="", verbose_name="نوع کالا")
+    packaging = models.CharField(
+        max_length=80, blank=True, default="", verbose_name="بسته‌بندی"
+    )
+    package_count = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1)],
+        verbose_name="تعداد بسته",
+    )
+    length_m = models.DecimalField(
+        max_digits=6,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0.01"))],
+        verbose_name="طول (متر)",
+    )
+    width_m = models.DecimalField(
+        max_digits=6,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0.01"))],
+        verbose_name="عرض (متر)",
+    )
+    height_m = models.DecimalField(
+        max_digits=6,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0.01"))],
+        verbose_name="ارتفاع (متر)",
+    )
+    urgency = models.CharField(
+        max_length=12,
+        blank=True,
+        default="",
+        choices=[("", "نامشخص"), ("urgent", "فوری"), ("scheduled", "زمان‌بندی‌شده")],
+        verbose_name="فوریت",
+    )
+    pickup_window = models.CharField(
+        max_length=20,
+        blank=True,
+        default="",
+        choices=[
+            ("", "نامشخص"),
+            ("08-12", "۸ تا ۱۲"),
+            ("12-16", "۱۲ تا ۱۶"),
+            ("16-20", "۱۶ تا ۲۰"),
+            ("20-24", "۲۰ تا ۲۴"),
+        ],
+        verbose_name="بازه بارگیری",
+    )
+    loading_method = models.CharField(
+        max_length=40, blank=True, default="", verbose_name="روش بارگیری"
+    )
+    unloading_method = models.CharField(
+        max_length=40, blank=True, default="", verbose_name="روش تخلیه"
+    )
+    recipient_national_id = models.CharField(
+        max_length=10, blank=True, default="", verbose_name="کد ملی گیرنده"
+    )
+    recipient_postal_code = models.CharField(
+        max_length=10, blank=True, default="", verbose_name="کد پستی گیرنده"
+    )
+    insurance_requested = models.BooleanField(
+        default=False, verbose_name="درخواست بیمه"
+    )
     status = models.CharField(
         max_length=20,
         choices=Status.choices,
@@ -372,6 +447,125 @@ class TicketMessage(models.Model):
 
     def __str__(self):
         return f"پیام پشتیبانی {self.pk}"
+
+
+class ShipmentRating(models.Model):
+    shipment = models.OneToOneField(
+        Shipment,
+        on_delete=models.CASCADE,
+        related_name="rating",
+        verbose_name="بار",
+    )
+    driver_score = models.PositiveSmallIntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+        verbose_name="امتیاز راننده",
+    )
+    inspector_score = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+        verbose_name="امتیاز متصدی",
+    )
+    comment = models.CharField(max_length=1000, blank=True, verbose_name="نظر")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="زمان ثبت")
+
+    class Meta:
+        verbose_name = "امتیاز محموله"
+        verbose_name_plural = "امتیازهای محموله"
+
+    def __str__(self):
+        return f"امتیاز {self.shipment_id}"
+
+
+class Complaint(models.Model):
+    class Type(models.TextChoices):
+        DRIVER = "driver", "راننده"
+        INSPECTOR = "dispatcher", "متصدی"
+        CARGO = "cargo", "آسیب به کالا"
+        DELAY = "delay", "تأخیر در حمل"
+        OTHER = "other", "سایر موارد"
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "در بررسی"
+        REVIEWED = "reviewed", "بررسی شد"
+        RESOLVED = "resolved", "حل شد"
+        REJECTED = "rejected", "رد شد"
+
+    user = models.ForeignKey(
+        User, on_delete=models.PROTECT, related_name="complaints", verbose_name="کاربر"
+    )
+    shipment = models.ForeignKey(
+        Shipment,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="complaints",
+        verbose_name="بار",
+    )
+    type = models.CharField(max_length=20, choices=Type.choices, verbose_name="موضوع")
+    description = models.TextField(max_length=4000, verbose_name="شرح")
+    status = models.CharField(
+        max_length=12,
+        choices=Status.choices,
+        default=Status.PENDING,
+        verbose_name="وضعیت",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="زمان ثبت")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="آخرین تغییر")
+
+    class Meta:
+        verbose_name = "شکایت"
+        verbose_name_plural = "شکایت‌ها"
+        ordering = ["-updated_at"]
+
+    def __str__(self):
+        return f"شکایت {self.pk}"
+
+
+class ComplaintMessage(models.Model):
+    complaint = models.ForeignKey(
+        Complaint,
+        on_delete=models.CASCADE,
+        related_name="messages",
+        verbose_name="شکایت",
+    )
+    author = models.ForeignKey(User, on_delete=models.PROTECT, verbose_name="نویسنده")
+    body = models.TextField(max_length=4000, verbose_name="متن")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="زمان ثبت")
+
+    class Meta:
+        verbose_name = "پیام شکایت"
+        verbose_name_plural = "پیام‌های شکایت"
+        ordering = ["created_at"]
+
+    def __str__(self):
+        return f"پیام شکایت {self.pk}"
+
+
+def complaint_photo_path(instance, filename):
+    ext = filename.rsplit(".", 1)[-1].lower()
+    return f"complaints/{instance.complaint_id}/{uuid.uuid4().hex}.{ext}"
+
+
+class ComplaintPhoto(models.Model):
+    complaint = models.ForeignKey(
+        Complaint,
+        on_delete=models.CASCADE,
+        related_name="photos",
+        verbose_name="شکایت",
+    )
+    uploaded_by = models.ForeignKey(
+        User, on_delete=models.PROTECT, verbose_name="بارگذاری‌کننده"
+    )
+    file = models.FileField(upload_to=complaint_photo_path, verbose_name="تصویر")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="زمان ثبت")
+
+    class Meta:
+        verbose_name = "مدرک شکایت"
+        verbose_name_plural = "مدارک شکایت"
+
+    def __str__(self):
+        return f"مدرک شکایت {self.pk}"
 
 
 class Notification(models.Model):

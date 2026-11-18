@@ -8,6 +8,17 @@ from .models import *
 from .services import driver_market_enabled
 
 
+def clean_national_id(value):
+    if not value:
+        return ""
+    if len(value) != 10 or not value.isdigit() or len(set(value)) == 1:
+        raise serializers.ValidationError("کد ملی ۱۰ رقمی معتبر وارد کنید.")
+    total = sum(int(value[i]) * (10 - i) for i in range(9)) % 11
+    if int(value[9]) != (total if total < 2 else 11 - total):
+        raise serializers.ValidationError("کد ملی معتبر نیست.")
+    return value
+
+
 class UserSerializer(serializers.ModelSerializer):
     name = serializers.CharField(source="get_full_name", read_only=True)
     vehicle = serializers.SerializerMethodField()
@@ -38,6 +49,8 @@ class UserSerializer(serializers.ModelSerializer):
             "phone",
             "email",
             "company",
+            "national_id",
+            "postal_code",
             "role",
             "verified",
             "driver_market_enabled",
@@ -45,6 +58,22 @@ class UserSerializer(serializers.ModelSerializer):
             "vehicle",
         ]
         read_only_fields = ["id", "username", "role", "verified", "capabilities"]
+
+    def validate_national_id(self, value):
+        value = clean_national_id(value)
+        if (
+            value
+            and User.objects.exclude(pk=getattr(self.instance, "pk", None))
+            .filter(national_id=value)
+            .exists()
+        ):
+            raise serializers.ValidationError("این کد ملی قبلاً ثبت شده است.")
+        return value
+
+    def validate_postal_code(self, value):
+        if value and (len(value) != 10 or not value.isdigit()):
+            raise serializers.ValidationError("کد پستی ۱۰ رقمی وارد کنید.")
+        return value
 
 
 class RegistrationSerializer(serializers.ModelSerializer):
@@ -211,9 +240,54 @@ class ShipmentSerializer(serializers.ModelSerializer):
                 "inspections",
                 "locations",
                 "notes",
+                "recipient_national_id",
+                "recipient_postal_code",
             ]:
                 data.pop(key, None)
+        if user.role == "driver":
+            data.pop("recipient_national_id", None)
+        try:
+            rating = obj.rating
+        except ShipmentRating.DoesNotExist:
+            rating = None
+        data["rating"] = (
+            {
+                "driver_score": rating.driver_score,
+                "inspector_score": rating.inspector_score,
+                "comment": rating.comment,
+                "created_at": rating.created_at,
+            }
+            if rating
+            else None
+        )
         return data
+
+    def to_internal_value(self, data):
+        if isinstance(data, dict):
+            data = data.copy()
+            for key in ("package_count", "length_m", "width_m", "height_m"):
+                if data.get(key) == "":
+                    data[key] = None
+        return super().to_internal_value(data)
+
+    def _handling(self, value, label):
+        if value not in {"", "forklift", "crane", "manual", "ramp", "other"}:
+            raise serializers.ValidationError(label + " معتبر نیست.")
+        return value
+
+    def validate_loading_method(self, value):
+        return self._handling(value, "روش بارگیری")
+
+    def validate_unloading_method(self, value):
+        return self._handling(value, "روش تخلیه")
+
+    def validate_recipient_national_id(self, value):
+        return clean_national_id(value)
+
+    def validate_recipient_postal_code(self, value):
+        if value and (len(value) != 10 or not value.isdigit()):
+            raise serializers.ValidationError("کد پستی ۱۰ رقمی وارد کنید.")
+        return value
 
     def validate_pickup_date(self, value):
         if value < timezone.localdate():
@@ -333,3 +407,77 @@ class ContactSerializer(serializers.ModelSerializer):
     class Meta:
         model = ContactRequest
         fields = ["name", "phone", "message"]
+
+
+class ComplaintMessageSerializer(serializers.ModelSerializer):
+    author_name = serializers.CharField(source="author.get_full_name", read_only=True)
+    role = serializers.CharField(source="author.role", read_only=True)
+
+    class Meta:
+        model = ComplaintMessage
+        fields = ["id", "author_name", "role", "body", "created_at"]
+
+
+class ComplaintPhotoSerializer(serializers.ModelSerializer):
+    url = serializers.SerializerMethodField()
+
+    def get_url(self, obj) -> str:
+        return f"/api/complaint-photos/{obj.id}/download/"
+
+    class Meta:
+        model = ComplaintPhoto
+        fields = ["id", "url", "created_at"]
+
+
+class ComplaintSerializer(serializers.ModelSerializer):
+    messages = ComplaintMessageSerializer(many=True, read_only=True)
+    photos = ComplaintPhotoSerializer(many=True, read_only=True)
+    user_name = serializers.CharField(source="user.get_full_name", read_only=True)
+    shipment_code = serializers.CharField(
+        source="shipment.code", read_only=True, default=""
+    )
+
+    class Meta:
+        model = Complaint
+        fields = [
+            "id",
+            "type",
+            "shipment",
+            "shipment_code",
+            "description",
+            "status",
+            "created_at",
+            "updated_at",
+            "user_name",
+            "messages",
+            "photos",
+        ]
+        read_only_fields = ["id", "status", "created_at", "updated_at"]
+
+    def validate_description(self, value):
+        value = value.strip()
+        if len(value) < 10:
+            raise serializers.ValidationError("شرح شکایت را کامل‌تر بنویسید.")
+        return value
+
+    def validate_shipment(self, shipment):
+        user = self.context["request"].user
+        if shipment and user.role != "operator" and shipment.owner_id != user.id:
+            raise serializers.ValidationError("این محموله متعلق به شما نیست.")
+        return shipment
+
+
+class ComplaintReplySerializer(serializers.Serializer):
+    body = serializers.CharField(max_length=4000)
+
+    def validate_body(self, value):
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError("متن پیام را بنویسید.")
+        return value
+
+
+class ComplaintStatusSerializer(serializers.Serializer):
+    status = serializers.ChoiceField(
+        choices=["pending", "reviewed", "resolved", "rejected"]
+    )

@@ -1,7 +1,15 @@
 "use client";
 import PersianDate from "./persian-date";
 import SavedAddressPicker from "./saved-address-picker";
-import { api, vehicles, type Shipment } from "@/lib/api";
+import cargoTypes from "../data/cargo-types.json";
+import {
+  api,
+  handlingMethods,
+  pickupWindows,
+  urgencies,
+  vehicles,
+  type Shipment,
+} from "@/lib/api";
 import { ArrowLeft } from "lucide-react";
 import { useState, useEffect, type FormEvent } from "react";
 export type Field = {
@@ -16,6 +24,7 @@ export type Field = {
   maxLength?: number;
   full?: boolean;
   placeholder?: string;
+  suggestions?: string[];
 };
 export function Fields({ fields }: { fields: Field[] }) {
   return (
@@ -62,10 +71,13 @@ export function Fields({ fields }: { fields: Field[] }) {
                 required={f.required}
                 min={f.min}
                 max={f.max}
+                list={f.suggestions ? f.name + "-list" : undefined}
                 maxLength={f.maxLength || 140}
                 step={
                   f.type === "number"
-                    ? ["weight", "capacity"].includes(f.name)
+                    ? ["weight", "capacity", "length_m", "width_m", "height_m"].includes(
+                        f.name,
+                      )
                       ? "0.01"
                       : "1"
                     : undefined
@@ -80,6 +92,13 @@ export function Fields({ fields }: { fields: Field[] }) {
                   f.type === "tel" ? "[0۰٠][9۹٩][0-9۰-۹٠-٩]{9}" : undefined
                 }
               />
+            )}
+            {f.suggestions && (
+              <datalist id={f.name + "-list"}>
+                {f.suggestions.map((item) => (
+                  <option key={item} value={item} />
+                ))}
+              </datalist>
             )}
           </label>
         ),
@@ -172,6 +191,8 @@ export function ShipmentForm({
 }) {
   const get = (key: keyof Shipment) =>
     shipment?.[key] as string | number | undefined;
+  const options = (items: Record<string, string>) =>
+    Object.entries(items).map(([value, label]) => ({ value, label }));
   const fields: Field[] = [
     {
       name: "title",
@@ -180,6 +201,22 @@ export function ShipmentForm({
       full: true,
       value: get("title"),
       placeholder: "مثلاً: ورق فولادی بسته‌بندی شده",
+    },
+    {
+      name: "cargo_type",
+      label: "نوع کالا",
+      required: true,
+      value: get("cargo_type"),
+      maxLength: 80,
+      placeholder: "جستجو یا نوشتن نوع کالا",
+      suggestions: cargoTypes.filter((name) => name !== "سایر"),
+    },
+    {
+      name: "packaging",
+      label: "نوع بسته‌بندی",
+      value: get("packaging"),
+      maxLength: 80,
+      placeholder: "اختیاری، مثلاً پالت یا کارتن",
     },
     {
       name: "origin",
@@ -219,6 +256,34 @@ export function ShipmentForm({
       value: get("weight"),
     },
     {
+      name: "package_count",
+      label: "تعداد بسته",
+      type: "number",
+      min: 1,
+      value: get("package_count") ?? undefined,
+    },
+    {
+      name: "length_m",
+      label: "طول (متر)",
+      type: "number",
+      min: 0.01,
+      value: get("length_m") ?? undefined,
+    },
+    {
+      name: "width_m",
+      label: "عرض (متر)",
+      type: "number",
+      min: 0.01,
+      value: get("width_m") ?? undefined,
+    },
+    {
+      name: "height_m",
+      label: "ارتفاع (متر)",
+      type: "number",
+      min: 0.01,
+      value: get("height_m") ?? undefined,
+    },
+    {
       name: "vehicle_type",
       label: "نوع خودرو",
       required: true,
@@ -245,11 +310,44 @@ export function ShipmentForm({
       value: get("cargo_value") || 0,
     },
     {
+      name: "insurance_requested",
+      label: "بیمه بار",
+      options: [
+        { value: "false", label: "بدون درخواست بیمه" },
+        { value: "true", label: "بیمه می‌خواهم" },
+      ],
+      value: shipment?.insurance_requested ? "true" : "false",
+    },
+    {
       name: "pickup_date",
       label: "تاریخ بارگیری",
       type: "date",
       required: true,
       value: get("pickup_date"),
+    },
+    {
+      name: "urgency",
+      label: "فوریت",
+      options: options(urgencies),
+      value: get("urgency"),
+    },
+    {
+      name: "pickup_window",
+      label: "بازه بارگیری",
+      options: options(pickupWindows),
+      value: get("pickup_window"),
+    },
+    {
+      name: "loading_method",
+      label: "روش بارگیری",
+      options: options(handlingMethods),
+      value: get("loading_method"),
+    },
+    {
+      name: "unloading_method",
+      label: "روش تخلیه",
+      options: options(handlingMethods),
+      value: get("unloading_method"),
     },
     {
       name: "recipient_name",
@@ -266,6 +364,18 @@ export function ShipmentForm({
       value: get("recipient_phone"),
     },
     {
+      name: "recipient_national_id",
+      label: "کد ملی گیرنده",
+      value: get("recipient_national_id"),
+      maxLength: 10,
+    },
+    {
+      name: "recipient_postal_code",
+      label: "کد پستی گیرنده",
+      value: get("recipient_postal_code"),
+      maxLength: 10,
+    },
+    {
       name: "notes",
       label: "توضیحات و شرایط حمل",
       type: "textarea",
@@ -276,28 +386,34 @@ export function ShipmentForm({
   return (
     <ActionForm
       fieldGroups={[
-        { title: "۱. محموله", fields: fields.slice(0, 1) },
+        { title: "۱. محموله", fields: fields.slice(0, 3) },
         {
           title: "۲. مسیر حمل",
-          fields: fields.slice(1, 5),
+          fields: fields.slice(3, 7),
           before: <SavedAddressPicker />,
         },
-        { title: "۳. خودرو، هزینه و زمان", fields: fields.slice(5, 10) },
-        { title: "۴. گیرنده و توضیحات", fields: fields.slice(10) },
+        { title: "۳. وزن، ابعاد و خودرو", fields: fields.slice(7, 16) },
+        { title: "۴. زمان و روش جابه‌جایی", fields: fields.slice(16, 21) },
+        { title: "۵. گیرنده و توضیحات", fields: fields.slice(21) },
       ]}
       submit={shipment ? "ذخیره تغییرات" : "ثبت درخواست حمل"}
       onSubmit={async (data) => {
+        const body: Record<string, string | null> = { ...data };
+        for (const key of ["package_count", "length_m", "width_m", "height_m"]) {
+          if (body[key] === "") body[key] = null;
+        }
         const result = await api<Shipment>(
           shipment ? "shipments/" + shipment.id + "/" : "shipments/",
           shipment ? "PATCH" : "POST",
-          data,
+          body,
         );
         onDone(result);
       }}
     >
       <div className="info-note">
-        کرایه و ارزش کالا به تومان و وزن به تن است. درخواست پس از ثبت، برای
-        بررسی اپراتور ارسال می‌شود.
+        کرایه و ارزش کالا به تومان و وزن به تن است. برای وزن بالای ۲۰ تن تریلی،
+        بین ۵ تا ۲۰ تن کامیون و زیر ۵ تن وانت مناسب‌تر است. درخواست پس از ثبت،
+        برای بررسی اپراتور ارسال می‌شود.
       </div>
     </ActionForm>
   );

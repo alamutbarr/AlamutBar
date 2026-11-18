@@ -85,6 +85,12 @@ export default function Overview({
           </small>
         </div>
       </div>
+      {role === "owner" && user && !user.national_id && (
+        <p className="info-note">
+          کد ملی حساب شما کامل نیست. برای احراز هویت، آن را در{" "}
+          <Link href={base + "/settings"}>حساب کاربری</Link> ثبت کنید.
+        </p>
+      )}
       {mobileAction && (
         <Link className="app-dashboard-action" href={mobileAction.href}>
           <span className="app-action-icon">

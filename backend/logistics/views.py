@@ -154,7 +154,7 @@ def health(request):
 
 def shipment_scope(user, market=True):
     qs = Shipment.objects.select_related(
-        "owner", "driver", "inspector"
+        "owner", "driver", "inspector", "rating"
     ).prefetch_related(
         "events__actor",
         "offers__driver",
@@ -332,6 +332,47 @@ class ShipmentViewSet(viewsets.ModelViewSet):
         audit(request.user, "document.upload", doc)
         return Response(DocumentSerializer(doc).data, status=201)
 
+    @extend_schema(request=None, responses=ShipmentSerializer)
+    @action(detail=True, methods=["post"])
+    @transaction.atomic
+    def rate(self, request, pk=None):
+        shipment = self.get_object()
+        locked = Shipment.objects.select_for_update().get(pk=shipment.pk)
+        if request.user.role != "owner" or locked.owner_id != request.user.id:
+            raise PermissionDenied("فقط صاحب بار می‌تواند امتیاز بدهد.")
+        if locked.status not in ["delivered", "completed"]:
+            raise ValidationError("امتیازدهی پس از تحویل محموله ممکن است.")
+        if ShipmentRating.objects.filter(shipment=locked).exists():
+            raise ValidationError("برای این محموله قبلاً امتیاز ثبت شده است.")
+        driver_score = request.data.get("driver_score")
+        inspector_score = request.data.get("inspector_score") or None
+        comment = (request.data.get("comment") or "").strip()
+        try:
+            driver_score = int(driver_score)
+        except (TypeError, ValueError):
+            raise ValidationError("امتیاز راننده را از ۱ تا ۵ انتخاب کنید.")
+        if not 1 <= driver_score <= 5:
+            raise ValidationError("امتیاز راننده را از ۱ تا ۵ انتخاب کنید.")
+        if inspector_score not in [None, ""]:
+            try:
+                inspector_score = int(inspector_score)
+            except (TypeError, ValueError):
+                raise ValidationError("امتیاز متصدی را از ۱ تا ۵ انتخاب کنید.")
+            if not 1 <= inspector_score <= 5:
+                raise ValidationError("امتیاز متصدی را از ۱ تا ۵ انتخاب کنید.")
+        else:
+            inspector_score = None
+        if len(comment) > 1000:
+            raise ValidationError("نظر حداکثر ۱۰۰۰ نویسه است.")
+        ShipmentRating.objects.create(
+            shipment=locked,
+            driver_score=driver_score,
+            inspector_score=inspector_score,
+            comment=comment,
+        )
+        audit(request.user, "shipment.rate", locked)
+        return Response(self.get_serializer(locked).data)
+
     @extend_schema(request=LocationSerializer, responses={201: LocationSerializer})
     @action(detail=True, methods=["post"])
     @transaction.atomic
@@ -389,6 +430,24 @@ def download(request, pk):
         from rest_framework.exceptions import NotFound
 
         raise NotFound("فایل این سند پیدا نشد.") from error
+
+
+@extend_schema(responses={(200, "application/octet-stream"): OpenApiTypes.BINARY})
+@api_view(["GET"])
+def complaint_photo(request, pk):
+    photo = get_object_or_404(ComplaintPhoto, pk=pk)
+    if request.user.role != "operator" and photo.complaint.user_id != request.user.id:
+        raise PermissionDenied()
+    try:
+        return FileResponse(
+            photo.file.open("rb"),
+            as_attachment=True,
+            filename=photo.file.name.rsplit("/", 1)[-1],
+        )
+    except FileNotFoundError as error:
+        from rest_framework.exceptions import NotFound
+
+        raise NotFound("فایل این مدرک پیدا نشد.") from error
 
 
 @extend_schema(request=VehicleSerializer, responses=VehicleSerializer)
@@ -538,6 +597,89 @@ class TicketViewSet(viewsets.ModelViewSet):
         ticket.status = "closed"
         ticket.save(update_fields=["status", "updated_at"])
         return Response(TicketSerializer(ticket).data)
+
+
+class ComplaintViewSet(viewsets.ModelViewSet):
+    queryset = Complaint.objects.none()
+    serializer_class = ComplaintSerializer
+    http_method_names = ["get", "post", "head", "options"]
+
+    def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return Complaint.objects.none()
+        qs = Complaint.objects.select_related("user", "shipment").prefetch_related(
+            "messages__author", "photos"
+        )
+        if self.request.user.role == "operator":
+            return qs
+        return qs.filter(user=self.request.user)
+
+    @transaction.atomic
+    def perform_create(self, serializer):
+        if self.request.user.role != "owner":
+            raise PermissionDenied("ثبت شکایت فقط برای صاحب بار مجاز است.")
+        complaint = serializer.save(user=self.request.user)
+        audit(self.request.user, "complaint.create", complaint)
+
+    @extend_schema(request=ComplaintReplySerializer, responses=ComplaintSerializer)
+    @action(detail=True, methods=["post"])
+    @transaction.atomic
+    def reply(self, request, pk=None):
+        complaint = Complaint.objects.select_for_update().get(pk=self.get_object().pk)
+        if complaint.status in ["resolved", "rejected"]:
+            raise ValidationError("این شکایت بسته شده است.")
+        if request.user.role not in ["owner", "operator"]:
+            raise PermissionDenied()
+        serializer = ComplaintReplySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        ComplaintMessage.objects.create(
+            complaint=complaint,
+            author=request.user,
+            body=serializer.validated_data["body"],
+        )
+        complaint.save(update_fields=["updated_at"])
+        return Response(ComplaintSerializer(complaint, context={"request": request}).data)
+
+    @extend_schema(request=ComplaintStatusSerializer, responses=ComplaintSerializer)
+    @action(detail=True, methods=["post"])
+    def review(self, request, pk=None):
+        if request.user.role != "operator":
+            raise PermissionDenied("تغییر وضعیت شکایت فقط برای اپراتور است.")
+        complaint = self.get_object()
+        serializer = ComplaintStatusSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        complaint.status = serializer.validated_data["status"]
+        complaint.save(update_fields=["status", "updated_at"])
+        audit(request.user, "complaint.review", complaint, {"status": complaint.status})
+        return Response(ComplaintSerializer(complaint, context={"request": request}).data)
+
+    @extend_schema(
+        request={"multipart/form-data": UploadRequest},
+        responses={201: ComplaintPhotoSerializer},
+    )
+    @action(detail=True, methods=["post"])
+    def photos(self, request, pk=None):
+        complaint = self.get_object()
+        if complaint.user_id != request.user.id or complaint.status != "pending":
+            raise PermissionDenied("بارگذاری مدرک فقط برای شکایت باز خودتان ممکن است.")
+        if complaint.photos.count() >= 10:
+            raise ValidationError("حداکثر ۱۰ تصویر برای هر شکایت مجاز است.")
+        file = request.FILES.get("file")
+        if not file or file.size > 10 * 1024 * 1024:
+            raise ValidationError("تصویر معتبر با حجم حداکثر ۱۰ مگابایت انتخاب کنید.")
+        ext = file.name.rsplit(".", 1)[-1].lower()
+        signature = file.read(12)
+        file.seek(0)
+        valid = (ext in ["jpg", "jpeg"] and signature.startswith(b"\xff\xd8\xff")) or (
+            ext == "png" and signature.startswith(b"\x89PNG\r\n\x1a\n")
+        )
+        if not valid:
+            raise ValidationError("فقط تصویر JPG و PNG معتبر پذیرفته می‌شود.")
+        photo = ComplaintPhoto.objects.create(
+            complaint=complaint, uploaded_by=request.user, file=file
+        )
+        audit(request.user, "complaint.photo", photo)
+        return Response(ComplaintPhotoSerializer(photo).data, status=201)
 
 
 class NotificationViewSet(viewsets.ReadOnlyModelViewSet):

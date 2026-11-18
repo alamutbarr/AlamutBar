@@ -36,6 +36,9 @@ export function Badge({ status }: { status: string }) {
             unpaid: "پرداخت نشده",
             open: "باز",
             closed: "بسته",
+            reviewed: "بررسی شد",
+            resolved: "حل شد",
+            rejected: "رد شد",
           } as Record<string, string>
         )[status] ||
         status}

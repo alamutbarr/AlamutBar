@@ -41,6 +41,7 @@ import {
   Route,
   Search,
   Settings,
+  ShieldAlert,
   ShieldCheck,
   Users,
   Wallet,
@@ -65,6 +66,7 @@ import Account from "./panels/settings";
 import ShipmentDetail from "./panels/shipment-detail";
 import Team from "./panels/team";
 import Support from "./panels/tickets";
+import Complaints from "./panels/complaints";
 import { Badge, Brand, Empty, Loading, Modal } from "./ui";
 import Onboarding from "./panels/onboarding";
 import ControlRoom from "./panels/control-room";
@@ -117,6 +119,12 @@ const nav = [
   },
   { key: "reports", label: "گزارش‌ها", icon: ChartNoAxesCombined },
   { key: "tickets", label: "مرکز پشتیبانی", icon: MessageSquare },
+  {
+    key: "complaints",
+    label: "ثبت شکایت",
+    icon: ShieldAlert,
+    only: ["owner", "operator"],
+  },
   {
     key: "operations",
     label: "رویدادها و درخواست‌ها",
@@ -778,6 +786,8 @@ export default function Workspace({
   if (section === "crm" && role === "operator") content = <CRM />;
   if (section === "incidents") content = <Incidents role={role} />;
   if (section === "addresses" && role === "owner") content = <Addresses />;
+  if (section === "complaints" && ["owner", "operator"].includes(role))
+    content = <Complaints role={role} />;
   return (
     <div className="workspace" data-role={role} data-section={section}>
       <aside className="sidebar">

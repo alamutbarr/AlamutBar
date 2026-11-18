@@ -13,6 +13,7 @@ router.register("editorial/articles", e.EditorialViewSet, basename="editorial")
 router.register("shipments", v.ShipmentViewSet, basename="shipments")
 router.register("invoices", v.InvoiceViewSet, basename="invoices")
 router.register("tickets", v.TicketViewSet, basename="tickets")
+router.register("complaints", v.ComplaintViewSet, basename="complaints")
 router.register("notifications", v.NotificationViewSet, basename="notifications")
 router.register("crm/leads", o.LeadViewSet, basename="leads")
 router.register("crm/followups", o.FollowUpViewSet, basename="followups")
@@ -48,6 +49,11 @@ urlpatterns = [
     path("api/team/", v.team),
     path("api/team/<int:pk>/verify/", v.verify_user),
     path("api/documents/<int:pk>/download/", v.download, name="shipment-document-download"),
+    path(
+        "api/complaint-photos/<int:pk>/download/",
+        v.complaint_photo,
+        name="complaint-photo-download",
+    ),
     path("api/tracking/", v.track),
     path("api/contact/", v.ContactView.as_view()),
     path("api/operations/", v.operations),

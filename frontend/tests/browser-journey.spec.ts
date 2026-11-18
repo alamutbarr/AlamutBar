@@ -277,6 +277,7 @@ test("browser walkthrough from new driver dossier to completed freight and publi
       await owner.goto(`${roleOrigin("owner")}/owner/shipments/new`);
       await fill(owner, {
         title,
+        cargo_type: "کالای آزمایشی",
         origin: "قزوین",
         destination: "رشت",
         origin_address: "مبدأ خصوصی آزمایشی",

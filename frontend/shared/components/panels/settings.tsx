@@ -73,6 +73,24 @@ export default function Account({
                 value: user.company,
                 full: true,
               },
+              ...(role === "owner"
+                ? [
+                    {
+                      name: "national_id",
+                      label: "کد ملی",
+                      value: user.national_id,
+                      maxLength: 10,
+                      placeholder: "۱۰ رقم",
+                    },
+                    {
+                      name: "postal_code",
+                      label: "کد پستی",
+                      value: user.postal_code,
+                      maxLength: 10,
+                      placeholder: "۱۰ رقم",
+                    },
+                  ]
+                : []),
             ]}
             onSubmit={async (d) => {
               setUser(await api("auth/me/", "PATCH", d));

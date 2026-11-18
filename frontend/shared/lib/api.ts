@@ -8,6 +8,8 @@ export type User = {
   phone: string;
   email: string;
   company: string;
+  national_id: string;
+  postal_code: string;
   role: Role;
   verified: boolean;
   driver_market_enabled: boolean;
@@ -35,6 +37,25 @@ export type Shipment = {
   price: number;
   pickup_date: string;
   notes: string;
+  cargo_type: string;
+  packaging: string;
+  package_count: number | null;
+  length_m: string | null;
+  width_m: string | null;
+  height_m: string | null;
+  urgency: string;
+  pickup_window: string;
+  loading_method: string;
+  unloading_method: string;
+  recipient_national_id: string;
+  recipient_postal_code: string;
+  insurance_requested: boolean;
+  rating: {
+    driver_score: number;
+    inspector_score: number | null;
+    comment: string;
+    created_at: string;
+  } | null;
   status: string;
   owner: number;
   driver: number | null;
@@ -110,6 +131,36 @@ export const vehicles: Record<string, string> = {
   truck: "کامیون",
   pickup: "وانت",
   refrigerated: "یخچال‌دار",
+};
+export const urgencies: Record<string, string> = {
+  urgent: "فوری",
+  scheduled: "زمان‌بندی‌شده",
+};
+export const pickupWindows: Record<string, string> = {
+  "08-12": "۸ تا ۱۲",
+  "12-16": "۱۲ تا ۱۶",
+  "16-20": "۱۶ تا ۲۰",
+  "20-24": "۲۰ تا ۲۴",
+};
+export const handlingMethods: Record<string, string> = {
+  forklift: "لیفتراک",
+  crane: "جرثقیل",
+  manual: "دستی",
+  ramp: "رمپ",
+  other: "سایر",
+};
+export const complaintTypes: Record<string, string> = {
+  driver: "راننده",
+  dispatcher: "متصدی",
+  cargo: "آسیب به کالا",
+  delay: "تأخیر در حمل",
+  other: "سایر موارد",
+};
+export const complaintStatuses: Record<string, string> = {
+  pending: "در بررسی",
+  reviewed: "بررسی شد",
+  resolved: "حل شد",
+  rejected: "رد شد",
 };
 export const number = (n: number | string | undefined) =>
   Number(n || 0).toLocaleString("fa-IR");
@@ -273,6 +324,9 @@ export async function api<T = unknown>(
           "recipient_phone",
           "emergency_phone",
           "national_id",
+          "postal_code",
+          "recipient_national_id",
+          "recipient_postal_code",
           "code",
         ].includes(key)
           ? value

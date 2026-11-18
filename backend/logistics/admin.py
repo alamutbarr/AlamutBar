@@ -249,7 +249,20 @@ class AlamutUserAdmin(UserAdmin):
         ),
     )
     fieldsets = UserAdmin.fieldsets + (
-        ("الموت", {"fields": ("role", "phone", "company", "verified", "capabilities")}),
+        (
+            "الموت",
+            {
+                "fields": (
+                    "role",
+                    "phone",
+                    "company",
+                    "national_id",
+                    "postal_code",
+                    "verified",
+                    "capabilities",
+                )
+            },
+        ),
     )
     list_display = ["username", "phone", "role", "verified", "is_active"]
     list_filter = ["role", "verified", "is_active"]
@@ -282,7 +295,14 @@ for capability, models in {
             ),
         )
 
-for model in [Ticket, TicketMessage]:
+for model in [
+    Ticket,
+    TicketMessage,
+    Complaint,
+    ComplaintMessage,
+    ComplaintPhoto,
+    ShipmentRating,
+]:
     admin.site.register(
         model,
         type(

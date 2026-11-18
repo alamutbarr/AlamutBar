@@ -1,9 +1,12 @@
 "use client";
 import {
   date,
+  handlingMethods,
   money,
   number,
+  pickupWindows,
   statuses,
+  urgencies,
   vehicles,
   type Role,
   type Shipment,
@@ -23,7 +26,7 @@ import {
   Truck,
 } from "lucide-react";
 import Link from "@/lib/navigation";
-import type { Dispatch, SetStateAction } from "react";
+import { useState, type Dispatch, type FormEvent, type SetStateAction } from "react";
 import { Badge, Empty } from "../ui";
 import LiveLocation from "../live-location";
 export default function ShipmentDetail({
@@ -53,6 +56,58 @@ export default function ShipmentDetail({
   const deliveryReady = shipment.inspections?.find(
     (i) => i.stage === "delivery",
   )?.passed;
+  const [driverScore, setDriverScore] = useState(0);
+  const [inspectorScore, setInspectorScore] = useState(0);
+  const [comment, setComment] = useState("");
+  const dimensions = [shipment.length_m, shipment.width_m, shipment.height_m]
+    .filter((part) => part)
+    .map((part) => number(part || 0))
+    .join(" × ");
+  const facts: [string, string][] = [
+    ["نوع خودرو", vehicles[shipment.vehicle_type]],
+    ["نوع کالا", shipment.cargo_type],
+    ["بسته‌بندی", shipment.packaging],
+    ["وزن بار", number(shipment.weight) + " تن"],
+    [
+      "تعداد بسته",
+      shipment.package_count ? number(shipment.package_count) : "",
+    ],
+    ["ابعاد (متر)", dimensions],
+    ["تاریخ بارگیری", date(shipment.pickup_date)],
+    ["فوریت", urgencies[shipment.urgency] || ""],
+    ["بازه بارگیری", pickupWindows[shipment.pickup_window] || ""],
+    ["روش بارگیری", handlingMethods[shipment.loading_method] || ""],
+    ["روش تخلیه", handlingMethods[shipment.unloading_method] || ""],
+    ["کرایه", money(shipment.price)],
+    ["ارزش کالا", money(shipment.cargo_value)],
+    ["بیمه بار", shipment.insurance_requested ? "درخواست شده" : ""],
+    ["صاحب بار", shipment.owner_name || "پس از تخصیص"],
+    ["راننده", shipment.driver_name || "هنوز تخصیص نیافته"],
+    ["متصدی", shipment.inspector_name || "هنوز تخصیص نیافته"],
+    ["نشانی مبدأ", shipment.origin_address || "پس از تخصیص در دسترس است"],
+    ["نشانی مقصد", shipment.destination_address || "پس از تخصیص در دسترس است"],
+    ["گیرنده", shipment.recipient_name || "—"],
+    ["موبایل گیرنده", shipment.recipient_phone || "—"],
+    ["کد ملی گیرنده", shipment.recipient_national_id || ""],
+    ["کد پستی گیرنده", shipment.recipient_postal_code || ""],
+  ];
+  const canRate =
+    role === "owner" &&
+    ["delivered", "completed"].includes(shipment.status) &&
+    !shipment.rating;
+  function sendRating(event: FormEvent) {
+    event.preventDefault();
+    if (!driverScore) return;
+    void mutate(
+      "shipments/" + shipment.id + "/rate/",
+      {
+        driver_score: driverScore,
+        inspector_score: inspectorScore || null,
+        comment,
+      },
+      "امتیاز این مأموریت ثبت شد.",
+    );
+  }
   return (
     <>
       <div className="page-heading shipment-heading">
@@ -88,32 +143,72 @@ export default function ShipmentDetail({
               </div>
             </div>
             <dl className="detail-grid">
-              {[
-                ["نوع خودرو", vehicles[shipment.vehicle_type]],
-                ["وزن بار", number(shipment.weight) + " تن"],
-                ["تاریخ بارگیری", date(shipment.pickup_date)],
-                ["کرایه", money(shipment.price)],
-                ["ارزش کالا", money(shipment.cargo_value)],
-                ["صاحب بار", shipment.owner_name || "پس از تخصیص"],
-                ["راننده", shipment.driver_name || "هنوز تخصیص نیافته"],
-                ["متصدی", shipment.inspector_name || "هنوز تخصیص نیافته"],
-                [
-                  "نشانی مبدأ",
-                  shipment.origin_address || "پس از تخصیص در دسترس است",
-                ],
-                [
-                  "نشانی مقصد",
-                  shipment.destination_address || "پس از تخصیص در دسترس است",
-                ],
-                ["گیرنده", shipment.recipient_name || "—"],
-                ["موبایل گیرنده", shipment.recipient_phone || "—"],
-              ].map(([k, v]) => (
-                <div key={k}>
-                  <dt>{k}</dt>
-                  <dd>{v}</dd>
-                </div>
-              ))}
+              {facts
+                .filter(([, value]) => value)
+                .map(([k, v]) => (
+                  <div key={k}>
+                    <dt>{k}</dt>
+                    <dd>{v}</dd>
+                  </div>
+                ))}
             </dl>
+            {shipment.rating && (
+              <p className="info-note">
+                امتیاز راننده {number(shipment.rating.driver_score)} از ۵
+                {shipment.rating.inspector_score
+                  ? " · امتیاز متصدی " +
+                    number(shipment.rating.inspector_score) +
+                    " از ۵"
+                  : ""}
+                {shipment.rating.comment ? " · " + shipment.rating.comment : ""}
+              </p>
+            )}
+            {canRate && (
+              <form className="rating-form" onSubmit={sendRating}>
+                <h2>امتیاز این مأموریت</h2>
+                <label>
+                  امتیاز راننده
+                  <select
+                    value={driverScore}
+                    onChange={(e) => setDriverScore(Number(e.target.value))}
+                    required
+                  >
+                    <option value={0}>انتخاب کنید</option>
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <option key={n} value={n}>
+                        {number(n)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  امتیاز متصدی (اختیاری)
+                  <select
+                    value={inspectorScore}
+                    onChange={(e) => setInspectorScore(Number(e.target.value))}
+                  >
+                    <option value={0}>بدون امتیاز</option>
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <option key={n} value={n}>
+                        {number(n)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="full">
+                  نظر شما
+                  <textarea
+                    value={comment}
+                    maxLength={1000}
+                    rows={3}
+                    onChange={(e) => setComment(e.target.value)}
+                  />
+                </label>
+                <button className="btn" disabled={busy || !driverScore}>
+                  ثبت امتیاز
+                </button>
+              </form>
+            )}
             {shipment.notes && <p className="info-note">{shipment.notes}</p>}
             {((shipment.status === "loading" && !loadingReady) ||
               (shipment.status === "delivered" && !deliveryReady)) && (

@@ -1890,6 +1890,31 @@ dd {
   padding: 10px 15px;
   gap: 8px;
 }
+.rating-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 18px;
+}
+.rating-form h2,
+.rating-form .full,
+.rating-form .btn {
+  grid-column: 1 / -1;
+}
+.rating-form h2 {
+  margin: 0;
+  font-size: 16px;
+}
+.rating-form label {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+}
+.complaint-form {
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line, #e6ece8);
+}
 .detail-section {
   margin-top: 22px;
   padding: 24px;
