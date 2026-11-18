@@ -10,17 +10,11 @@ import {
 } from "lucide-react";
 import Link from "@/lib/navigation";
 import { useEffect, useId, useRef, type ReactNode } from "react";
-export function Brand({
-  light = false,
-  className = "",
-}: {
-  light?: boolean;
-  className?: string;
-}) {
+export function Brand({ light = false }: { light?: boolean }) {
   return (
     <Link
       href={siteHref("/")}
-      className={"brand " + (light ? "light " : "") + className}
+      className={"brand " + (light ? "light" : "")}
       aria-label="الموت، صفحه اصلی"
     >
       <Mountain size={34} strokeWidth={1.25} />

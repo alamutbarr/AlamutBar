@@ -12,9 +12,6 @@
     "build:apps": "npm run build --workspace=@alamut/driver --workspace=@alamut/owner --workspace=@alamut/inspector"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.1.17",
-    "@tailwindcss/vite": "^4.1.17",
-    "tailwindcss": "^4.1.17",
     "@playwright/test": "latest",
     "@types/leaflet": "1.9.21",
     "@types/node": "^22.0.0",

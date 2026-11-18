@@ -1,5 +1,4 @@
 import { defineConfig, type Plugin, type Connect } from "vite";
-import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -95,7 +94,7 @@ export function panelConfig(
     },
   };
   return defineConfig({
-    plugins: [tailwindcss(), react(), pwa],
+    plugins: [react(), pwa],
     envDir: false,
     publicDir: path.join(frontend, "shared/public"),
     resolve: {

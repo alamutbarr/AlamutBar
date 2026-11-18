@@ -105,28 +105,21 @@ export default function Home() {
   return (
     <div className="public-site mobile-public landing-page">
       <main id="main">
-        <section
-          className="relative grid h-auto min-h-[min(49rem,100svh)] grid-rows-[auto_1fr_auto] overflow-hidden bg-[#183c3c] text-[#f9f8ef] max-[760px]:min-h-[min(42rem,100svh)]"
-          id="top"
-        >
+        <section className="hero" id="top">
           <img
-            className="absolute inset-0 h-full w-full object-cover object-[center_47%] max-[760px]:object-[59%_center]"
+            className="hero-image"
             fetchPriority="high"
             width={1920}
             height={1080}
             src="/alamut-road.jpg"
             alt="کامیون در جاده کوهستانی، هنگام سپیده‌دم"
           />
-          <div className="absolute inset-0 bg-[linear-gradient(270deg,rgba(10,47,47,0.79),rgba(12,36,37,0.46)_65%,rgba(12,28,28,0.29)),linear-gradient(0deg,rgba(12,39,40,0.8),transparent_65%)] max-[760px]:bg-[linear-gradient(270deg,#0c3438bf,#0d303a65),linear-gradient(0deg,#133a3ce0,transparent)]" />
-          <header className="relative z-[2] mx-auto flex w-full max-w-[1220px] items-center justify-between px-[clamp(1.125rem,4vw,2rem)] py-6 max-[760px]:py-[22px]">
-            <Brand light className="max-[760px]:min-w-[130px] max-[760px]:[&_b]:text-[15px]" />
+          <div className="hero-shade" />
+          <header className="public-header">
+            <Brand light />
             <nav
               aria-label="منوی اصلی"
-              className={
-                menu
-                  ? "absolute inset-x-[15px] top-[83px] z-[2] flex flex-col items-stretch gap-2.5 rounded-[9px] border border-[#6f91836e] bg-[#173f3cf5] p-[25px] text-xs text-[#e9ede7d1]"
-                  : "hidden items-center gap-11 text-xs text-[#e9ede7d1] min-[761px]:flex max-[1200px]:gap-7"
-              }
+              className={menu ? "public-nav open" : "public-nav"}
             >
               {[
                 ["خدمات ما", "#services"],
@@ -134,24 +127,16 @@ export default function Home() {
                 ["شبکه حمل", "#network"],
                 ["تماس با ما", "#contact"],
               ].map(([t, h]) => (
-                <a
-                  key={h}
-                  href={h}
-                  className="hover:text-white max-[760px]:px-2.5 max-[760px]:py-2.5"
-                  onClick={() => setMenu(false)}
-                >
+                <a key={h} href={h} onClick={() => setMenu(false)}>
                   {t}
                 </a>
               ))}
-              <button
-                className="outline-btn px-4 py-2.5 text-xs"
-                onClick={() => setEntry(true)}
-              >
+              <button className="outline-btn" onClick={() => setEntry(true)}>
                 ورود <ArrowUpLeft size={16} />
               </button>
             </nav>
             <button
-              className="icon-btn z-[5] hidden text-[#f5f5ec] max-[760px]:inline-flex"
+              className="menu-toggle icon-btn"
               aria-label="منو"
               aria-expanded={menu}
               onClick={() => setMenu(!menu)}
@@ -159,51 +144,45 @@ export default function Home() {
               {menu ? <X /> : <Menu />}
             </button>
           </header>
-          <div className="absolute top-[16%] left-[6.5%] text-[10px] leading-[2.4] text-[#d6dcd4] max-[950px]:hidden">
+          <div className="hero-aside">
             هر مسیر، یک تعهد است
             <br />
             حمل‌ونقل و لجستیک صنعتی
           </div>
-          <div className="relative z-[1] w-[min(40rem,calc(100%-2*clamp(1.125rem,4vw,2rem)))] self-center py-[clamp(3rem,8vh,6rem)] ps-[max(clamp(1.125rem,4vw,2rem),calc((100%-1120px)/2))] max-[760px]:py-[clamp(2rem,8vh,4.5rem)]">
-            <p className="eyebrow mb-4 text-[0.875rem] text-[#eceee5] max-[760px]:mb-[18px] max-[760px]:text-[10px]">
+          <div className="hero-content">
+            <p className="eyebrow">
               <i /> حمل بار، با خیال راحت
             </p>
-            <h1 className="text-[clamp(2.125rem,1.1rem+5vw,5.25rem)] leading-[1.45] font-bold tracking-normal">
+            <h1>
               مسیر مطمئن،
               <br />
-              <em className="text-[#149fa4]">حمل هوشمند.</em>
+              <em>حمل هوشمند.</em>
             </h1>
-            <p className="mt-5 max-w-[35rem] text-[clamp(1rem,0.94rem+0.3vw,1.125rem)] leading-[2] font-medium text-[#dde4de] max-[760px]:mt-6 max-[760px]:max-w-[420px] max-[760px]:text-xs max-[400px]:text-[11px]">
+            <p className="hero-description">
               از ثبت سفارش تا تحویل، در کنار شما. سریع، مطمئن و شفاف تا باری که
               به ما می‌سپارید بی‌دغدغه به مقصد برسد.
             </p>
-            <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 max-[760px]:mt-[25px] max-[760px]:gap-5 max-[400px]:gap-[15px]">
-              <button
-                className="btn min-h-11 min-w-40 gap-7 px-[22px] py-[13px] text-[0.875rem] max-[760px]:min-w-[145px] max-[760px]:gap-5 max-[760px]:px-[17px] max-[760px]:py-2.5 max-[760px]:text-[11px] max-[400px]:min-w-[135px] max-[400px]:gap-[15px]"
-                onClick={() => setEntry(true)}
-              >
+            <div className="hero-actions">
+              <button className="btn" onClick={() => setEntry(true)}>
                 ورود به پنل‌ها
                 <ArrowLeft size={18} />
               </button>
-              <a
-                href="#services"
-                className="flex min-h-11 items-center gap-3.5 text-[0.875rem] max-[760px]:gap-[5px] max-[760px]:text-[10px] max-[400px]:text-[9px]"
-              >
+              <a href="#services">
                 با خدمات ما آشنا شوید <ArrowUpLeft size={17} />
               </a>
             </div>
           </div>
-          <div className="absolute bottom-[12%] left-[8%] flex h-[76px] w-[76px] -rotate-12 flex-col items-center justify-center rounded-full border border-[#e8ede898] text-[0.8125rem] leading-[1.3] outline outline-1 outline-offset-3 outline-[#e8ede86e] max-[950px]:hidden">
+          <div className="hero-stamp">
             مسیر
             <br />
-            <b className="text-xs">مطمئن</b>
+            <b>مطمئن</b>
           </div>
-          <div className="relative z-[1] mx-[clamp(1.125rem,4vw,2rem)] flex items-center justify-between gap-4 pb-5 text-[0.8125rem] text-[#c0cfca]">
+          <div className="hero-foot">
             <span>الهام از ایران، ساخته برای آینده.</span>
-            <a href="#manifesto" className="flex items-center gap-2.5">
+            <a href="#manifesto">
               ادامه مطلب <ArrowDown size={14} />
             </a>
-            <span className="max-[560px]:hidden">۰۱ — ۰۵</span>
+            <span>۰۱ — ۰۵</span>
           </div>
         </section>
         <section className="manifesto section-wrap" id="manifesto">
