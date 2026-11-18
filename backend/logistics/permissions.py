@@ -5,6 +5,7 @@ CAPABILITY_PATHS = [
     ("/api/crm/", "crm"),
     ("/api/invoices/", "finance"),
     ("/api/control-room/", "monitoring"),
+    ("/api/alerts/", "monitoring"),
     ("/api/operations/", "monitoring"),
     ("/api/drivers/", "verification"),
     ("/api/credentials/", "verification"),

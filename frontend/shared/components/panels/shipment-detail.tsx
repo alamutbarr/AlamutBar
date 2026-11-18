@@ -61,6 +61,11 @@ export default function ShipmentDetail({
   const [inspectorScore, setInspectorScore] = useState(0);
   const [comment, setComment] = useState("");
   const [offer, setOffer] = useState("");
+  const [opsNote, setOpsNote] = useState("");
+  const [penaltyReason, setPenaltyReason] = useState("");
+  const [delayMinutes, setDelayMinutes] = useState("");
+  const [replaceReason, setReplaceReason] = useState("");
+  const [waybillCode, setWaybillCode] = useState("");
   const dimensions = [shipment.length_m, shipment.width_m, shipment.height_m]
     .filter((part) => part)
     .map((part) => number(part || 0))
@@ -462,6 +467,120 @@ export default function ShipmentDetail({
                 </form>
               )}
           </section>
+          {(role === "operator" ||
+            role === "driver" ||
+            shipment.delivery_otp ||
+            (shipment.penalty_amount || 0) > 0) && (
+            <section className="card detail-section">
+              <h2>بارنامه، تحویل و عملیات</h2>
+              {shipment.delivery_otp && role !== "driver" && (
+                <p>کد تحویل برای صاحب بار: <b>{shipment.delivery_otp}</b></p>
+              )}
+              {shipment.penalty_amount != null && shipment.penalty_amount > 0 && (
+                <p>جریمه تأخیر: {money(shipment.penalty_amount)}</p>
+              )}
+              {role === "operator" && ["assigned", "loading"].includes(shipment.status) && (
+                <div className="shipment-actions">
+                  <button
+                    className="btn"
+                    disabled={busy}
+                    onClick={() =>
+                      void mutate(
+                        "shipments/" + shipment.id + "/waybill/",
+                        { action: "send" },
+                        "کد بارنامه برای راننده ارسال شد.",
+                      )
+                    }
+                  >
+                    ارسال کد بارنامه
+                  </button>
+                  {shipment.waybill_code && <p>کد پیامک‌شده: <b>{shipment.waybill_code}</b></p>}
+                  {shipment.waybill_verified && (
+                    <form
+                      className="rating-form"
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        const input = event.currentTarget.elements.namedItem("photo") as HTMLInputElement;
+                        const file = input.files?.[0];
+                        if (!file) return;
+                        const body = new FormData();
+                        body.append("action", "photo");
+                        body.append("photo", file);
+                        void mutate("shipments/" + shipment.id + "/waybill/", body, "عکس بارنامه ذخیره شد.");
+                      }}
+                    >
+                      <label>عکس بارنامه<input name="photo" type="file" accept="image/jpeg,image/png,image/webp" required /></label>
+                      <button className="btn" disabled={busy}>بارگذاری عکس بارنامه</button>
+                    </form>
+                  )}
+                  <form
+                    className="rating-form"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      void mutate(
+                        "shipments/" + shipment.id + "/replace/",
+                        { reason: replaceReason },
+                        "راننده کنار رفت و بار دوباره آماده تخصیص است.",
+                      );
+                    }}
+                  >
+                    <label>دلیل جایگزینی راننده<input value={replaceReason} onChange={(event) => setReplaceReason(event.target.value)} required /></label>
+                    <button className="secondary-btn" disabled={busy}>جایگزینی راننده</button>
+                  </form>
+                </div>
+              )}
+              {role === "driver" && shipment.waybill_sent && !shipment.waybill_verified && (
+                <form
+                  className="rating-form"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void mutate(
+                      "shipments/" + shipment.id + "/waybill/",
+                      { action: "confirm", code: waybillCode },
+                      "کد بارنامه تأیید شد.",
+                    );
+                  }}
+                >
+                  <label>کد بارنامه<input inputMode="numeric" value={waybillCode} onChange={(event) => setWaybillCode(event.target.value)} required /></label>
+                  <button className="btn" disabled={busy}>تأیید کد</button>
+                </form>
+              )}
+              {role === "operator" && ["in_transit", "delivered", "completed"].includes(shipment.status) && (
+                <form
+                  className="rating-form"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    const force = (event.currentTarget.elements.namedItem("force") as HTMLInputElement).checked;
+                    void mutate(
+                      "shipments/" + shipment.id + "/penalty/",
+                      { delay_minutes: Number(delayMinutes || 0), force_majeure: force, reason: penaltyReason },
+                      "جریمه تأخیر ثبت شد.",
+                    );
+                  }}
+                >
+                  <label>دقیقه تأخیر<input inputMode="numeric" value={delayMinutes} onChange={(event) => setDelayMinutes(event.target.value)} /></label>
+                  <label>فورس‌ماژور<input name="force" type="checkbox" /></label>
+                  <label>دلیل فورس‌ماژور<input value={penaltyReason} onChange={(event) => setPenaltyReason(event.target.value)} /></label>
+                  <button className="secondary-btn" disabled={busy}>ثبت جریمه</button>
+                </form>
+              )}
+              {role === "operator" && (
+                <form
+                  className="rating-form"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void mutate("shipments/" + shipment.id + "/note/", { body: opsNote }, "یادداشت ثبت شد.");
+                  }}
+                >
+                  <label>یادداشت یا شرح تماس<input value={opsNote} onChange={(event) => setOpsNote(event.target.value)} required /></label>
+                  <button className="secondary-btn" disabled={busy}>ثبت یادداشت</button>
+                </form>
+              )}
+              {role === "operator" && (
+                <p><a href={"/api/shipments/" + shipment.id + "/dossier/"}>دانلود پرونده</a></p>
+              )}
+            </section>
+          )}
           <ShipmentChat shipmentId={shipment.id} />
           {Boolean(shipment.offers?.length) && (
             <section className="card detail-section">

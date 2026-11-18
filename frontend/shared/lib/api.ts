@@ -104,6 +104,14 @@ export type Shipment = {
   }[];
   documents: { id: number; name: string; url: string }[];
   locations: Location[];
+  waybill_code?: string;
+  waybill_sent?: boolean;
+  waybill_verified?: boolean;
+  waybill_photo?: string | null;
+  delivery_otp?: string;
+  penalty_amount?: number;
+  delay_minutes?: number;
+  force_majeure?: boolean;
 };
 export type Page<T> = {
   count: number;

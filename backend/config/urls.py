@@ -68,3 +68,7 @@ urlpatterns = [
     ),
 ]
 urlpatterns[-2] = path("api/schema/", SpectacularAPIView.as_view(), name="schema")
+urlpatterns += [
+    path("api/alerts/", v.alerts),
+    path("api/alerts/<int:pk>/resolve/", v.resolve_operational_alert),
+]

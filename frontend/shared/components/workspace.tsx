@@ -76,6 +76,7 @@ import Complaints from "./panels/complaints";
 import { Badge, Brand, Empty, Loading, Modal } from "./ui";
 import Onboarding from "./panels/onboarding";
 import ControlRoom from "./panels/control-room";
+import Alerts from "./panels/alerts";
 import CRM from "./panels/crm";
 import Incidents from "./panels/incidents";
 import Addresses from "./panels/addresses";
@@ -98,6 +99,7 @@ const nav = [
     icon: Route,
     only: ["operator"],
   },
+  { key: "alerts", label: "هشدارهای عملیات", icon: Bell, only: ["operator"] },
   { key: "crm", label: "CRM و پیگیری‌ها", icon: Users, only: ["operator"] },
   {
     key: "onboarding",
@@ -558,6 +560,7 @@ export default function Workspace({
     articles: "content",
     crm: "crm",
     control: "monitoring",
+    alerts: "monitoring",
     operations: "monitoring",
   };
   const visibleNav = nav.filter(
@@ -827,6 +830,7 @@ export default function Workspace({
   if (section === "driver-review" && role === "operator" && detailId)
     content = <Onboarding driverId={detailId} />;
   if (section === "control" && role === "operator") content = <ControlRoom />;
+  if (section === "alerts" && role === "operator") content = <Alerts />;
   if (section === "articles" && role === "operator") content = <Editorial />;
   if (section === "crm" && role === "operator") content = <CRM />;
   if (section === "incidents") content = <Incidents role={role} />;

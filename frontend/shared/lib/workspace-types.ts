@@ -51,6 +51,7 @@ export type Dash = {
   recent: Shipment[];
   notifications: number;
   open_tickets: number;
+  open_alerts?: number;
 };
 export type Ops = {
   audit: {
