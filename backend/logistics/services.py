@@ -1,7 +1,21 @@
+from datetime import timedelta
 from django.db import transaction
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError, PermissionDenied
 from .models import *
+
+ACTIVE_TRIP = [
+    "assigned",
+    "en_route_pickup",
+    "arrived_pickup",
+    "loading",
+    "waybill",
+    "in_transit",
+    "near_destination",
+    "on_hold",
+    "delivered",
+]
+GPS_STATUSES = ["waybill", "in_transit", "near_destination"]
 
 
 def audit(user, action, obj, detail=None):
@@ -53,11 +67,19 @@ def driver_market_enabled(user):
 
 
 TRANSITIONS = {
-    "approved": ("pending", {"operator"}),
-    "loading": ("assigned", {"driver", "operator"}),
-    "in_transit": ("loading", {"driver", "operator"}),
-    "delivered": ("in_transit", {"driver", "operator"}),
-    "completed": ("delivered", {"owner", "operator"}),
+    "approved": ({"pending"}, {"operator"}),
+    "en_route_pickup": ({"assigned"}, {"driver", "operator"}),
+    "arrived_pickup": ({"en_route_pickup", "on_hold"}, {"driver", "operator"}),
+    "loading": ({"assigned", "arrived_pickup"}, {"driver", "operator"}),
+    "waybill": ({"arrived_pickup", "loading"}, {"operator"}),
+    "in_transit": ({"loading", "waybill"}, {"driver", "operator"}),
+    "near_destination": ({"in_transit"}, {"driver", "operator"}),
+    "on_hold": (
+        {"arrived_pickup", "loading", "waybill", "in_transit", "near_destination"},
+        {"operator"},
+    ),
+    "delivered": ({"in_transit", "near_destination"}, {"driver", "operator"}),
+    "completed": ({"delivered"}, {"owner", "operator"}),
 }
 
 
@@ -91,8 +113,22 @@ def transition(shipment_id, user, target, note=""):
         rule = TRANSITIONS.get(target)
         if not rule or user.role not in rule[1]:
             raise PermissionDenied("مجوز این تغییر وضعیت را ندارید.")
-        if shipment.status != rule[0]:
+        if shipment.status not in rule[0]:
             raise ValidationError("ترتیب مراحل حمل رعایت نشده است.")
+        if target == "arrived_pickup" and shipment.status == "on_hold" and user.role != "operator":
+            raise PermissionDenied("خروج از توقف بازرسی فقط توسط اپراتور انجام می‌شود.")
+        if (
+            target in ["en_route_pickup", "in_transit"]
+            and shipment.sensitive
+            and not shipment.inspector_id
+        ):
+            raise ValidationError("برای بار حساس، تخصیص متصدی الزامی است.")
+        if target == "in_transit":
+            waybill = Waybill.objects.filter(shipment=shipment).first()
+            if waybill and (not waybill.verified_at or not waybill.photo):
+                raise ValidationError(
+                    "تا ورود کد و مشاهده عکس بارنامه، حرکت شروع نمی‌شود."
+                )
         if target in ["in_transit", "completed"]:
             stage = "loading" if target == "in_transit" else "delivery"
             latest = shipment.inspections.filter(stage=stage).first()
@@ -100,11 +136,18 @@ def transition(shipment_id, user, target, note=""):
                 raise ValidationError("تأیید بازرسی این مرحله الزامی است.")
     shipment.status = target
     shipment.save(update_fields=["status", "updated_at"])
+    if target == "approved" and shipment.offer_expires_at is None:
+        shipment.offer_expires_at = timezone.now() + timedelta(hours=6)
+        shipment.save(update_fields=["offer_expires_at", "updated_at"])
     if target == "completed":
         Invoice.objects.get_or_create(
             shipment=shipment, defaults={"amount": shipment.price}
         )
     event(shipment, user, note or shipment.get_status_display())
+    if target == "approved":
+        from .driver_flow import notify_matching_drivers
+
+        notify_matching_drivers(shipment)
     return shipment
 
 
@@ -130,9 +173,7 @@ def assign(shipment_id, user, driver, inspector, amount=None):
         or driver.vehicle.capacity < shipment.weight
     ):
         raise ValidationError("نوع یا ظرفیت خودرو با بار مطابقت ندارد.")
-    if Shipment.objects.filter(
-        driver=driver, status__in=["assigned", "loading", "in_transit", "delivered"]
-    ).exists():
+    if Shipment.objects.filter(driver=driver, status__in=ACTIVE_TRIP).exists():
         raise ValidationError("راننده یک سفر فعال دارد.")
     shipment.driver = driver
     shipment.inspector = inspector

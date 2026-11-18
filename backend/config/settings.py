@@ -17,6 +17,7 @@ ROLE_ORIGINS = {
         "operator": os.getenv("ADMIN_URL", "http://admin.localhost:8001"),
     }.items()
 }
+SUPPORT_PHONE = os.getenv("SUPPORT_PHONE", "02112345678")
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "")
 if not SECRET_KEY:
     if not DEBUG:

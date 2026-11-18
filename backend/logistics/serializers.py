@@ -23,19 +23,32 @@ class UserSerializer(serializers.ModelSerializer):
     name = serializers.CharField(source="get_full_name", read_only=True)
     vehicle = serializers.SerializerMethodField()
     driver_market_enabled = serializers.SerializerMethodField()
+    avatar_url = serializers.SerializerMethodField()
 
     def get_driver_market_enabled(self, obj) -> bool:
         return driver_market_enabled(obj)
+
+    def get_avatar_url(self, obj) -> str:
+        profile = getattr(obj, "driver_profile", None)
+        if profile and profile.avatar:
+            return profile.avatar.url
+        return ""
 
     @extend_schema_field(OpenApiTypes.OBJECT)
     def get_vehicle(self, obj):
         if obj.role != "driver" or not hasattr(obj, "vehicle"):
             return None
+        vehicle = obj.vehicle
         return {
-            "kind": obj.vehicle.kind,
-            "plate": obj.vehicle.plate,
-            "capacity": str(obj.vehicle.capacity),
-            "available": obj.vehicle.available,
+            "kind": vehicle.kind,
+            "plate": vehicle.plate,
+            "capacity": str(vehicle.capacity),
+            "available": vehicle.available,
+            "license_number": vehicle.license_number,
+            "tractor_type": vehicle.tractor_type,
+            "trailer_type": vehicle.trailer_type,
+            "smart_card_number": vehicle.smart_card_number,
+            "specs": vehicle.specs or {},
         }
 
     class Meta:
@@ -54,6 +67,7 @@ class UserSerializer(serializers.ModelSerializer):
             "role",
             "verified",
             "driver_market_enabled",
+            "avatar_url",
             "capabilities",
             "vehicle",
         ]
@@ -194,6 +208,8 @@ class LocationSerializer(serializers.ModelSerializer):
             "latitude",
             "longitude",
             "accuracy",
+            "speed",
+            "heading",
             "observed_at",
             "created_at",
         ]
@@ -226,8 +242,39 @@ class ShipmentSerializer(serializers.ModelSerializer):
         return OfferSerializer(offers, many=True).data
 
     def to_representation(self, obj):
+        from django.core.exceptions import ObjectDoesNotExist
+        from .driver_flow import reveal_code, route_estimate
+
+        def one_to_one(name):
+            try:
+                return getattr(obj, name)
+            except ObjectDoesNotExist:
+                return None
+
         data = super().to_representation(obj)
         user = self.context["request"].user
+        km, hours = route_estimate(obj)
+        data["route_km"] = km
+        data["eta_hours"] = hours
+        waybill = one_to_one("waybill")
+        proof = one_to_one("delivery_proof")
+        data["waybill"] = (
+            {
+                "sms_sent": bool(waybill and waybill.sms_sent_at),
+                "code_verified": bool(waybill and waybill.verified_at),
+                "photo_url": f"/api/waybills/{obj.pk}/photo/" if waybill and waybill.photo else "",
+                "code": reveal_code(waybill.code_signed) if user.role == "operator" and waybill else "",
+            }
+            if waybill
+            else None
+        )
+        data["pod"] = {
+            "photo_count": obj.delivery_photos.count(),
+            "otp_sent": bool(proof and proof.otp_sent_at),
+            "verified": bool(proof and proof.verified),
+            "exception_reason": (proof.exception_reason if proof else ""),
+        }
+        data["destination_locked"] = False
         if user.role == "driver" and obj.driver_id != user.id:
             for key in [
                 "origin_address",
@@ -242,10 +289,21 @@ class ShipmentSerializer(serializers.ModelSerializer):
                 "notes",
                 "recipient_national_id",
                 "recipient_postal_code",
+                "dest_lat",
+                "dest_lng",
             ]:
                 data.pop(key, None)
+            data["destination_locked"] = True
+            if data.get("waybill"):
+                data["waybill"].pop("code", None)
+        elif user.role == "driver" and not (waybill and waybill.photo):
+            for key in ("destination_address", "dest_lat", "dest_lng"):
+                data.pop(key, None)
+            data["destination_locked"] = True
         if user.role == "driver":
             data.pop("recipient_national_id", None)
+        if user.role != "operator" and data.get("waybill"):
+            data["waybill"].pop("code", None)
         try:
             rating = obj.rating
         except ShipmentRating.DoesNotExist:
@@ -400,7 +458,7 @@ class TicketSerializer(serializers.ModelSerializer):
 class NotificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notification
-        fields = ["id", "title", "shipment", "read", "created_at"]
+        fields = ["id", "title", "body", "kind", "shipment", "read", "created_at"]
 
 
 class ContactSerializer(serializers.ModelSerializer):
