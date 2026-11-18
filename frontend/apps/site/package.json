@@ -12,6 +12,10 @@
     "pretypecheck": "node ../../scripts/prepare-site-assets.mjs",
     "typecheck": "next typegen && tsc --noEmit"
   },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.17",
+    "tailwindcss": "^4.1.17"
+  },
   "dependencies": {
     "leaflet": "1.9.4",
     "lucide-react": "^0.468.0",
