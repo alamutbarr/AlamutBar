@@ -158,9 +158,26 @@ function Home() {
       releaseScroll();
     };
   }, [menuOpen]);
-  const submitInquiry = (event) => {
+  const submitInquiry = async (event) => {
     event.preventDefault();
-    setSent(true);
+    const form = new FormData(event.currentTarget);
+    try {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.get('name'),
+          company: form.get('company'),
+          phone: form.get('phone'),
+          message: form.get('message'),
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.message || 'ارسال درخواست ناموفق بود.');
+      setSent(true);
+    } catch (error) {
+      window.alert(error.message);
+    }
   };
 
   return (
@@ -317,7 +334,7 @@ function Home() {
             <div className="contact-message reveal"><h2 className="font-display">چه چیزی<br />باید <em>جابه‌جا شود؟</em></h2><p>کمی دربارهٔ محموله بگویید. یکی از همکاران ما برای هماهنگی مراحل بعدی با شما تماس می‌گیرد.</p><div className="contact-human"><span className="human-mark"><Truck size={20} strokeWidth={1.5} /></span><span>آدم‌های واقعی. گفت‌وگوی واقعی.<br /><small>از هر جا که هستید شروع کنید.</small></span></div></div>
             <div className="contact-form-wrap reveal">
               {sent ? (
-                <div className="form-success" role="status"><span><Check size={22} /></span><h3 className="font-display">ممنون.<br /><em>جزئیات را داریم.</em></h3><p>این فرم هنوز به صندوق دریافت درخواست‌ها وصل نیست و پیام شما ارسال نشده است. لطفاً از راه‌های ارتباطی معمول با الموت تماس بگیرید.</p><button className="text-action dark-action" onClick={() => setSent(false)}>ویرایش درخواست <ArrowLeft size={15} /></button></div>
+                <div className="form-success" role="status"><span><Check size={22} /></span><h3 className="font-display">ممنون.<br /><em>جزئیات را داریم.</em></h3><p>درخواست شما ثبت شد و در صندوق تماس مرکز عملیات قرار گرفت. یکی از همکاران برای هماهنگی با شما تماس می‌گیرد.</p><button className="text-action dark-action" onClick={() => setSent(false)}>ویرایش درخواست <ArrowLeft size={15} /></button></div>
               ) : (
                 <form onSubmit={submitInquiry}>
                   <div className="form-pair">

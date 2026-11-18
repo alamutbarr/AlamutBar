@@ -21,6 +21,7 @@ const AdminAuditLog = require('./AdminAuditLog');
 const DriverLocation = require('./DriverLocation');
 const DriverNotice = require('./DriverNotice');
 const DriverNotification = require('./DriverNotification');
+const desk = require('./desk');
 
 // User <-> CargoOwner (۱ به ۱)
 User.hasOne(CargoOwner, { foreignKey: 'user_id', onDelete: 'CASCADE' });
@@ -96,6 +97,28 @@ Shipment.belongsTo(Inspector, { foreignKey: 'assigned_inspector_id', as: 'inspec
 Driver.hasMany(DriverLocation, { foreignKey: 'driverId', as: 'locations' });
 DriverLocation.belongsTo(Driver, { foreignKey: 'driverId' });
 
+desk.Lead.hasMany(desk.CrmActivity, { foreignKey: 'leadId', as: 'activities' });
+desk.CrmActivity.belongsTo(desk.Lead, { foreignKey: 'leadId' });
+desk.Lead.hasMany(desk.FollowUp, { foreignKey: 'leadId', as: 'followups' });
+desk.FollowUp.belongsTo(desk.Lead, { foreignKey: 'leadId' });
+Shipment.hasMany(desk.FollowUp, { foreignKey: 'shipmentId', as: 'followups' });
+desk.FollowUp.belongsTo(Shipment, { foreignKey: 'shipmentId' });
+Shipment.hasMany(desk.Incident, { foreignKey: 'shipmentId', as: 'incidents' });
+desk.Incident.belongsTo(Shipment, { foreignKey: 'shipmentId' });
+Shipment.hasOne(desk.Invoice, { foreignKey: 'shipmentId', as: 'invoice' });
+desk.Invoice.belongsTo(Shipment, { foreignKey: 'shipmentId' });
+desk.Invoice.hasMany(desk.InvoicePayment, { foreignKey: 'invoiceId', as: 'payments' });
+desk.InvoicePayment.belongsTo(desk.Invoice, { foreignKey: 'invoiceId' });
+desk.SupportTicket.hasMany(desk.SupportMessage, { foreignKey: 'ticketId', as: 'messages' });
+desk.SupportMessage.belongsTo(desk.SupportTicket, { foreignKey: 'ticketId' });
+Shipment.hasMany(desk.ShipmentDocument, { foreignKey: 'shipmentId', as: 'documents' });
+desk.ShipmentDocument.belongsTo(Shipment, { foreignKey: 'shipmentId' });
+Shipment.hasMany(desk.ShipmentOffer, { foreignKey: 'shipmentId', as: 'offers' });
+desk.ShipmentOffer.belongsTo(Shipment, { foreignKey: 'shipmentId' });
+Driver.hasMany(desk.ShipmentOffer, { foreignKey: 'driverId', as: 'offers' });
+desk.ShipmentOffer.belongsTo(Driver, { foreignKey: 'driverId' });
+Admin.hasMany(desk.AdminNotification, { foreignKey: 'adminId', as: 'notices' });
+
 module.exports = {
   sequelize,
   User,
@@ -120,4 +143,5 @@ module.exports = {
   DriverLocation,
   DriverNotice,
   DriverNotification,
+  ...desk,
 };

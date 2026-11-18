@@ -15,6 +15,12 @@ const Admin = sequelize.define('Admin', {
   otpAttempts: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
   lastLoginAt: { type: DataTypes.DATE, allowNull: true },
   refreshTokenHash: { type: DataTypes.STRING(64), allowNull: true },
+  email: { type: DataTypes.STRING(180), allowNull: true },
+  company: { type: DataTypes.STRING(120), allowNull: true },
+  nationalId: { type: DataTypes.STRING(10), allowNull: true },
+  postalCode: { type: DataTypes.STRING(10), allowNull: true },
+  mfaSecret: { type: DataTypes.STRING(64), allowNull: true },
+  mfaEnabled: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
 }, { tableName: 'admins', underscored: true });
 
 module.exports = Admin;

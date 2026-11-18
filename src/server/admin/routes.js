@@ -53,8 +53,23 @@ function handleAvatarUpload(req, res, next) {
 const router = express.Router();
 
 router.post('/auth/login', asyncHandler(async (req, res) => {
-  const data = await authService.loginWithPassword(req.body.username, req.body.password);
+  const data = await authService.loginWithPassword(req.body.username, req.body.password, req.body.code);
+  success(res, { message: data.mfaRequired ? 'کد دومرحله‌ای را وارد کنید.' : 'ورود انجام شد.', data });
+}));
+
+router.post('/auth/mfa', asyncHandler(async (req, res) => {
+  const data = await authService.confirmMfa(req.body.ticket, req.body.code);
   success(res, { message: 'ورود انجام شد.', data });
+}));
+
+router.post('/auth/recovery', asyncHandler(async (req, res) => {
+  const data = await authService.startRecovery(req.body.username);
+  success(res, { message: 'اگر ایمیل این حساب ثبت شده باشد، کد بازیابی در صف ارسال قرار می‌گیرد.', data });
+}));
+
+router.post('/auth/recovery/confirm', asyncHandler(async (req, res) => {
+  await authService.confirmRecovery(req.body);
+  success(res, { message: 'رمز تازه ذخیره شد. حالا وارد شوید.' });
 }));
 
 router.post('/auth/refresh', asyncHandler(async (req, res) => {
@@ -70,8 +85,35 @@ router.post('/auth/logout', asyncHandler(async (req, res) => {
 }));
 
 router.get('/auth/me', asyncHandler(async (req, res) => {
-  const openAlerts = await Alert.count({ where: { isResolved: false } });
-  success(res, { data: { ...authService.presentAdmin(req.admin), openAlerts } });
+  const desk = require('./desk');
+  const [openAlerts, openNotices] = await Promise.all([
+    Alert.count({ where: { isResolved: false } }),
+    desk.unreadNoticeCount(req.admin.id),
+  ]);
+  success(res, { data: { ...authService.presentAdmin(req.admin), openAlerts, openNotices } });
+}));
+
+router.patch('/auth/profile', asyncHandler(async (req, res) => {
+  const desk = require('./desk');
+  const openNotices = await desk.unreadNoticeCount(req.admin.id);
+  success(res, { message: 'حساب ذخیره شد.', data: { ...(await authService.updateProfile(req.admin, req.body)), openNotices } });
+}));
+
+router.post('/auth/password', asyncHandler(async (req, res) => {
+  await authService.changePassword(req.admin, req.body);
+  success(res, { message: 'رمز عبور تغییر کرد.' });
+}));
+
+router.post('/auth/mfa/setup', asyncHandler(async (req, res) => {
+  success(res, { data: await authService.beginMfa(req.admin) });
+}));
+
+router.post('/auth/mfa/enable', asyncHandler(async (req, res) => {
+  success(res, { message: 'ورود دومرحله‌ای فعال شد.', data: await authService.enableMfa(req.admin, req.body.code) });
+}));
+
+router.post('/auth/mfa/disable', asyncHandler(async (req, res) => {
+  success(res, { message: 'ورود دومرحله‌ای غیرفعال شد.', data: await authService.disableMfa(req.admin, req.body) });
 }));
 
 router.post('/auth/avatar', handleAvatarUpload, asyncHandler(async (req, res) => {
@@ -89,7 +131,7 @@ router.delete('/auth/avatar', asyncHandler(async (req, res) => {
 
 router.get('/dashboard', requirePermission('dashboard'), asyncHandler(async (req, res) => {
   const [shipments, alerts, readyDrivers, busyDrivers] = await Promise.all([
-    Shipment.findAll({ attributes: ['id', 'workflow_status', 'createdAt', 'proposed_price', 'operator_price', 'final_price', 'penalty_amount'] }),
+    Shipment.findAll({ attributes: ['id', 'tracking_code', 'workflow_status', 'createdAt', 'proposed_price', 'operator_price', 'final_price', 'penalty_amount'] }),
     Alert.findAll({ where: { isResolved: false } }),
     Driver.count({ where: { verificationStatus: 'VERIFIED', availability: 'READY' } }),
     Driver.count({ where: { availability: 'BUSY' } }),
@@ -114,18 +156,35 @@ router.get('/dashboard', requirePermission('dashboard'), asyncHandler(async (req
     if (key in days) days[key] += 1;
   }
   const active = ACTIVE_TRIP.reduce((sum, status) => sum + (byStatus[status] || 0), 0);
+  const desk = require('./desk');
+  const [openTickets, finance] = await Promise.all([
+    can(req.admin.roles, 'tickets') ? desk.listTickets({ status: 'open' }).then((rows) => rows.length) : Promise.resolve(null),
+    can(req.admin.roles, 'finance') ? desk.financeSummary() : Promise.resolve(null),
+  ]);
+  const recent = [...shipments].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 5);
   success(res, {
     data: {
       cards: {
         orders: shipments.length,
         active,
+        delivered: (byStatus.COMPLETED || 0),
+        followUp: (byStatus.REQUEST_REGISTERED || 0) + (byStatus.UNDER_REVIEW || 0),
         openAlerts: alerts.length,
         criticalAlerts: alerts.filter((item) => item.severity === 'critical').length,
         readyDrivers,
         busyDrivers,
+        openTickets,
+        outstanding: finance ? finance.outstanding : null,
         freight: can(req.admin.roles, 'reports.financial') ? freight : null,
         penalties: can(req.admin.roles, 'reports.financial') ? penalties : null,
       },
+      recent: recent.map((row) => ({
+        id: row.id,
+        trackingCode: row.tracking_code,
+        createdAt: row.createdAt,
+        status: row.workflow_status,
+        label: WORKFLOW_LABELS[row.workflow_status] || row.workflow_status,
+      })),
       byStatus: WORKFLOW_STATUSES.map((status) => ({
         status,
         label: WORKFLOW_LABELS[status],
@@ -411,6 +470,11 @@ router.get('/inspections', requirePermission('inspections'), asyncHandler(async 
       recordedCargoValue: row.recordedCargoValue != null ? Number(row.recordedCargoValue) : null,
       decision: row.decision,
       decisionNote: row.decisionNote,
+      stage: row.stage || 'loading',
+      packagingOk: row.packagingOk,
+      weightOk: row.weightOk,
+      vehicleOk: row.vehicleOk,
+      sealNumber: row.sealNumber || '',
       photos: photoList(row.photos).filter((photo) => photo.url),
       createdAt: row.createdAt,
     })),
@@ -805,7 +869,10 @@ router.get('/settings/history', requirePermission('settings.manage'), asyncHandl
 }));
 
 router.get('/reports/operations', requirePermission('reports.operations'), asyncHandler(async (req, res) => {
-  success(res, { data: await buildReport(req.query, false) });
+  const report = await buildReport(req.query, false);
+  const { SupportTicket } = require('../models');
+  report.summary.openTickets = await SupportTicket.count({ where: { status: 'open' } });
+  success(res, { data: report });
 }));
 
 router.get('/reports/financial', requirePermission('reports.financial'), asyncHandler(async (req, res) => {
@@ -945,8 +1012,22 @@ async function buildReport(query, financial) {
     freight: items.reduce((sum, item) => sum + (item.finalPrice || item.estimatedPrice || 0), 0),
     penalties: items.reduce((sum, item) => sum + item.penalty, 0),
     count: items.length,
-  } : { count: items.length, completed: rows.filter((row) => row.workflow_status === 'COMPLETED').length };
+  } : {
+    count: items.length,
+    completed: rows.filter((row) => row.workflow_status === 'COMPLETED').length,
+    inProgress: rows.filter((row) => !['COMPLETED', 'CANCELLED'].includes(row.workflow_status)).length,
+    deliveryRate: rows.length
+      ? Math.round((rows.filter((row) => row.workflow_status === 'COMPLETED').length / rows.length) * 1000) / 10
+      : 0,
+    byStatus: WORKFLOW_STATUSES.map((status) => ({
+      status,
+      label: WORKFLOW_LABELS[status],
+      count: rows.filter((row) => row.workflow_status === status).length,
+    })).filter((item) => item.count),
+  };
   return { items, summary, financial };
 }
+
+router.use(require('./deskRoutes'));
 
 module.exports = router;

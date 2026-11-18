@@ -32,6 +32,14 @@ const PERMISSIONS = {
     'drivers.documents', // <--- این مورد اضافه شد تا اپراتور بتواند مدارک را تایید کند
     'alerts.read',
     'reports.operations',
+    'orders.create',
+    'orders.documents',
+    'incidents',
+    'finance',
+    'offers',
+    'notifications',
+    'team.read',
+    'control',
   ],
   SECURITY_OPERATOR: [
     'dashboard',
@@ -40,12 +48,15 @@ const PERMISSIONS = {
     'alerts.resolve',
     'orders.read',
     'drivers.read',
+    'control',
+    'notifications',
   ],
   INSPECTION_SUPERVISOR: [
     'dashboard',
     'inspections',
     'inspectors.manage',
     'orders.read',
+    'incidents',
   ],
   SUPPORT_AGENT: [
     'dashboard',
@@ -55,6 +66,12 @@ const PERMISSIONS = {
     'owners.documents',
     'complaints',
     'orders.read',
+    'tickets',
+    'crm',
+    'contacts',
+    'content',
+    'notifications',
+    'team.read',
   ],
 };
 

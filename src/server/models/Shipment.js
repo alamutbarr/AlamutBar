@@ -159,6 +159,7 @@ const Shipment = sequelize.define(
     dest_arrived_at: { type: DataTypes.DATE, allowNull: true },
     priority_score: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
     requires_inspector: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+    insurance_requested: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
     replaced_from_driver_id: { type: DataTypes.INTEGER.UNSIGNED, allowNull: true },
   },
   {

@@ -106,6 +106,7 @@ router.post('/register-driver', async (req, res) => {
       plate,
       vehicleSpecs: vehicle.sanitizedSpecs,
       profileStep: 4,
+      dossierStatus: 'submitted',
     });
     return res.json(await signDriver(driver));
   } catch (error) {

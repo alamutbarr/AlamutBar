@@ -15,6 +15,8 @@ import CustomerDetail from "./pages/CustomerDetail";
 import Chats from "./pages/Chats";
 import OpsPages from "./pages/OpsPages";
 import Profile from "./pages/Profile";
+import DeskPages from "./pages/DeskPages";
+import CreateOrder from "./pages/CreateOrder";
 import "./admin.css";
 
 function Guard() {
@@ -41,7 +43,17 @@ export default function AdminApp() {
         <Route element={<Guard />}>
           <Route index element={<Dashboard />} />
           <Route path="orders" element={<Orders />} />
+          <Route path="orders/new" element={<CreateOrder />} />
           <Route path="orders/:id" element={<OrderDetail />} />
+          <Route path="control" element={<DeskPages page="control" />} />
+          <Route path="crm" element={<DeskPages page="crm" />} />
+          <Route path="incidents" element={<DeskPages page="incidents" />} />
+          <Route path="finance" element={<DeskPages page="finance" />} />
+          <Route path="tickets" element={<DeskPages page="tickets" />} />
+          <Route path="notifications" element={<DeskPages page="notifications" />} />
+          <Route path="contacts" element={<DeskPages page="contacts" />} />
+          <Route path="articles" element={<DeskPages page="articles" />} />
+          <Route path="team" element={<DeskPages page="team" />} />
           <Route path="map" element={<MapPage />} />
           <Route path="alerts" element={<Alerts />} />
 

@@ -61,12 +61,75 @@ async function patchDriverNotifications(sequelize) {
   return true;
 }
 
+async function patchDriverProfile(sequelize) {
+  if (!(await tableExists(sequelize, 'drivers'))) return false;
+  const columns = [
+    ['birth_date', 'DATE NULL'],
+    ['license_expiry', 'DATE NULL'],
+    ['insurance_expiry', 'DATE NULL'],
+    ['emergency_name', 'VARCHAR(100) NULL'],
+    ['emergency_phone', 'VARCHAR(15) NULL'],
+    ['home_address', 'TEXT NULL'],
+    ['dossier_status', "VARCHAR(20) NOT NULL DEFAULT 'approved'"],
+    ['review_note', 'TEXT NULL'],
+    ['account_verified', 'TINYINT(1) NOT NULL DEFAULT 1'],
+    ['fleet_documents', 'JSON NULL'],
+  ];
+  let changed = false;
+  for (const [column, definition] of columns) {
+    changed = (await addColumnIfMissing(sequelize, 'drivers', column, definition)) || changed;
+  }
+  return changed;
+}
+
+async function patchAdminAccount(sequelize) {
+  if (!(await tableExists(sequelize, 'admins'))) return false;
+  const columns = [
+    ['email', 'VARCHAR(180) NULL'],
+    ['company', 'VARCHAR(120) NULL'],
+    ['national_id', 'VARCHAR(10) NULL'],
+    ['postal_code', 'VARCHAR(10) NULL'],
+    ['mfa_secret', 'VARCHAR(64) NULL'],
+    ['mfa_enabled', 'TINYINT(1) NOT NULL DEFAULT 0'],
+  ];
+  let changed = false;
+  for (const [column, definition] of columns) {
+    changed = (await addColumnIfMissing(sequelize, 'admins', column, definition)) || changed;
+  }
+  return changed;
+}
+
+async function patchInspectionChecklist(sequelize) {
+  if (!(await tableExists(sequelize, 'inspection_reports'))) return false;
+  const columns = [
+    ['stage', "VARCHAR(12) NOT NULL DEFAULT 'loading'"],
+    ['packaging_ok', 'TINYINT(1) NULL'],
+    ['weight_ok', 'TINYINT(1) NULL'],
+    ['vehicle_ok', 'TINYINT(1) NULL'],
+    ['seal_number', 'VARCHAR(60) NULL'],
+  ];
+  let changed = false;
+  for (const [column, definition] of columns) {
+    changed = (await addColumnIfMissing(sequelize, 'inspection_reports', column, definition)) || changed;
+  }
+  return changed;
+}
+
+async function patchShipmentInsurance(sequelize) {
+  if (!(await tableExists(sequelize, 'shipments'))) return false;
+  return addColumnIfMissing(sequelize, 'shipments', 'insurance_requested', 'TINYINT(1) NOT NULL DEFAULT 0');
+}
+
 async function applySchemaPatches(sequelize) {
   return {
     messages: await patchMessages(sequelize),
     complaints: await patchComplaints(sequelize),
     shipments: await patchShipments(sequelize),
     driverNotifications: await patchDriverNotifications(sequelize),
+    drivers: await patchDriverProfile(sequelize),
+    admins: await patchAdminAccount(sequelize),
+    inspections: await patchInspectionChecklist(sequelize),
+    insurance: await patchShipmentInsurance(sequelize),
   };
 }
 

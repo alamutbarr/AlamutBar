@@ -28,8 +28,15 @@ export function AdminAuthProvider({ children }) {
       const permissions = user?.permissions || [];
       return permissions.includes('*') || permissions.includes(permission);
     },
-    async login(username, password) {
-      const data = await api('/auth/login', { method: 'POST', body: { username, password } });
+    async login(username, password, code) {
+      const data = await api('/auth/login', { method: 'POST', body: { username, password, code } });
+      if (data.mfaRequired) return data;
+      saveSession(data.token, data.refreshToken);
+      setUser(data.admin);
+      return data.admin;
+    },
+    async confirmMfa(ticket, code) {
+      const data = await api('/auth/mfa', { method: 'POST', body: { ticket, code } });
       saveSession(data.token, data.refreshToken);
       setUser(data.admin);
       return data.admin;

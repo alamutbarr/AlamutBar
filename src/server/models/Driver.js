@@ -29,6 +29,16 @@ const Driver = sequelize.define('Driver', {
   expoPushToken: { type: DataTypes.STRING(255), allowNull: true },
   pushPlatform: { type: DataTypes.STRING(16), allowNull: true },
   refreshTokenHash: { type: DataTypes.STRING(64), allowNull: true },
+  birthDate: { type: DataTypes.DATEONLY, allowNull: true },
+  licenseExpiry: { type: DataTypes.DATEONLY, allowNull: true },
+  insuranceExpiry: { type: DataTypes.DATEONLY, allowNull: true },
+  emergencyName: { type: DataTypes.STRING(100), allowNull: true },
+  emergencyPhone: { type: DataTypes.STRING(15), allowNull: true },
+  homeAddress: { type: DataTypes.TEXT, allowNull: true },
+  dossierStatus: { type: DataTypes.STRING(20), allowNull: false, defaultValue: 'approved' },
+  reviewNote: { type: DataTypes.TEXT, allowNull: true },
+  accountVerified: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
+  fleetDocuments: { type: DataTypes.JSON, allowNull: true },
   vehicleSpecs: {
     type: DataTypes.TEXT,
     get() {

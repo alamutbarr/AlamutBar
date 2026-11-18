@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { Bell, History, LayoutGrid, Menu, PackagePlus, ShieldAlert, User } from 'lucide-react';
+import { Bell, History, LayoutGrid, LifeBuoy, Menu, PackagePlus, ShieldAlert, User } from 'lucide-react';
 import { useSidebarCollapsed } from '../../../shared/components/useSidebarCollapsed';
 import { AnimatePresence, motion } from 'framer-motion';
 import Sidebar from '../components/common/Sidebar';
@@ -18,6 +18,7 @@ const MOBILE = [
 
 const MORE = [
   { to: '/owner/complaints', label: 'ثبت شکایت', icon: ShieldAlert },
+  { to: '/owner/support', label: 'پشتیبانی', icon: LifeBuoy },
   { to: '/owner/profile', label: 'پروفایل', icon: User },
 ];
 

@@ -8,6 +8,7 @@ import ShipmentHistory from "./pages/shipment/ShipmentHistory";
 import ShipmentDetail from "./pages/shipment/ShipmentDetail";
 import Notifications from "./pages/notification/Notifications";
 import Complaints from "./pages/complaint/Complaints";
+import SupportTickets from "./pages/support/SupportTickets";
 import Profile from "./pages/profile/profile";
 import OwnerLayout from "./layouts/OwnerLayout";
 import NationalIdRequired from "./pages/auth/NationalIdRequired";
@@ -58,6 +59,7 @@ export default function App() {
         <Route path="shipments/:id" element={<ShipmentDetail />} />
         <Route path="notifications" element={<Notifications />} />
         <Route path="complaints" element={<Complaints />} />
+        <Route path="support" element={<SupportTickets />} />
         <Route path="profile" element={<Profile />} />
       </Route>
 
