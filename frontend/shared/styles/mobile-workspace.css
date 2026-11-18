@@ -211,19 +211,6 @@
   .mobile-public {
     padding-bottom: calc(var(--app-tab-height) + env(safe-area-inset-bottom));
   }
-  .mobile-public .site-header {
-    padding-inline: var(--app-start) var(--app-end);
-  }
-  .mobile-public .site-mobile-menu a {
-    display: flex;
-    min-height: 44px;
-    align-items: center;
-  }
-  .mobile-public .site-mobile-menu nav {
-    gap: 2px;
-    max-height: 67dvh;
-    overflow: auto;
-  }
   .workspace .workspace-main {
     padding: 16px var(--app-start)
       calc(var(--app-tab-height) + 24px + env(safe-area-inset-bottom))

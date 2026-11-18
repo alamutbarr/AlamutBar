@@ -8,6 +8,7 @@ import Recovery from "@/components/recovery";
 import InputNormalizer from "@/components/input-normalizer";
 import { PanelBoundary } from "@/components/panel-feedback";
 import { panelApps, validPanelRoute } from "@/lib/panels";
+import "../shared/styles/tailwind.css";
 import "../shared/styles/globals.css";
 import "../shared/styles/mobile-workspace.css";
 

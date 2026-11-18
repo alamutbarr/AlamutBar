@@ -1,0 +1,16 @@
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+@source "../";
+@source "../../apps";
+
+@theme {
+  --color-teal: #087f8c;
+  --color-teal-dark: #076570;
+  --color-forest: #133d3b;
+  --color-ink: #203734;
+  --color-gold: #bd9f5a;
+  --color-line: #e5eae5;
+  --color-paper: #f8f8f3;
+}
