@@ -28,13 +28,47 @@ from drf_spectacular.types import OpenApiTypes
 from .schema import *
 from .models import *
 from .serializers import *
+from .inspector_flow import (
+    create_inspector,
+    decide_inspection,
+    inspector_public,
+    save_inspection_photo,
+    save_inspection_report,
+    update_inspector,
+)
+from .driver_flow import (
+    accept_shipment,
+    add_delivery_photo,
+    complete_delivery,
+    decline_shipment,
+    driver_summary,
+    issue_waybill as issue_trip_waybill,
+    nearby_market,
+    places_payload,
+    post_message,
+    request_delivery_code,
+    request_phone_code,
+    save_waybill_photo as save_trip_waybill_photo,
+    search_market,
+    verify_phone_code,
+    verify_waybill,
+)
 from .services import (
+    GPS_STATUSES,
+    add_note,
     assign,
     audit,
+    confirm_waybill,
     driver_documents_valid,
     driver_market_enabled,
     event,
+    issue_waybill,
     owner_block_message,
+    record_penalty,
+    replace_driver,
+    resolve_alert,
+    save_waybill_photo,
+    scan_alerts,
     transition,
 )
 
@@ -198,6 +232,22 @@ class ShipmentViewSet(viewsets.ModelViewSet):
             )
         if params.get("mine") == "1" and self.request.user.role == "driver":
             qs = qs.filter(driver=self.request.user)
+        if self.request.user.role == "driver":
+            qs = qs.exclude(passes__driver=self.request.user).exclude(
+                Q(status="approved") & Q(offer_expires_at__lt=timezone.now())
+            )
+            tab = params.get("tab")
+            if tab == "offered":
+                qs = qs.filter(status="approved")
+            elif tab == "active":
+                qs = qs.filter(driver=self.request.user).exclude(
+                    status__in=["pending", "approved", "delivered", "completed", "cancelled"]
+                )
+            elif tab == "history":
+                qs = qs.filter(
+                    driver=self.request.user,
+                    status__in=["delivered", "completed", "cancelled"],
+                )
         return qs
 
     @transaction.atomic
@@ -237,6 +287,75 @@ class ShipmentViewSet(viewsets.ModelViewSet):
             serializer.validated_data.get("note", ""),
         )
         return Response(self.get_serializer(result).data)
+
+    @extend_schema(request=OpenApiTypes.OBJECT, responses=ShipmentSerializer)
+    @action(detail=True, methods=["post"])
+    def waybill(self, request, pk=None):
+        shipment = self.get_object()
+        action_name = request.data.get("action")
+        if action_name == "send":
+            result = issue_waybill(shipment.pk, request.user)
+        elif action_name == "confirm":
+            result = confirm_waybill(shipment.pk, request.user, request.data.get("code", ""))
+        elif action_name == "photo":
+            result = save_waybill_photo(shipment.pk, request.user, request.FILES.get("photo"))
+        else:
+            raise ValidationError("عملیات بارنامه نامعتبر است.")
+        return Response(self.get_serializer(result).data)
+
+    @extend_schema(request=OpenApiTypes.OBJECT, responses=ShipmentSerializer)
+    @action(detail=True, methods=["post"])
+    def penalty(self, request, pk=None):
+        shipment = self.get_object()
+        result = record_penalty(
+            shipment.pk,
+            request.user,
+            request.data.get("delay_minutes", 0),
+            bool(request.data.get("force_majeure")),
+            request.data.get("reason", ""),
+        )
+        return Response(self.get_serializer(result).data)
+
+    @extend_schema(request=OpenApiTypes.OBJECT, responses=ShipmentSerializer)
+    @action(detail=True, methods=["post"])
+    def replace(self, request, pk=None):
+        shipment = self.get_object()
+        result = replace_driver(shipment.pk, request.user, request.data.get("reason", ""))
+        return Response(self.get_serializer(result).data)
+
+    @extend_schema(request=OpenApiTypes.OBJECT, responses=ShipmentSerializer)
+    @action(detail=True, methods=["post"])
+    def note(self, request, pk=None):
+        shipment = self.get_object()
+        result = add_note(shipment.pk, request.user, request.data.get("body", ""))
+        return Response(self.get_serializer(result).data)
+
+    @extend_schema(responses={(200, "text/html"): OpenApiTypes.STR})
+    @action(detail=True, methods=["get"])
+    def dossier(self, request, pk=None):
+        if request.user.role != "operator":
+            raise PermissionDenied("پرونده فقط برای اپراتور است.")
+        shipment = self.get_object()
+        rows = [
+            f"کد: {shipment.code}",
+            f"عنوان: {shipment.title}",
+            f"مسیر: {shipment.origin} به {shipment.destination}",
+            f"وضعیت: {shipment.get_status_display()}",
+            f"صاحب بار: {shipment.owner.get_full_name()}",
+            f"راننده: {shipment.driver.get_full_name() if shipment.driver_id else '—'}",
+            f"متصدی: {shipment.inspector.get_full_name() if shipment.inspector_id else '—'}",
+            f"کرایه: {shipment.price}",
+            f"جریمه: {shipment.penalty_amount}",
+            f"بارنامه تأیید شده: {'بله' if shipment.waybill_verified_at else 'خیر'}",
+        ]
+        body = "".join(f"<li>{line}</li>" for line in rows)
+        html = (
+            "<!doctype html><html lang='fa' dir='rtl'><meta charset='utf-8'>"
+            f"<title>پرونده {shipment.code}</title><body><h1>پرونده محموله</h1><ul>{body}</ul></body></html>"
+        )
+        response = HttpResponse(html, content_type="text/html; charset=utf-8")
+        response["Content-Disposition"] = f'attachment; filename="dossier-{shipment.code}.html"'
+        return response
 
     @extend_schema(request=OfferSerializer, responses={201: OfferSerializer})
     @action(detail=True, methods=["post"])
@@ -297,17 +416,62 @@ class ShipmentViewSet(viewsets.ModelViewSet):
         serializer = InspectionSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
-        expected = "loading" if data["stage"] == "loading" else "delivered"
-        if shipment.status != expected:
+        allowed = (
+            ["loading", "arrived_pickup", "on_hold"]
+            if data["stage"] == "loading"
+            else ["delivered", "near_destination"]
+        )
+        if shipment.status not in allowed:
             raise ValidationError("وضعیت بار با مرحله بازرسی مطابقت ندارد.")
         passed = all(data[key] for key in ["packaging_ok", "weight_ok", "vehicle_ok"])
-        serializer.save(shipment=shipment, inspector=request.user, passed=passed)
+        inspection = serializer.save(
+            shipment=shipment,
+            inspector=request.user,
+            passed=passed,
+            decision="approved" if passed else "stopped",
+        )
+        if not passed and shipment.status in [
+            "arrived_pickup",
+            "loading",
+            "waybill",
+            "in_transit",
+            "near_destination",
+        ]:
+            if shipment.status != "on_hold":
+                shipment.hold_resume = shipment.status
+            shipment.status = "on_hold"
+            shipment.save(update_fields=["status", "hold_resume", "updated_at"])
+            for person in (shipment.driver, shipment.owner):
+                if person:
+                    Notification.objects.create(
+                        user=person,
+                        shipment=shipment,
+                        title="مأموریت موقتاً متوقف شد",
+                        body="بازرسی مغایرت دارد و بار تا تصمیم مرکز عملیات متوقف است.",
+                    )
         event(
             shipment,
             request.user,
-            "بازرسی " + ("تأیید شد" if passed else "نیاز به اصلاح دارد"),
+            "بازرسی " + ("تأیید شد" if inspection.passed else "نیاز به اصلاح دارد"),
         )
         return Response(serializer.data, status=201)
+
+    @extend_schema(request=OpenApiTypes.OBJECT, responses=InspectionSerializer)
+    @action(detail=True, methods=["post"], url_path="inspection-report")
+    def inspection_report(self, request, pk=None):
+        report = save_inspection_report(request.user, self.get_object().pk, request.data)
+        return Response(InspectionSerializer(report).data)
+
+    @extend_schema(request=OpenApiTypes.BINARY, responses=InspectionSerializer)
+    @action(detail=True, methods=["post"], url_path="inspection-photos")
+    def inspection_photos(self, request, pk=None):
+        report = save_inspection_photo(
+            request.user,
+            self.get_object().pk,
+            request.FILES.get("file"),
+            request.data.get("kind") or "cargo",
+        )
+        return Response(InspectionSerializer(report).data)
 
     @extend_schema(
         request={"multipart/form-data": UploadRequest},
@@ -378,33 +542,54 @@ class ShipmentViewSet(viewsets.ModelViewSet):
         audit(request.user, "shipment.rate", locked)
         return Response(self.get_serializer(locked).data)
 
-    def _chat_allowed(self, shipment, user):
-        return user.role == "operator" or (
-            (user.role == "owner" and shipment.owner_id == user.id)
-            or (user.role == "driver" and shipment.driver_id == user.id)
-            or (user.role == "inspector" and shipment.inspector_id == user.id)
-        )
+    def _message_rows(self, shipment, user, channel):
+        return [
+            {
+                "id": item.pk,
+                "body": item.body,
+                "created_at": item.created_at,
+                "author_name": item.author.get_full_name() or item.author.username,
+                "role": item.author.role,
+                "mine": item.author_id == user.pk,
+            }
+            for item in shipment.messages.filter(channel=channel).select_related("author")
+        ]
 
     @extend_schema(responses=ShipmentMessageSerializer(many=True))
     @action(detail=True, methods=["get", "post"])
     def messages(self, request, pk=None):
         shipment = self.get_object()
-        if not self._chat_allowed(shipment, request.user):
-            raise PermissionDenied()
+        user = request.user
         if request.method == "GET":
-            return Response(
-                ShipmentMessageSerializer(
-                    list(reversed(shipment.messages.order_by("-id")[:80])),
-                    many=True,
-                ).data
+            channel = request.query_params.get("channel")
+            if user.role == "owner":
+                if channel != "owner_operator" or shipment.owner_id != user.id:
+                    raise PermissionDenied()
+                return Response(self._message_rows(shipment, user, "owner_operator"))
+            if user.role == "driver":
+                if shipment.driver_id != user.id:
+                    raise PermissionDenied()
+                return Response(self._message_rows(shipment, user, "driver_operator"))
+            if user.role != "operator":
+                raise PermissionDenied()
+            chosen = (
+                channel
+                if channel in ("owner_operator", "driver_operator")
+                else ("driver_operator" if shipment.driver_id else "owner_operator")
             )
+            return Response(self._message_rows(shipment, user, chosen))
         body = (request.data.get("body") or "").strip()
-        if not body or len(body) > 2000:
-            raise ValidationError("متن گفتگو را بنویسید.")
-        message = ShipmentMessage.objects.create(
-            shipment=shipment, author=request.user, body=body
-        )
-        if request.user.role == "owner":
+        if user.role == "owner":
+            if shipment.owner_id != user.id:
+                raise PermissionDenied()
+            if not body or len(body) > 2000:
+                raise ValidationError("متن گفتگو را بنویسید.")
+            message = ShipmentMessage.objects.create(
+                shipment=shipment,
+                author=user,
+                body=body,
+                channel="owner_operator",
+            )
             Notification.objects.bulk_create(
                 [
                     Notification(
@@ -416,14 +601,33 @@ class ShipmentViewSet(viewsets.ModelViewSet):
                     for operator in User.objects.filter(role="operator", is_active=True)[:15]
                 ]
             )
-        else:
+            return Response(ShipmentMessageSerializer(message).data, status=201)
+        if user.role == "driver":
+            post_message(user, shipment.pk, body)
+            return Response(self._message_rows(shipment, user, "driver_operator"))
+        if user.role != "operator":
+            raise PermissionDenied()
+        channel = request.data.get("channel") or (
+            "driver_operator" if shipment.driver_id else "owner_operator"
+        )
+        if channel not in ("owner_operator", "driver_operator"):
+            raise ValidationError("کانال گفتگو نامعتبر است.")
+        if channel == "driver_operator" and not shipment.driver_id:
+            raise ValidationError("راننده‌ای برای این گفتگو تخصیص نیافته است.")
+        if not body or len(body) > 1000:
+            raise ValidationError("متن پیام باید بین ۱ تا ۱۰۰۰ نویسه باشد.")
+        ShipmentMessage.objects.create(
+            shipment=shipment, author=user, body=body, channel=channel
+        )
+        target = shipment.driver if channel == "driver_operator" else shipment.owner
+        if target:
             Notification.objects.create(
-                user=shipment.owner,
+                user=target,
                 shipment=shipment,
-                title=f"{shipment.code} · پیام جدید در گفتگوی بار",
+                title=f"پیام اپراتور در {shipment.code}",
                 body=body[:180],
             )
-        return Response(ShipmentMessageSerializer(message).data, status=201)
+        return Response(self._message_rows(shipment, user, channel))
 
     @extend_schema(request=None, responses=ShipmentSerializer)
     @action(detail=True, methods=["post"], url_path="operator-price")
@@ -495,11 +699,7 @@ class ShipmentViewSet(viewsets.ModelViewSet):
         if request.user.role != "operator":
             raise PermissionDenied()
         shipment = Shipment.objects.select_for_update().get(pk=self.get_object().pk)
-        if shipment.status != "on_hold" or shipment.hold_resume not in [
-            "pending",
-            "approved",
-            "assigned",
-        ]:
+        if shipment.status != "on_hold" or not shipment.hold_resume:
             raise ValidationError("این بار متوقف نیست.")
         shipment.status = shipment.hold_resume
         shipment.hold_resume = ""
@@ -515,12 +715,112 @@ class ShipmentViewSet(viewsets.ModelViewSet):
         shipment = Shipment.objects.select_for_update().get(pk=obj.pk)
         if request.user.role != "driver" or shipment.driver_id != request.user.pk:
             raise PermissionDenied("فقط راننده همین سفر می‌تواند موقعیت ثبت کند.")
-        if shipment.status != "in_transit":
+        if shipment.status not in GPS_STATUSES:
             raise ValidationError("ثبت موقعیت فقط هنگام حمل مجاز است.")
         serializer = LocationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save(shipment=shipment, driver=request.user)
         return Response(serializer.data, status=201)
+
+    @extend_schema(request=None, responses=ShipmentSerializer)
+    @action(detail=True, methods=["post"])
+    def accept(self, request, pk=None):
+        result = accept_shipment(request.user, self.get_object().pk)
+        return Response(self.get_serializer(result).data)
+
+    @extend_schema(request=None, responses=DetailResponse)
+    @action(detail=True, methods=["post"])
+    def decline(self, request, pk=None):
+        decline_shipment(request.user, self.get_object().pk)
+        return Response({"detail": "پیشنهاد رد شد."})
+
+    @extend_schema(request=None, responses=OpenApiTypes.OBJECT)
+    @action(detail=True, methods=["post"], url_path="waybill-issue")
+    def waybill_issue(self, request, pk=None):
+        code = issue_trip_waybill(request.user, self.get_object().pk)
+        return Response({"detail": "کد بارنامه صادر شد.", "code": code})
+
+    @extend_schema(request=OpenApiTypes.OBJECT, responses=ShipmentSerializer)
+    @action(detail=True, methods=["post"], url_path="waybill-verify")
+    def waybill_verify(self, request, pk=None):
+        result = verify_waybill(request.user, self.get_object().pk, request.data.get("code"))
+        return Response(self.get_serializer(result).data)
+
+    @extend_schema(request=OpenApiTypes.BINARY, responses=OpenApiTypes.OBJECT)
+    @action(detail=True, methods=["post"], url_path="waybill-photo")
+    def waybill_photo_upload(self, request, pk=None):
+        waybill = save_trip_waybill_photo(
+            request.user, self.get_object().pk, request.FILES.get("file")
+        )
+        return Response({"detail": "عکس بارنامه ذخیره شد.", "name": waybill.photo_name})
+
+    @extend_schema(request=None, responses=OpenApiTypes.OBJECT)
+    @action(detail=True, methods=["post"], url_path="delivery-code")
+    def delivery_code(self, request, pk=None):
+        request_delivery_code(request.user, self.get_object().pk)
+        return Response({"detail": "کد تحویل برای گیرنده ارسال شد."})
+
+    @extend_schema(request=OpenApiTypes.BINARY, responses=OpenApiTypes.OBJECT)
+    @action(detail=True, methods=["post"], url_path="delivery-photos")
+    def delivery_photos(self, request, pk=None):
+        photo = add_delivery_photo(request.user, self.get_object().pk, request.FILES.get("file"))
+        return Response({"id": photo.pk, "count": photo.shipment.delivery_photos.count()}, status=201)
+
+    @extend_schema(request=OpenApiTypes.OBJECT, responses=ShipmentSerializer)
+    @action(detail=True, methods=["post"])
+    def pod(self, request, pk=None):
+        result = complete_delivery(
+            request.user,
+            self.get_object().pk,
+            request.data.get("code", ""),
+            request.data.get("reason", ""),
+        )
+        return Response(self.get_serializer(result).data)
+
+    @extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)
+    @action(detail=True, methods=["post"], url_path="location-batch")
+    def location_batch(self, request, pk=None):
+        shipment = self.get_object()
+        if request.user.role != "driver" or shipment.driver_id != request.user.pk:
+            raise PermissionDenied("فقط راننده همین سفر می‌تواند موقعیت ثبت کند.")
+        if shipment.status not in GPS_STATUSES:
+            raise ValidationError("ثبت موقعیت فقط هنگام حمل مجاز است.")
+        points = request.data.get("points")
+        if not isinstance(points, list) or not points or len(points) > 100:
+            raise ValidationError("فهرست موقعیت باید بین ۱ تا ۱۰۰ نقطه باشد.")
+        saved = []
+        for item in points:
+            serializer = LocationSerializer(data=item)
+            serializer.is_valid(raise_exception=True)
+            saved.append(serializer.save(shipment=shipment, driver=request.user))
+        return Response(LocationSerializer(saved, many=True).data, status=201)
+
+    @extend_schema(responses=OpenApiTypes.OBJECT)
+    @action(detail=False, methods=["get"], url_path="route-search")
+    def route_search(self, request):
+        rows = search_market(
+            request.user,
+            request.query_params.get("origin", ""),
+            request.query_params.get("destination", ""),
+        )
+        return Response(self.get_serializer(rows, many=True).data)
+
+    @extend_schema(responses=OpenApiTypes.OBJECT)
+    @action(detail=False, methods=["get"])
+    def nearby(self, request):
+        rows = nearby_market(
+            request.user,
+            request.query_params.get("lat"),
+            request.query_params.get("lng"),
+            request.query_params.get("destination", ""),
+            request.query_params.get("band", 50),
+        )
+        data = []
+        for item in rows:
+            payload = self.get_serializer(item["shipment"]).data
+            payload["distance_km"] = item["distance_km"]
+            data.append(payload)
+        return Response(data)
 
     @extend_schema(responses={(200, "text/csv"): OpenApiTypes.STR})
     @action(detail=False, methods=["get"])
@@ -997,6 +1297,14 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
         self.get_queryset().update(read=True)
         return Response({"detail": "اعلان‌ها خوانده شدند."})
 
+    @extend_schema(request=None, responses=NotificationSerializer)
+    @action(detail=True, methods=["post"])
+    def read(self, request, pk=None):
+        notice = self.get_object()
+        notice.read = True
+        notice.save(update_fields=["read"])
+        return Response(NotificationSerializer(notice).data)
+
 
 @extend_schema(responses=OpenApiTypes.OBJECT)
 @api_view(["GET"])
@@ -1044,12 +1352,82 @@ def dashboard(request):
             "notifications": Notification.objects.filter(
                 user=request.user, read=False
             ).count(),
+            "open_alerts": (
+                scan_alerts() if request.user.role == "operator" else 0
+            ),
             "open_tickets": Ticket.objects.filter(
                 Q() if request.user.role == "operator" else Q(user=request.user),
                 status="open",
             ).count(),
+            "support_phone": settings.SUPPORT_PHONE,
+            "driver": driver_summary(request.user)
+            if request.user.role == "driver"
+            else None,
         }
     )
+
+
+@method_decorator(csrf_protect, name="dispatch")
+class OtpRequestView(APIView):
+    permission_classes = [AllowAny]
+    throttle_classes = [LoginThrottle]
+
+    @extend_schema(request=OpenApiTypes.OBJECT, responses=DetailResponse, auth=[])
+    def post(self, request):
+        phone = request_phone_code(request.data.get("phone"))
+        payload = {"detail": "اگر شماره در سامانه باشد، کد تأیید پیامک می‌شود."}
+        if settings.DEMO_ENABLED:
+            from .models import SmsOutbox
+
+            sms = SmsOutbox.objects.filter(phone=phone).order_by("-id").first()
+            if sms and ":" in sms.body:
+                payload["demo_code"] = sms.body.rsplit(":", 1)[-1].strip()
+        return Response(payload)
+
+
+@method_decorator(csrf_protect, name="dispatch")
+class OtpVerifyView(APIView):
+    permission_classes = [AllowAny]
+    throttle_classes = [LoginThrottle]
+
+    @extend_schema(request=OpenApiTypes.OBJECT, responses=UserSerializer, auth=[])
+    def post(self, request):
+        user = verify_phone_code(request.data.get("phone"), request.data.get("code"))
+        if getattr(request, "portal_role", None) and request.portal_role != user.role:
+            raise PermissionDenied("این حساب به برنامهٔ انتخاب‌شده دسترسی ندارد.")
+        role = request.data.get("role")
+        if role and role != user.role:
+            return Response({"detail": "این حساب به پنل انتخاب‌شده دسترسی ندارد."}, status=403)
+        from .security import verify_login
+
+        verify_login(user, request.data.get("mfa", ""))
+        login(request, user)
+        remember = request.data.get("remember") in [True, "true", "1", 1]
+        request.session.set_expiry(60 * 60 * 24 * 30 if remember else 0)
+        audit(user, "auth.otp", user)
+        return Response(UserSerializer(user).data)
+
+
+@extend_schema(responses=OpenApiTypes.OBJECT)
+@api_view(["GET"])
+def places(request):
+    return Response(places_payload(request.query_params.get("q", "")))
+
+
+@extend_schema(responses=OpenApiTypes.BINARY)
+@api_view(["GET"])
+def waybill_download(request, pk):
+    shipment = get_object_or_404(Shipment, pk=pk)
+    waybill = getattr(shipment, "waybill", None)
+    allowed = request.user.role == "operator" or shipment.driver_id == request.user.pk or shipment.owner_id == request.user.pk or shipment.inspector_id == request.user.pk
+    if not waybill or not waybill.photo or not allowed:
+        raise PermissionDenied()
+    try:
+        return FileResponse(waybill.photo.open("rb"), as_attachment=False, filename=waybill.photo_name or "waybill")
+    except FileNotFoundError as error:
+        from rest_framework.exceptions import NotFound
+
+        raise NotFound("عکس بارنامه پیدا نشد.") from error
 
 
 @extend_schema(
@@ -1098,6 +1476,38 @@ class ContactView(APIView):
 
 @extend_schema(responses=OpenApiTypes.OBJECT)
 @api_view(["GET"])
+def alerts(request):
+    if request.user.role != "operator":
+        raise PermissionDenied()
+    scan_alerts()
+    rows = OperationalAlert.objects.select_related("shipment").filter(is_resolved=False)[:100]
+    return Response(
+        [
+            {
+                "id": row.id,
+                "kind": row.kind,
+                "severity": row.severity,
+                "message": row.message,
+                "shipment": row.shipment_id,
+                "code": row.shipment.code,
+                "created_at": row.created_at,
+            }
+            for row in rows
+        ]
+    )
+
+
+@extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)
+@api_view(["POST"])
+def resolve_operational_alert(request, pk):
+    if request.user.role != "operator":
+        raise PermissionDenied()
+    row = resolve_alert(pk, request.user, request.data.get("resolution", ""))
+    return Response({"id": row.id, "is_resolved": row.is_resolved})
+
+
+@extend_schema(responses=OpenApiTypes.OBJECT)
+@api_view(["GET"])
 def operations(request):
     if request.user.role != "operator":
         raise PermissionDenied()
@@ -1118,3 +1528,61 @@ def operations(request):
             ),
         }
     )
+
+
+@extend_schema(responses=OpenApiTypes.OBJECT)
+@api_view(["GET", "POST"])
+def inspectors(request):
+    if request.user.role != "operator":
+        raise PermissionDenied()
+    if request.method == "GET":
+        rows = InspectorAccount.objects.select_related("user").order_by("user__first_name")
+        known = {row.user_id for row in rows}
+        extra = []
+        for person in User.objects.filter(role="inspector").exclude(id__in=known):
+            extra.append(InspectorAccount.objects.create(user=person))
+        return Response([inspector_public(row) for row in list(rows) + extra])
+    account = create_inspector(
+        request.user,
+        request.data.get("full_name"),
+        request.data.get("phone"),
+        request.data.get("notes", ""),
+    )
+    return Response(inspector_public(account), status=201)
+
+
+@extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)
+@api_view(["PATCH"])
+def inspector_detail(request, pk):
+    account, unassigned = update_inspector(request.user, pk, request.data)
+    payload = inspector_public(account)
+    payload["unassigned"] = unassigned
+    return Response(payload)
+
+
+@extend_schema(request=OpenApiTypes.OBJECT, responses=ShipmentSerializer)
+@api_view(["POST"])
+def inspection_decision(request, pk):
+    shipment = decide_inspection(
+        request.user,
+        pk,
+        request.data.get("decision"),
+        request.data.get("note"),
+    )
+    return Response(ShipmentSerializer(shipment, context={"request": request}).data)
+
+
+@extend_schema(responses=OpenApiTypes.BINARY)
+@api_view(["GET"])
+def inspection_photo_download(request, pk):
+    photo = get_object_or_404(InspectionPhoto.objects.select_related("inspection__shipment"), pk=pk)
+    shipment = photo.inspection.shipment
+    user = request.user
+    allowed = user.role == "operator" or user.id in {
+        shipment.owner_id,
+        shipment.driver_id,
+        shipment.inspector_id,
+    }
+    if not allowed:
+        raise PermissionDenied()
+    return FileResponse(photo.file.open("rb"), as_attachment=True, filename=photo.file.name.rsplit("/", 1)[-1])

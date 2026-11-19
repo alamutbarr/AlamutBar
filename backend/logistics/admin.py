@@ -183,6 +183,14 @@ class DriverCredentialAdmin(CapabilityAdmin):
         )
 
 
+@admin.register(OperationalAlert)
+class OperationalAlertAdmin(CapabilityAdmin):
+    capability = "monitoring"
+    list_display = ("kind", "severity", "shipment", "is_resolved", "created_at")
+    list_select_related = ("shipment",)
+    search_fields = ("message", "shipment__code")
+
+
 @admin.register(LocationPing)
 class LocationPingAdmin(CapabilityAdmin):
     capability = "monitoring"

@@ -31,7 +31,10 @@ export default function Auth({
     [sms, setSms] = useState(false),
     [phone, setPhone] = useState(""),
     [otp, setOtp] = useState(""),
-    [demoCode, setDemoCode] = useState("");
+    [demoCode, setDemoCode] = useState(""),
+    [driverOtp, setDriverOtp] = useState(false),
+    [sent, setSent] = useState(false),
+    [remember, setRemember] = useState(true);
   const driverRegistration = register && role === "driver";
   useEffect(() => {
     api<{ demo_enabled: boolean }>("auth/csrf/")
@@ -126,16 +129,23 @@ export default function Auth({
                 ))}
             </div>
           )}
-          {sms && role === "owner" && !register ? (
+          {(fixedRole === "inspector" || (sms && role === "owner" && !register)) ? (
             <form
               onSubmit={(event) => {
                 event.preventDefault();
                 setBusy(true);
                 setError("");
+                const inspector = role === "inspector";
                 void (demoCode
-                  ? api<User>("auth/otp/confirm/", "POST", { phone, code: otp })
+                  ? api<User>(
+                      inspector ? "auth/otp/verify/" : "auth/otp/confirm/",
+                      "POST",
+                      inspector
+                        ? { phone, code: otp, remember: true, role: "inspector" }
+                        : { phone, code: otp },
+                    )
                   : api<{ detail: string; demo_code?: string }>(
-                      "auth/otp/",
+                      inspector ? "auth/otp/request/" : "auth/otp/",
                       "POST",
                       { phone },
                     )
@@ -147,6 +157,7 @@ export default function Auth({
                       return;
                     }
                     setDemoCode(result.demo_code || "");
+                    setSent(true);
                     setError(result.demo_code ? "" : result.detail);
                   })
                   .catch((reason) => setError((reason as Error).message))
@@ -154,7 +165,7 @@ export default function Auth({
               }}
             >
               <label>
-                موبایل صاحب بار
+                {role === "inspector" ? "موبایل متصدی" : "موبایل صاحب بار"}
                 <input
                   value={phone}
                   dir="ltr"
@@ -175,7 +186,7 @@ export default function Auth({
                       dir="ltr"
                       required
                       inputMode="numeric"
-                      maxLength={6}
+                      maxLength={role === "inspector" ? 4 : 6}
                       onChange={(event) => setOtp(event.target.value)}
                     />
                   </label>
@@ -189,18 +200,88 @@ export default function Auth({
               <button className="btn block" disabled={busy}>
                 {demoCode ? "تأیید و ورود" : "دریافت کد"}
               </button>
-              <button
-                type="button"
-                className="text-link"
-                onClick={() => {
-                  setSms(false);
-                  setError("");
-                }}
-              >
-                ورود با نام کاربری
-              </button>
+              {role === "owner" && (
+                <button
+                  type="button"
+                  className="text-link"
+                  onClick={() => {
+                    setSms(false);
+                    setError("");
+                  }}
+                >
+                  ورود با نام کاربری
+                </button>
+              )}
             </form>
           ) : (
+            <>
+          {!register && role === "driver" && (
+            <div className="otp-box">
+              <button type="button" className="text-link" onClick={() => setDriverOtp((v) => !v)}>
+                {driverOtp ? "ورود با رمز عبور" : "ورود با کد پیامکی"}
+              </button>
+              {driverOtp && (
+                <form
+                  onSubmit={async (event) => {
+                    event.preventDefault();
+                    const data = new FormData(event.currentTarget);
+                    const mobile = String(data.get("phone") || "");
+                    const code = String(data.get("code") || "");
+                    setBusy(true);
+                    setError("");
+                    try {
+                      if (!sent) {
+                        const result = await api<{ demo_code?: string }>("auth/otp/request/", "POST", { phone: mobile });
+                        setSent(true);
+                        if (result.demo_code) setDemoCode(result.demo_code);
+                      } else {
+                        const user = await api<User>("auth/otp/verify/", "POST", {
+                          phone: mobile,
+                          code,
+                          remember,
+                          role: "driver",
+                        });
+                        if (onSignedIn) onSignedIn(user);
+                        else router.push("/driver");
+                      }
+                    } catch (err) {
+                      setError(err instanceof Error ? err.message : "ورود انجام نشد.");
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                >
+                  <label>
+                    شماره موبایل
+                    <input name="phone" required dir="ltr" autoComplete="tel" />
+                  </label>
+                  {sent && (
+                    <label>
+                      کد پیامک
+                      <input name="code" required dir="ltr" inputMode="numeric" maxLength={4} />
+                    </label>
+                  )}
+                  {demoCode && sent && (
+                    <p className="demo-note">
+                      کد آزمایشی: <code>{demoCode}</code>
+                    </p>
+                  )}
+                  <label className="check-line">
+                    <input
+                      type="checkbox"
+                      checked={remember}
+                      onChange={(e) => setRemember(e.target.checked)}
+                    />
+                    مرا روی این دستگاه به خاطر بسپار
+                  </label>
+                  <button className="btn" disabled={busy}>
+                    {sent ? "تأیید و ورود" : "ارسال کد"}
+                  </button>
+                </form>
+              )}
+            </div>
+          )}
+          {!driverOtp && (
           <form onSubmit={submit}>
             {register && (
               <div className="form-grid">
@@ -334,6 +415,8 @@ export default function Auth({
               <ArrowLeft size={18} />
             </button>
           </form>
+            )}
+          </>
           )}
           {role === "owner" && !register && !sms && (
             <button
@@ -353,7 +436,7 @@ export default function Auth({
               ورود با پیامک
             </button>
           )}
-          {demo && !register && !sms && (
+          {demo && !register && !sms && role !== "inspector" && (
             <div className="demo-note">
               <b>محیط آزمایشی با داده‌های نمونه</b>
               <p>

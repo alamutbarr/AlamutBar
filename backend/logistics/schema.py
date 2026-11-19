@@ -19,8 +19,13 @@ class TransitionRequest(serializers.Serializer):
     status = serializers.ChoiceField(
         choices=[
             "approved",
+            "en_route_pickup",
+            "arrived_pickup",
             "loading",
+            "waybill",
             "in_transit",
+            "near_destination",
+            "on_hold",
             "delivered",
             "completed",
             "cancelled",
