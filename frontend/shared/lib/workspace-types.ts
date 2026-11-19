@@ -36,6 +36,7 @@ export type Notice = {
   id: number;
   title: string;
   body?: string;
+  kind?: string;
   shipment: number | null;
   read: boolean;
   created_at: string;
@@ -52,6 +53,17 @@ export type Dash = {
   notifications: number;
   open_tickets: number;
   open_alerts?: number;
+  support_phone?: string;
+  driver?: {
+    offered: number;
+    active: number;
+    completed: number;
+    rating: number | null;
+    mission_count: number;
+    joined: string;
+    rejected_documents: { label: string; note: string; kind: string }[];
+    support_phone: string;
+  } | null;
 };
 export type Ops = {
   audit: {
@@ -75,10 +87,14 @@ export type Vehicle = {
   capacity: number;
   license_number: string;
   available: boolean;
+  tractor_type?: string;
+  trailer_type?: string;
+  smart_card_number?: string;
+  specs?: Record<string, string>;
 };
 export type ModalState = { kind: string; data?: Invoice | Shipment };
 export type Mutate = (
   path: string,
   data: unknown,
   success?: string,
-) => Promise<boolean>;
+) => Promise<unknown>;

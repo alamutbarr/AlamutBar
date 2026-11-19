@@ -12,6 +12,10 @@ import {
 import Link from "@/lib/navigation";
 import type { ReactNode } from "react";
 import type { WorkspaceLink } from "../mobile-navigation";
+import { SosLink } from "./driver-trip";
+function dateLabel(value: string) {
+  return value ? new Date(value).toLocaleDateString("fa-IR") : "—";
+}
 const actionDescription: Record<string, string> = {
   new: "مشخصات بار و مسیر را ثبت کنید.",
   market: "بارهای آماده را بررسی کنید و پیشنهاد بدهید.",
@@ -85,6 +89,42 @@ export default function Overview({
           </small>
         </div>
       </div>
+      {role === "driver" && dash.driver && (
+        <>
+          {dash.driver.rejected_documents.slice(0, 3).map((item) => (
+            <button
+              key={item.kind}
+              className="info-note"
+              onClick={() => (window.location.href = base + "/onboarding")}
+            >
+              <strong>مدرک رد شد: {item.label}</strong>
+              <span>{item.note}</span>
+            </button>
+          ))}
+          <div className="stats-grid">
+            {[
+              ["پیشنهادها", dash.driver.offered],
+              ["مأموریت فعال", dash.driver.active],
+              ["تکمیل‌شده", dash.driver.completed],
+              ["امتیاز شما", dash.driver.rating ?? "—"],
+            ].map(([label, value]) => (
+              <article className="stat-card" key={String(label)}>
+                <span>{label}</span>
+                <strong>{typeof value === "number" ? number(value) : value}</strong>
+              </article>
+            ))}
+          </div>
+          <p className="muted">
+            {dash.driver.offered
+              ? number(dash.driver.offered) + " پیشنهاد منتظر شماست"
+              : "پیشنهاد جدیدی وجود ندارد"}
+            {" · "}
+            {number(dash.driver.mission_count)} مأموریت از{" "}
+            {dateLabel(dash.driver.joined)}
+          </p>
+          <SosLink phone={dash.driver.support_phone || dash.support_phone} />
+        </>
+      )}
       {role === "owner" && user && !/^\d{10}$/.test(user.postal_code || "") && (
         <p className="info-note">
           برای ثبت بار، کد پستی ۱۰ رقمی را در{" "}

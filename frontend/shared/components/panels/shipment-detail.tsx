@@ -30,6 +30,9 @@ import Link from "@/lib/navigation";
 import { useEffect, useState, type Dispatch, type FormEvent, type SetStateAction } from "react";
 import { Badge, Empty } from "../ui";
 import LiveLocation from "../live-location";
+import DriverTrip from "./driver-trip";
+import InspectorVisit from "./inspector-visit";
+import ShipmentChat from "./shipment-chat";
 export default function ShipmentDetail({
   shipment,
   user,
@@ -40,6 +43,7 @@ export default function ShipmentDetail({
   setToast,
   setModal,
   mutate,
+  reload,
 }: {
   shipment: Shipment;
   user: User | null;
@@ -50,6 +54,7 @@ export default function ShipmentDetail({
   setToast: Dispatch<SetStateAction<string>>;
   setModal: Dispatch<SetStateAction<ModalState | undefined>>;
   mutate: Mutate;
+  reload?: () => Promise<void>;
 }) {
   const loadingReady = shipment.inspections?.find(
     (i) => i.stage === "loading",
@@ -127,7 +132,9 @@ export default function ShipmentDetail({
     ["راننده", shipment.driver_name || "هنوز تخصیص نیافته"],
     ["متصدی", shipment.inspector_name || "هنوز تخصیص نیافته"],
     ["نشانی مبدأ", shipment.origin_address || "پس از تخصیص در دسترس است"],
-    ["نشانی مقصد", shipment.destination_address || "پس از تخصیص در دسترس است"],
+    ["نشانی مقصد", shipment.destination_locked
+      ? "آدرس دقیق پس از صدور بارنامه نمایش داده می‌شود."
+      : shipment.destination_address || "پس از تخصیص در دسترس است"],
     ["گیرنده", shipment.recipient_name || "—"],
     ["موبایل گیرنده", shipment.recipient_phone || "—"],
     ["کد ملی گیرنده", shipment.recipient_national_id || ""],
@@ -302,18 +309,29 @@ export default function ShipmentDetail({
                   </button>
                 )}
               {role === "driver" && shipment.status === "approved" && (
-                <button
-                  className="btn"
-                  onClick={() => setModal({ kind: "offer", data: shipment })}
-                >
-                  ثبت پیشنهاد کرایه
-                </button>
+                <>
+                  <button
+                    className="btn"
+                    disabled={busy}
+                    onClick={() =>
+                      void mutate("shipments/" + shipment.id + "/accept/", {})
+                    }
+                  >
+                    قبول مأموریت
+                  </button>
+                  <button
+                    className="danger-btn"
+                    disabled={busy}
+                    onClick={() =>
+                      void mutate("shipments/" + shipment.id + "/decline/", {})
+                    }
+                  >
+                    رد پیشنهاد
+                  </button>
+                </>
               )}
-              {(role === "operator" ||
-                (role === "driver" && shipment.driver === user?.id)) &&
-                ["assigned", "loading", "in_transit"].includes(
-                  shipment.status,
-                ) && (
+              {role === "operator" &&
+                ["assigned", "loading", "in_transit"].includes(shipment.status) && (
                   <button
                     className="btn"
                     disabled={
@@ -343,8 +361,54 @@ export default function ShipmentDetail({
                     <ArrowLeft size={17} />
                   </button>
                 )}
+              {role === "operator" &&
+                ["arrived_pickup", "loading", "waybill"].includes(shipment.status) && (
+                  <>
+                    <button
+                      className="secondary-btn"
+                      disabled={busy}
+                      onClick={async () => {
+                        const saved = (await mutate(
+                          "shipments/" + shipment.id + "/waybill-issue/",
+                          {},
+                          "کد بارنامه صادر شد.",
+                        )) as { code?: string } | false;
+                        if (saved && saved.code)
+                          setToast("کد بارنامه: " + saved.code);
+                      }}
+                    >
+                      صدور کد بارنامه
+                    </button>
+                    <label className="secondary-btn upload-btn">
+                      عکس بارنامه
+                      <input
+                        className="sr-only"
+                        type="file"
+                        accept=".pdf,.png,.jpg,.jpeg"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const data = new FormData();
+                          data.set("file", file);
+                          await mutate(
+                            "shipments/" + shipment.id + "/waybill-photo/",
+                            data,
+                          );
+                          e.target.value = "";
+                        }}
+                      />
+                    </label>
+                    {shipment.waybill?.code && (
+                      <p className="info-note">
+                        کد بارنامه: <b dir="ltr">{shipment.waybill.code}</b>
+                      </p>
+                    )}
+                  </>
+                )}
               {role === "inspector" &&
-                ["loading", "delivered"].includes(shipment.status) && (
+                ["loading", "arrived_pickup", "delivered", "near_destination"].includes(
+                  shipment.status,
+                ) && (
                   <button
                     className="btn"
                     onClick={() =>
@@ -468,7 +532,6 @@ export default function ShipmentDetail({
               )}
           </section>
           {(role === "operator" ||
-            role === "driver" ||
             shipment.delivery_otp ||
             (shipment.penalty_amount || 0) > 0) && (
             <section className="card detail-section">
@@ -581,7 +644,14 @@ export default function ShipmentDetail({
               )}
             </section>
           )}
-          <ShipmentChat shipmentId={shipment.id} />
+          {role === "driver" && shipment.driver === user?.id && (
+            <DriverTrip
+              shipment={shipment}
+              busy={busy}
+              mutate={mutate}
+              supportPhone={undefined}
+            />
+          )}
           {Boolean(shipment.offers?.length) && (
             <section className="card detail-section">
               <h2>پیشنهادهای حمل</h2>
@@ -649,9 +719,63 @@ export default function ShipmentDetail({
             canShare={
               role === "driver" &&
               shipment.driver === user?.id &&
-              shipment.status === "in_transit"
+              ["waybill", "in_transit", "near_destination"].includes(shipment.status)
             }
           />
+          {role !== "inspector" && (
+            <ShipmentChat shipmentId={shipment.id} role={role} />
+          )}
+          {role === "inspector" && shipment.inspector === user?.id && (
+            <InspectorVisit
+              shipment={shipment}
+              onSaved={() => reload?.()}
+            />
+          )}
+          {role === "operator" &&
+            shipment.inspections?.some((item) => item.decision === "pending") && (
+              <section className="card detail-section">
+                <h2>تصمیم بازرسی</h2>
+                {shipment.inspections
+                  .filter((item) => item.decision === "pending")
+                  .map((item) => (
+                    <form
+                      key={item.id}
+                      className="rating-form"
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        const data = new FormData(event.currentTarget);
+                        void mutate(
+                          "inspections/" + item.id + "/decision/",
+                          {
+                            decision: String(data.get("decision") || "approved"),
+                            note: String(data.get("note") || ""),
+                          },
+                          "تصمیم بازرسی ثبت شد.",
+                        );
+                      }}
+                    >
+                      <p>
+                        {item.stage === "loading" ? "بارگیری" : "تحویل"} · منتظر مرکز عملیات
+                      </p>
+                      <label>
+                        تصمیم
+                        <select name="decision" defaultValue="approved">
+                          <option value="approved">تأیید</option>
+                          <option value="corrected">تأیید با اصلاح</option>
+                          <option value="stopped">توقف بار</option>
+                        </select>
+                      </label>
+                      <label>
+                        یادداشت
+                        <input name="note" required minLength={3} placeholder="دلیل تصمیم" />
+                      </label>
+                      <button className="btn" disabled={busy}>
+                        ثبت تصمیم
+                      </button>
+                    </form>
+                  ))}
+              </section>
+            )}
           <section className="card detail-section">
             <h2>گزارش‌های بازرسی</h2>
             {shipment.inspections?.length ? (
@@ -699,69 +823,5 @@ export default function ShipmentDetail({
         </aside>
       </div>
     </>
-  );
-}
-function ShipmentChat({ shipmentId }: { shipmentId: number }) {
-  const [items, setItems] = useState<
-    { id: number; author_name: string; role: string; body: string; created_at: string }[]
-  >([]);
-  const [body, setBody] = useState("");
-  const [error, setError] = useState("");
-  async function load() {
-    try {
-      setItems(
-        await api("shipments/" + shipmentId + "/messages/"),
-      );
-    } catch {
-      setItems([]);
-    }
-  }
-  useEffect(() => {
-    void load();
-    const timer = setInterval(() => void load(), 8000);
-    return () => clearInterval(timer);
-  }, [shipmentId]);
-  return (
-    <section className="card detail-section">
-      <h2>گفتگو با اپراتور</h2>
-      <div className="chat-log">
-        {items.length === 0 && <p className="muted">هنوز پیامی نیست.</p>}
-        {items.map((item) => (
-          <p key={item.id}>
-            <b>{item.author_name}</b>
-            <small> · {date(item.created_at)}</small>
-            <br />
-            {item.body}
-          </p>
-        ))}
-      </div>
-      <form
-        className="chat-form"
-        onSubmit={(event) => {
-          event.preventDefault();
-          setError("");
-          void api("shipments/" + shipmentId + "/messages/", "POST", {
-            body,
-          })
-            .then(() => {
-              setBody("");
-              return load();
-            })
-            .catch((reason) => setError((reason as Error).message));
-        }}
-      >
-        <textarea
-          value={body}
-          maxLength={2000}
-          rows={3}
-          onChange={(event) => setBody(event.target.value)}
-          placeholder="پیام خود را بنویسید"
-        />
-        {error && <p className="error">{error}</p>}
-        <button className="btn" disabled={!body.trim()}>
-          ارسال
-        </button>
-      </form>
-    </section>
   );
 }

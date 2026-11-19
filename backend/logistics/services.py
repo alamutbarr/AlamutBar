@@ -6,6 +6,19 @@ from django.utils import timezone
 from rest_framework.exceptions import ValidationError, PermissionDenied
 from .models import *
 
+ACTIVE_TRIP = [
+    "assigned",
+    "en_route_pickup",
+    "arrived_pickup",
+    "loading",
+    "waybill",
+    "in_transit",
+    "near_destination",
+    "on_hold",
+    "delivered",
+]
+GPS_STATUSES = ["waybill", "in_transit", "near_destination"]
+
 
 def audit(user, action, obj, detail=None):
     AuditLog.objects.create(
@@ -96,11 +109,19 @@ def driver_market_enabled(user):
 
 
 TRANSITIONS = {
-    "approved": ("pending", {"operator"}),
-    "loading": ("assigned", {"driver", "operator"}),
-    "in_transit": ("loading", {"driver", "operator"}),
-    "delivered": ("in_transit", {"driver", "operator"}),
-    "completed": ("delivered", {"owner", "operator"}),
+    "approved": ({"pending"}, {"operator"}),
+    "en_route_pickup": ({"assigned"}, {"driver", "operator"}),
+    "arrived_pickup": ({"en_route_pickup", "on_hold"}, {"driver", "operator"}),
+    "loading": ({"assigned", "arrived_pickup"}, {"driver", "operator"}),
+    "waybill": ({"arrived_pickup", "loading"}, {"operator"}),
+    "in_transit": ({"loading", "waybill"}, {"driver", "operator"}),
+    "near_destination": ({"in_transit"}, {"driver", "operator"}),
+    "on_hold": (
+        {"arrived_pickup", "loading", "waybill", "in_transit", "near_destination"},
+        {"operator"},
+    ),
+    "delivered": ({"in_transit", "near_destination"}, {"driver", "operator"}),
+    "completed": ({"delivered"}, {"owner", "operator"}),
 }
 
 
@@ -135,16 +156,22 @@ def transition(shipment_id, user, target, note=""):
         rule = TRANSITIONS.get(target)
         if not rule or user.role not in rule[1]:
             raise PermissionDenied("مجوز این تغییر وضعیت را ندارید.")
-        if shipment.status != rule[0]:
+        if shipment.status not in rule[0]:
             raise ValidationError("ترتیب مراحل حمل رعایت نشده است.")
+        if target == "arrived_pickup" and shipment.status == "on_hold" and user.role != "operator":
+            raise PermissionDenied("خروج از توقف بازرسی فقط توسط اپراتور انجام می‌شود.")
+        if (
+            target in ["en_route_pickup", "in_transit"]
+            and (shipment.sensitive or shipment.requires_inspector)
+            and not shipment.inspector_id
+        ):
+            raise ValidationError("برای بار حساس، تخصیص متصدی الزامی است.")
         if target in ["in_transit", "completed"]:
             stage = "loading" if target == "in_transit" else "delivery"
             latest = shipment.inspections.filter(stage=stage).first()
             if not latest or not latest.passed:
                 raise ValidationError("تأیید بازرسی این مرحله الزامی است.")
-        if target == "in_transit" and (
-            not shipment.waybill_verified_at or not shipment.waybill_photo
-        ):
+        if target == "in_transit" and not waybill_is_ready(shipment):
             raise ValidationError(
                 "شروع حرکت پس از تأیید کد بارنامه و بارگذاری عکس آن مجاز است."
             )
@@ -154,11 +181,18 @@ def transition(shipment_id, user, target, note=""):
     shipment.save(
         update_fields=["status", "updated_at", "cancel_reason", "delivery_otp"]
     )
+    if target == "approved" and shipment.offer_expires_at is None:
+        shipment.offer_expires_at = timezone.now() + timedelta(hours=6)
+        shipment.save(update_fields=["offer_expires_at", "updated_at"])
     if target == "completed":
         Invoice.objects.get_or_create(
             shipment=shipment, defaults={"amount": shipment.price}
         )
     event(shipment, user, note or shipment.get_status_display())
+    if target == "approved":
+        from .driver_flow import notify_matching_drivers
+
+        notify_matching_drivers(shipment)
     return shipment
 
 
@@ -184,9 +218,7 @@ def assign(shipment_id, user, driver, inspector, amount=None):
         or driver.vehicle.capacity < shipment.weight
     ):
         raise ValidationError("نوع یا ظرفیت خودرو با بار مطابقت ندارد.")
-    if Shipment.objects.filter(
-        driver=driver, status__in=["assigned", "loading", "in_transit", "delivered"]
-    ).exists():
+    if Shipment.objects.filter(driver=driver, status__in=ACTIVE_TRIP).exists():
         raise ValidationError("راننده یک سفر فعال دارد.")
     shipment.driver = driver
     shipment.inspector = inspector
@@ -198,6 +230,13 @@ def assign(shipment_id, user, driver, inspector, amount=None):
     return shipment
 
 
+def waybill_is_ready(shipment):
+    record = Waybill.objects.filter(shipment=shipment).first()
+    if record and record.verified_at and record.photo:
+        return True
+    return bool(shipment.waybill_verified_at and shipment.waybill_photo)
+
+
 def _operator(user):
     if user.role != "operator":
         raise PermissionDenied("این کار فقط برای اپراتور است.")
@@ -207,16 +246,32 @@ def _operator(user):
 def issue_waybill(shipment_id, user):
     _operator(user)
     shipment = Shipment.objects.select_for_update().get(pk=shipment_id)
-    if shipment.status not in ["assigned", "loading"]:
+    if shipment.status not in ["assigned", "loading", "arrived_pickup", "waybill"]:
         raise ValidationError("کد بارنامه پس از تخصیص راننده و پیش از حرکت صادر می‌شود.")
     if not shipment.driver_id:
         raise ValidationError("ابتدا راننده را تخصیص دهید.")
+    if shipment.inspector_id or shipment.sensitive or shipment.requires_inspector:
+        latest = shipment.inspections.filter(stage="loading", passed=True).first()
+        if not latest:
+            raise ValidationError("تا تأیید بازرسی بارگیری، بارنامه صادر نمی‌شود.")
     shipment.waybill_code = f"{secrets.randbelow(90000) + 10000}"
     shipment.waybill_sent_at = timezone.now()
     shipment.waybill_verified_at = None
     shipment.save(
         update_fields=["waybill_code", "waybill_sent_at", "waybill_verified_at"]
     )
+    from .driver_flow import _sign, queue_sms
+
+    waybill, _ = Waybill.objects.get_or_create(shipment=shipment)
+    waybill.code_signed = _sign(shipment.waybill_code)
+    waybill.sms_sent_at = shipment.waybill_sent_at
+    waybill.verified_at = None
+    waybill.save()
+    if shipment.driver_id:
+        queue_sms(
+            shipment.driver.phone,
+            f"کد بارنامه {shipment.code}: {shipment.waybill_code}",
+        )
     OutboundEmail.objects.create(
         payload=f"کد بارنامه {shipment.code} برای {shipment.driver.phone}: {shipment.waybill_code}"
     )
@@ -234,6 +289,10 @@ def confirm_waybill(shipment_id, user, code):
         raise ValidationError("کد بارنامه نادرست است.")
     shipment.waybill_verified_at = timezone.now()
     shipment.save(update_fields=["waybill_verified_at"])
+    waybill = Waybill.objects.filter(shipment=shipment).first()
+    if waybill:
+        waybill.verified_at = shipment.waybill_verified_at
+        waybill.save(update_fields=["verified_at"])
     audit(user, "shipment.waybill_confirm", shipment, {})
     event(shipment, user, "راننده کد بارنامه را تأیید کرد.")
     return shipment
@@ -253,6 +312,13 @@ def save_waybill_photo(shipment_id, user, photo):
         raise ValidationError("عکس بارنامه باید JPG، PNG یا WEBP باشد.")
     shipment.waybill_photo = photo
     shipment.save(update_fields=["waybill_photo"])
+    waybill = Waybill.objects.filter(shipment=shipment).first()
+    if waybill and shipment.waybill_photo:
+        shipment.waybill_photo.open("rb")
+        waybill.photo.save(photo.name[:180], shipment.waybill_photo.file, save=False)
+        waybill.photo_name = photo.name[:180]
+        waybill.save(update_fields=["photo", "photo_name"])
+        shipment.waybill_photo.close()
     audit(user, "shipment.waybill_photo", shipment, {})
     event(shipment, user, "عکس بارنامه بارگذاری شد.")
     return shipment

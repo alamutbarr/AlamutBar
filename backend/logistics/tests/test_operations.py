@@ -262,7 +262,7 @@ class OperationsTests(TestCase):
             },
             format="json",
         )
-        for kind in ["national_card", "license", "vehicle_card", "insurance"]:
+        for kind in ["national_card", "national_card_selfie", "license", "vehicle_card", "insurance"]:
             self.client.post(
                 "/api/onboarding/documents/",
                 {"kind": kind, "file": self.image()},
@@ -437,7 +437,7 @@ class OperationsTests(TestCase):
             },
             format="json",
         )
-        for kind in ["national_card", "license", "vehicle_card", "insurance"]:
+        for kind in ["national_card", "national_card_selfie", "license", "vehicle_card", "insurance"]:
             r = self.client.post(
                 "/api/onboarding/documents/",
                 {"kind": kind, "file": self.image()},

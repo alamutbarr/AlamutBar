@@ -52,15 +52,48 @@ export default function Notifications({
                 {n.body && <p>{n.body}</p>}
                 <small>{ago(n.created_at)}</small>
               </div>
-              {n.shipment && (
-                <Link
-                  className="text-link"
-                  href={base + "/shipments/" + n.shipment}
-                >
-                  مشاهده
-                  <ArrowLeft size={15} />
-                </Link>
-              )}
+              <div className="wizard-actions">
+                {!n.read && (
+                  <button
+                    className="secondary-btn"
+                    disabled={busy}
+                    onClick={() => void mutate("notifications/" + n.id + "/read/", {})}
+                  >
+                    خواندم
+                  </button>
+                )}
+                {n.kind === "offer" && n.shipment && (
+                  <>
+                    <button
+                      className="btn"
+                      disabled={busy}
+                      onClick={() =>
+                        void mutate("shipments/" + n.shipment + "/accept/", {})
+                      }
+                    >
+                      قبول بار
+                    </button>
+                    <button
+                      className="danger-btn"
+                      disabled={busy}
+                      onClick={() =>
+                        void mutate("shipments/" + n.shipment + "/decline/", {})
+                      }
+                    >
+                      رد پیشنهاد
+                    </button>
+                  </>
+                )}
+                {n.shipment && (
+                  <Link
+                    className="text-link"
+                    href={base + "/shipments/" + n.shipment}
+                  >
+                    مشاهده
+                    <ArrowLeft size={15} />
+                  </Link>
+                )}
+              </div>
             </div>
           ))
         ) : (

@@ -44,24 +44,67 @@ export default function Account({
                 {user.verified ? "احراز شده" : "در انتظار احراز"}
               </p>
               {role === "owner" && <p>موبایل: {user.phone}</p>}
-              <label className="text-link">
-                تصویر پروفایل
-                <input
-                  className="sr-only"
-                  type="file"
-                  accept=".jpg,.jpeg,.png"
-                  onChange={(event) => {
-                    const file = event.target.files?.[0];
-                    if (!file) return;
-                    const data = new FormData();
-                    data.set("file", file);
-                    void api<User>("auth/avatar/", "POST", data)
-                      .then(setUser)
-                      .then(() => setToast("تصویر پروفایل ذخیره شد."))
-                      .catch((reason) => setToast((reason as Error).message));
-                  }}
-                />
-              </label>
+              {role !== "driver" && (
+                <label className="text-link">
+                  تصویر پروفایل
+                  <input
+                    className="sr-only"
+                    type="file"
+                    accept=".jpg,.jpeg,.png"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (!file) return;
+                      const data = new FormData();
+                      data.set("file", file);
+                      void api<User>("auth/avatar/", "POST", data)
+                        .then(setUser)
+                        .then(() => setToast("تصویر پروفایل ذخیره شد."))
+                        .catch((reason) => setToast((reason as Error).message));
+                    }}
+                  />
+                </label>
+              )}
+              {role === "driver" && (
+                <>
+                  <label className="secondary-btn upload-btn">
+                    عکس پروفایل
+                    <input
+                      className="sr-only"
+                      type="file"
+                      accept=".jpg,.jpeg,.png"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const body = new FormData();
+                        body.set("file", file);
+                        const saved = await api<{ user: User }>(
+                          "onboarding/avatar/",
+                          "POST",
+                          body,
+                        );
+                        setUser(saved.user);
+                        setToast("عکس پروفایل ذخیره شد.");
+                        e.target.value = "";
+                      }}
+                    />
+                  </label>
+                  {user.avatar_url && (
+                    <button
+                      type="button"
+                      className="text-link"
+                      onClick={async () => {
+                        const saved = await api<{ user: User }>(
+                          "onboarding/avatar/",
+                          "DELETE",
+                        );
+                        setUser(saved.user);
+                      }}
+                    >
+                      حذف عکس
+                    </button>
+                  )}
+                </>
+              )}
             </div>
           </div>
           <ActionForm
@@ -159,6 +202,16 @@ export default function Account({
         {role === "driver" && (
           <section className="card form-card full">
             <h2>خودرو و آمادگی حمل</h2>
+            {vehicle?.tractor_type && (
+              <p className="muted">
+                ناوگان ثبت‌شده: {vehicle.tractor_type}
+                {vehicle.trailer_type ? " / " + vehicle.trailer_type : ""}
+                {vehicle.smart_card_number
+                  ? " · هوشمند " + vehicle.smart_card_number
+                  : ""}
+                . تغییر نوع کشنده از پرونده همکاری انجام می‌شود.
+              </p>
+            )}
             <ActionForm
               fields={[
                 {

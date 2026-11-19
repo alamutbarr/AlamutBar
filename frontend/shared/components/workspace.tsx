@@ -22,6 +22,9 @@ import type {
   Ticket,
   Vehicle,
 } from "@/lib/workspace-types";
+import ThemeToggle from "./theme-toggle";
+import DriverDesk from "./panels/driver-desk";
+import InspectorAdmin from "./panels/inspector-admin";
 import {
   ArrowLeft,
   ArrowUpLeft,
@@ -150,7 +153,7 @@ const nav = [
 ];
 const appTabOrder: Record<Role, string[]> = {
   owner: ["shipments", "new", "invoices"],
-  driver: ["shipments", "market", "onboarding"],
+  driver: ["market", "shipments", "notifications"],
   operator: [
     "shipments",
     "control",
@@ -398,10 +401,10 @@ export default function Workspace({
   ) {
     setBusy(true);
     try {
-      await api(path, "POST", data);
+      const saved = await api(path, "POST", data);
       if (success) setToast(success);
       await load();
-      return true;
+      return saved;
     } catch (e) {
       setToast((e as Error).message);
       return false;
@@ -587,6 +590,7 @@ export default function Workspace({
     active: item.key === section && !(role === "owner" && isNew),
     shortLabel: appTabLabels[item.key],
     primary: item.key === (marketLocked ? "onboarding" : appPrimary[role]),
+    badge: item.key === "notifications" ? dash?.notifications || 0 : 0,
   }));
   const newRequest: WorkspaceLink = {
     key: "new",
@@ -668,11 +672,22 @@ export default function Workspace({
           setToast={setToast}
           setModal={setModal}
           mutate={mutate}
+          reload={() => load()}
+        />
+      );
+    else if (role === "driver" && ["market", "shipments"].includes(section))
+      content = (
+        <DriverDesk
+          initialTab={section === "market" ? "offered" : "active"}
+          base={base}
+          section={section}
+          onChanged={() => void load()}
         />
       );
     else if (shipments)
       content = (
         <>
+          {role === "operator" && section === "inspections" && <InspectorAdmin />}
           <div className="page-heading">
             <div>
               <h1>
@@ -926,6 +941,7 @@ export default function Workspace({
             </span>
           </div>
           <div>
+            <ThemeToggle />
             <button
               type="button"
               className="icon-btn"
@@ -982,7 +998,11 @@ export default function Workspace({
               }
             >
               <span className="avatar" aria-hidden="true">
-                {user?.first_name?.[0] || "م"}
+                {user?.avatar_url ? (
+                  <img src={user.avatar_url} alt="" />
+                ) : (
+                  user?.first_name?.[0] || "م"
+                )}
               </span>
               <span>
                 <b>{user?.name || "حساب کاربری"}</b>

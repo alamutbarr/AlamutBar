@@ -21,6 +21,11 @@ export type User = {
     plate: string;
     capacity: string;
     available: boolean;
+    license_number?: string;
+    tractor_type?: string;
+    trailer_type?: string;
+    smart_card_number?: string;
+    specs?: Record<string, string>;
   } | null;
 };
 export type Shipment = {
@@ -65,6 +70,24 @@ export type Shipment = {
   operator_price?: number | null;
   price_status?: string;
   hold_resume?: string;
+  sensitive?: boolean;
+  offer_expires_at?: string | null;
+  destination_locked?: boolean;
+  route_km?: number | null;
+  eta_hours?: number | null;
+  distance_km?: number | null;
+  waybill?: {
+    sms_sent: boolean;
+    code_verified: boolean;
+    photo_url: string;
+    code?: string;
+  } | null;
+  pod?: {
+    photo_count: number;
+    otp_sent: boolean;
+    verified: boolean;
+    exception_reason: string;
+  };
   rating: {
     driver_score: number;
     inspector_score: number | null;
@@ -100,6 +123,10 @@ export type Shipment = {
     passed: boolean;
     seal_number: string;
     notes: string;
+    decision?: string;
+    decision_note?: string;
+    checklist?: { key: string; label: string; checked: boolean; note: string }[];
+    photos?: { id: number; kind: string; url: string }[];
     created_at: string;
   }[];
   documents: { id: number; name: string; url: string }[];
@@ -125,6 +152,8 @@ export type Location = {
   latitude: string;
   longitude: string;
   accuracy: number;
+  speed?: number | null;
+  heading?: number | null;
   created_at: string;
 };
 export const roles: Record<Role, string> = {
@@ -142,12 +171,16 @@ export const panelPaths: Record<Role, string> = {
 export const statuses: Record<string, string> = {
   pending: "در انتظار بررسی",
   approved: "آماده تخصیص",
-  assigned: "تخصیص یافته",
+  assigned: "راننده تخصیص یافت",
+  en_route_pickup: "در حرکت به بارگیری",
+  arrived_pickup: "رسیده به بارگیری",
   loading: "در حال بارگیری",
+  waybill: "بارنامه",
   in_transit: "در مسیر",
+  near_destination: "نزدیک مقصد",
   delivered: "تحویل شده",
   completed: "تکمیل شده",
-  on_hold: "متوقف",
+  on_hold: "متوقف به‌خاطر بازرسی",
   cancelled: "لغو شده",
 };
 export const vehicles: Record<string, string> = {
