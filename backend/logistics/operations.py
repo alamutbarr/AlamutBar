@@ -19,7 +19,20 @@ from .models import *
 from .services import audit, notify
 from .permissions import RolePermission
 
-REQUIRED_CREDENTIALS = {"national_card", "license", "vehicle_card", "insurance"}
+BASE_CREDENTIALS = {"license", "vehicle_card", "insurance"}
+IDENTITY_PAIRS = (
+    frozenset({"national_card", "national_card_selfie"}),
+    frozenset({"shenasnameh", "shenasnameh_selfie"}),
+)
+REQUIRED_CREDENTIALS = BASE_CREDENTIALS | {"national_card", "national_card_selfie"}
+
+
+def missing_credentials(kinds):
+    kinds = set(kinds)
+    missing = set(BASE_CREDENTIALS - kinds)
+    if not any(pair <= kinds for pair in IDENTITY_PAIRS):
+        missing.add("identity")
+    return missing
 
 
 class OperatorOnly(RolePermission):
@@ -134,7 +147,9 @@ def profile_data(user):
         if hasattr(user, "vehicle")
         else None,
         "documents": [credential_data(d) for d in user.credentials.all()],
-        "required_documents": list(sorted(REQUIRED_CREDENTIALS)),
+        "required_documents": list(sorted(BASE_CREDENTIALS)),
+        "identity_options": [sorted(pair) for pair in IDENTITY_PAIRS],
+        "avatar_url": profile.avatar.url if profile.avatar else "",
     }
 
 
@@ -198,6 +213,30 @@ def credential_upload(request):
     return Response(credential_data(doc), status=201)
 
 
+@extend_schema(request=OpenApiTypes.BINARY, responses=OpenApiTypes.OBJECT)
+@api_view(["POST", "DELETE"])
+def avatar(request):
+    if request.user.role != "driver":
+        raise PermissionDenied()
+    profile, _ = DriverProfile.objects.get_or_create(user=request.user)
+    if request.method == "DELETE":
+        if profile.avatar:
+            profile.avatar.delete(save=False)
+        profile.avatar = None
+        profile.save(update_fields=["avatar"])
+        return Response(profile_data(request.user))
+    uploaded = request.FILES.get("file")
+    if not uploaded or uploaded.size > 5 * 1024 * 1024:
+        raise ValidationError("حجم عکس باید کمتر از ۵ مگابایت باشد.")
+    ext = uploaded.name.rsplit(".", 1)[-1].lower()
+    if ext not in ["jpg", "jpeg", "png"]:
+        raise ValidationError("فقط فایل تصویری مجاز است.")
+    validate_upload(uploaded)
+    profile.avatar = uploaded
+    profile.save(update_fields=["avatar"])
+    return Response(profile_data(request.user))
+
+
 @extend_schema(responses=OpenApiTypes.BINARY)
 @api_view(["GET"])
 def credential_download(request, pk):
@@ -248,9 +287,9 @@ def onboarding_submit(request):
     valid_uploads = user.credentials.exclude(status="rejected").values_list(
         "kind", flat=True
     )
-    if REQUIRED_CREDENTIALS - set(valid_uploads):
+    if missing_credentials(valid_uploads):
         raise ValidationError(
-            "چهار مدرک الزامی را بارگذاری و مدارک ردشده را جایگزین کنید."
+            "مدارک خودرو و یکی از دو مدرک هویتی (کارت ملی یا شناسنامه، هر کدام با سلفی) را بارگذاری کنید."
         )
     if (
         p.license_expiry <= timezone.localdate()
@@ -340,7 +379,7 @@ def review_driver(request, driver_id):
         accepted = set(
             user.credentials.filter(status="approved").values_list("kind", flat=True)
         )
-        if REQUIRED_CREDENTIALS - accepted:
+        if missing_credentials(accepted):
             raise ValidationError("تمام مدارک الزامی باید جداگانه تأیید شوند.")
         if (
             not profile.license_expiry

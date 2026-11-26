@@ -19,6 +19,7 @@ export type WorkspaceLink = {
   active: boolean;
   shortLabel?: string;
   primary?: boolean;
+  badge?: number;
 };
 
 export default function MobileNavigation({
@@ -58,6 +59,7 @@ export default function MobileNavigation({
           >
             <span className="app-tab-icon">
               <tab.icon size={22} strokeWidth={1.8} />
+              {!!tab.badge && <i className="tab-badge" />}
             </span>
             <span>{tab.shortLabel || tab.label}</span>
           </Link>

@@ -91,6 +91,20 @@ class Vehicle(models.Model):
     )
     license_number = models.CharField(max_length=40, verbose_name="شمارهٔ گواهینامه")
     available = models.BooleanField(default=True, verbose_name="آمادهٔ حمل")
+    tractor_type = models.CharField(
+        max_length=40, blank=True, default="", verbose_name="نوع کشنده"
+    )
+    trailer_type = models.CharField(
+        max_length=40, blank=True, default="", verbose_name="نوع گاری"
+    )
+    smart_card_number = models.CharField(
+        max_length=7,
+        blank=True,
+        default="",
+        validators=[RegexValidator(r"^$|^\d{7}$", "شماره هوشمند باید ۷ رقم باشد.")],
+        verbose_name="شماره هوشمند",
+    )
+    specs = models.JSONField(default=dict, blank=True, verbose_name="مشخصات اتاق")
 
     class Meta:
         verbose_name = "خودرو"
@@ -104,16 +118,25 @@ def tracking_code():
     return "AL-" + uuid.uuid4().hex[:10].upper()
 
 
+def waybill_path(instance, filename):
+    extension = filename.rsplit(".", 1)[-1].lower() if "." in filename else "jpg"
+    return f"waybills/{instance.pk}/{uuid.uuid4().hex}.{extension}"
+
+
 class Shipment(models.Model):
     class Status(models.TextChoices):
         PENDING = "pending", "در انتظار بررسی"
         APPROVED = "approved", "آماده تخصیص"
         ASSIGNED = "assigned", "راننده تخصیص یافت"
+        EN_ROUTE_PICKUP = "en_route_pickup", "در حرکت به بارگیری"
+        ARRIVED_PICKUP = "arrived_pickup", "رسیده به بارگیری"
         LOADING = "loading", "در حال بارگیری"
+        WAYBILL = "waybill", "بارنامه"
         IN_TRANSIT = "in_transit", "در مسیر"
+        NEAR_DESTINATION = "near_destination", "نزدیک مقصد"
         DELIVERED = "delivered", "تحویل شده"
         COMPLETED = "completed", "تکمیل شده"
-        ON_HOLD = "on_hold", "متوقف"
+        ON_HOLD = "on_hold", "متوقف به‌خاطر بازرسی"
         CANCELLED = "cancelled", "لغو شده"
 
     code = models.CharField(
@@ -248,6 +271,10 @@ class Shipment(models.Model):
     destination_zone = models.CharField(
         max_length=80, blank=True, default="", verbose_name="محدوده مقصد"
     )
+    sensitive = models.BooleanField(default=False, verbose_name="بار حساس")
+    offer_expires_at = models.DateTimeField(
+        null=True, blank=True, verbose_name="پایان مهلت پیشنهاد"
+    )
     origin_lat = models.DecimalField(
         max_digits=9, decimal_places=6, null=True, blank=True, verbose_name="عرض مبدأ"
     )
@@ -294,6 +321,32 @@ class Shipment(models.Model):
     )
     hold_resume = models.CharField(
         max_length=20, blank=True, default="", verbose_name="وضعیت پیش از توقف"
+    )
+    waybill_code = models.CharField(
+        max_length=5, blank=True, default="", verbose_name="کد پیامک بارنامه"
+    )
+    waybill_sent_at = models.DateTimeField(
+        null=True, blank=True, verbose_name="زمان ارسال کد بارنامه"
+    )
+    waybill_verified_at = models.DateTimeField(
+        null=True, blank=True, verbose_name="زمان تأیید کد بارنامه"
+    )
+    waybill_photo = models.ImageField(
+        upload_to=waybill_path, null=True, blank=True, verbose_name="عکس بارنامه"
+    )
+    delivery_otp = models.CharField(
+        max_length=6, blank=True, default="", verbose_name="کد تحویل"
+    )
+    delivery_otp_verified_at = models.DateTimeField(
+        null=True, blank=True, verbose_name="زمان تأیید کد تحویل"
+    )
+    penalty_amount = models.PositiveBigIntegerField(
+        default=0, verbose_name="جریمه تأخیر (تومان)"
+    )
+    delay_minutes = models.PositiveIntegerField(default=0, verbose_name="دقیقه تأخیر")
+    force_majeure = models.BooleanField(default=False, verbose_name="فورس‌ماژور")
+    force_majeure_reason = models.CharField(
+        max_length=500, blank=True, default="", verbose_name="دلیل فورس‌ماژور"
     )
     status = models.CharField(
         max_length=20,
@@ -392,6 +445,40 @@ class Inspection(models.Model):
     seal_number = models.CharField(max_length=60, verbose_name="شمارهٔ پلمب")
     notes = models.TextField(max_length=2000, blank=True, verbose_name="توضیحات")
     passed = models.BooleanField(default=False, verbose_name="بازرسی تأیید شد")
+    decision = models.CharField(
+        max_length=12,
+        default="pending",
+        choices=[
+            ("pending", "در انتظار مرکز عملیات"),
+            ("approved", "تأیید شد"),
+            ("corrected", "با اصلاح تأیید شد"),
+            ("stopped", "توقف"),
+        ],
+        verbose_name="تصمیم",
+    )
+    decision_note = models.CharField(
+        max_length=500, blank=True, default="", verbose_name="یادداشت تصمیم"
+    )
+    checklist = models.JSONField(default=list, blank=True, verbose_name="چک‌لیست")
+    weight_empty = models.DecimalField(
+        max_digits=8, decimal_places=2, null=True, blank=True, verbose_name="وزن خالی"
+    )
+    weight_full = models.DecimalField(
+        max_digits=8, decimal_places=2, null=True, blank=True, verbose_name="وزن پر"
+    )
+    weight_net = models.DecimalField(
+        max_digits=8, decimal_places=2, null=True, blank=True, verbose_name="وزن خالص"
+    )
+    recorded_cargo_value = models.PositiveBigIntegerField(
+        null=True, blank=True, verbose_name="ارزش ثبت‌شده"
+    )
+    actual_cargo_type = models.CharField(
+        max_length=80, blank=True, default="", verbose_name="نوع واقعی کالا"
+    )
+    actual_vehicle = models.CharField(
+        max_length=80, blank=True, default="", verbose_name="خودرو واقعی"
+    )
+    discrepancies = models.JSONField(default=list, blank=True, verbose_name="مغایرت‌ها")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="زمان ثبت")
 
     class Meta:
@@ -631,6 +718,15 @@ class ShipmentMessage(models.Model):
         verbose_name="بار",
     )
     author = models.ForeignKey(User, on_delete=models.PROTECT, verbose_name="نویسنده")
+    channel = models.CharField(
+        max_length=20,
+        default="owner_operator",
+        choices=[
+            ("owner_operator", "صاحب بار و اپراتور"),
+            ("driver_operator", "راننده و اپراتور"),
+        ],
+        verbose_name="کانال",
+    )
     body = models.TextField(max_length=2000, verbose_name="متن")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="زمان ثبت")
 
@@ -716,13 +812,19 @@ class OwnerKycFile(models.Model):
 class Notification(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="کاربر")
     title = models.CharField(max_length=180, verbose_name="عنوان")
-    body = models.CharField(max_length=500, blank=True, default="", verbose_name="متن")
     shipment = models.ForeignKey(
         Shipment,
         on_delete=models.CASCADE,
         null=True,
         blank=True,
         verbose_name="بار",
+    )
+    body = models.CharField(max_length=500, blank=True, default="", verbose_name="متن")
+    kind = models.CharField(
+        max_length=20,
+        default="info",
+        choices=[("info", "اطلاع"), ("offer", "پیشنهاد"), ("document", "مدرک")],
+        verbose_name="نوع",
     )
     read = models.BooleanField(default=False, verbose_name="خوانده‌شده")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="زمان ثبت")
@@ -797,6 +899,20 @@ class LocationPing(models.Model):
         validators=[MaxValueValidator(100000)],
         verbose_name="دقت (متر)",
     )
+    speed = models.DecimalField(
+        max_digits=6,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name="سرعت (متر بر ثانیه)",
+    )
+    heading = models.DecimalField(
+        max_digits=5,
+        decimal_places=1,
+        null=True,
+        blank=True,
+        verbose_name="جهت (درجه)",
+    )
     observed_at = models.DateTimeField(
         default=timezone.now, verbose_name="زمان ثبت موقعیت"
     )
@@ -809,6 +925,50 @@ class LocationPing(models.Model):
 
     def __str__(self):
         return f"موقعیت {self.pk}"
+
+
+class OperationalAlert(models.Model):
+    class Kind(models.TextChoices):
+        GPS_CUT = "gps_cut", "قطع GPS"
+        ROUTE_DEVIATION = "route_deviation", "انحراف از مسیر"
+        DELAY = "delay", "تأخیر اعزام"
+        INSPECTOR_ABSENT = "inspector_absent", "غیبت متصدی"
+        OTHER = "other", "سایر"
+
+    shipment = models.ForeignKey(
+        Shipment,
+        on_delete=models.CASCADE,
+        related_name="alerts",
+        verbose_name="بار",
+    )
+    kind = models.CharField(max_length=24, choices=Kind.choices, verbose_name="نوع")
+    severity = models.CharField(
+        max_length=12,
+        choices=[("warning", "هشدار"), ("critical", "بحرانی")],
+        default="warning",
+        verbose_name="شدت",
+    )
+    message = models.CharField(max_length=300, verbose_name="شرح")
+    is_resolved = models.BooleanField(default=False, verbose_name="رفع شده")
+    resolution = models.CharField(max_length=500, blank=True, verbose_name="اقدام")
+    resolved_by = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="resolved_alerts",
+        verbose_name="رفع‌کننده",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="زمان ثبت")
+    resolved_at = models.DateTimeField(null=True, blank=True, verbose_name="زمان رفع")
+
+    class Meta:
+        verbose_name = "هشدار عملیات"
+        verbose_name_plural = "هشدارهای عملیات"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.get_kind_display()} {self.shipment_id}"
 
 
 class DriverProfile(models.Model):
@@ -838,6 +998,9 @@ class DriverProfile(models.Model):
         verbose_name="شمارهٔ تماس اضطراری",
     )
     address = models.TextField(max_length=1000, blank=True, verbose_name="نشانی")
+    avatar = models.ImageField(
+        upload_to="avatars/%Y/%m/", null=True, blank=True, verbose_name="عکس پروفایل"
+    )
     status = models.CharField(
         max_length=12,
         choices=[
@@ -880,6 +1043,9 @@ def credential_path(instance, filename):
 class DriverCredential(models.Model):
     KINDS = [
         ("national_card", "کارت ملی"),
+        ("national_card_selfie", "سلفی با کارت ملی"),
+        ("shenasnameh", "شناسنامه"),
+        ("shenasnameh_selfie", "سلفی با شناسنامه"),
         ("license", "گواهینامه"),
         ("vehicle_card", "کارت خودرو"),
         ("insurance", "بیمه‌نامه خودرو"),
@@ -1251,3 +1417,151 @@ class Article(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class DriverPass(models.Model):
+    shipment = models.ForeignKey(
+        Shipment, on_delete=models.CASCADE, related_name="passes", verbose_name="بار"
+    )
+    driver = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="راننده")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="زمان رد")
+
+    class Meta:
+        verbose_name = "رد پیشنهاد"
+        verbose_name_plural = "پیشنهادهای ردشده"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["shipment", "driver"], name="one_pass_per_driver"
+            )
+        ]
+
+
+def waybill_record_path(instance, filename):
+    return f"waybills/{instance.shipment_id}/{uuid.uuid4().hex}.{filename.rsplit('.', 1)[-1].lower()}"
+
+
+class Waybill(models.Model):
+    shipment = models.OneToOneField(
+        Shipment, on_delete=models.CASCADE, related_name="waybill", verbose_name="بار"
+    )
+    code_signed = models.CharField(max_length=200, blank=True, verbose_name="کد امضاشده")
+    sms_sent_at = models.DateTimeField(null=True, blank=True, verbose_name="زمان پیامک")
+    verified_at = models.DateTimeField(null=True, blank=True, verbose_name="زمان تأیید کد")
+    photo = models.FileField(
+        upload_to=waybill_record_path, null=True, blank=True, verbose_name="عکس بارنامه"
+    )
+    photo_name = models.CharField(max_length=180, blank=True, verbose_name="نام فایل")
+
+    class Meta:
+        verbose_name = "بارنامه"
+        verbose_name_plural = "بارنامه‌ها"
+
+
+def pod_path(instance, filename):
+    return f"pod/{instance.shipment_id}/{uuid.uuid4().hex}.{filename.rsplit('.', 1)[-1].lower()}"
+
+
+class DeliveryProof(models.Model):
+    shipment = models.OneToOneField(
+        Shipment,
+        on_delete=models.CASCADE,
+        related_name="delivery_proof",
+        verbose_name="بار",
+    )
+    code_signed = models.CharField(max_length=200, blank=True, verbose_name="کد امضاشده")
+    otp_sent_at = models.DateTimeField(null=True, blank=True, verbose_name="زمان ارسال کد")
+    verified = models.BooleanField(default=False, verbose_name="کد تأیید شد")
+    exception_reason = models.CharField(
+        max_length=500, blank=True, verbose_name="دلیل تحویل بدون کد"
+    )
+
+    class Meta:
+        verbose_name = "رسید تحویل"
+        verbose_name_plural = "رسیدهای تحویل"
+
+
+class DeliveryPhoto(models.Model):
+    shipment = models.ForeignKey(
+        Shipment,
+        on_delete=models.CASCADE,
+        related_name="delivery_photos",
+        verbose_name="بار",
+    )
+    uploaded_by = models.ForeignKey(User, on_delete=models.PROTECT, verbose_name="راننده")
+    file = models.FileField(upload_to=pod_path, verbose_name="عکس")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="زمان ثبت")
+
+    class Meta:
+        verbose_name = "عکس تحویل"
+        verbose_name_plural = "عکس‌های تحویل"
+
+
+def inspection_photo_path(instance, filename):
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "jpg"
+    return f"inspections/{instance.inspection_id}/{uuid.uuid4().hex}.{ext}"
+
+
+class InspectionPhoto(models.Model):
+    inspection = models.ForeignKey(
+        Inspection,
+        on_delete=models.CASCADE,
+        related_name="photos",
+        verbose_name="بازرسی",
+    )
+    kind = models.CharField(
+        max_length=24,
+        choices=[
+            ("seal", "پلمب"),
+            ("lashing", "مهار"),
+            ("weighbridge_empty", "باسکول خالی"),
+            ("weighbridge_full", "باسکول پر"),
+            ("cargo", "کالا"),
+            ("other", "سایر"),
+        ],
+        verbose_name="نوع عکس",
+    )
+    file = models.FileField(upload_to=inspection_photo_path, verbose_name="عکس")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="زمان ثبت")
+
+    class Meta:
+        verbose_name = "عکس بازرسی"
+        verbose_name_plural = "عکس‌های بازرسی"
+
+
+class InspectorAccount(models.Model):
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name="inspector_account",
+        verbose_name="متصدی",
+    )
+    notes = models.CharField(max_length=500, blank=True, default="", verbose_name="یادداشت")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="زمان تعریف")
+
+    class Meta:
+        verbose_name = "حساب متصدی"
+        verbose_name_plural = "حساب‌های متصدی"
+
+
+class PhoneLoginCode(models.Model):
+    phone = models.CharField(max_length=11, db_index=True, verbose_name="موبایل")
+    code_hash = models.CharField(max_length=64, verbose_name="هش کد")
+    expires_at = models.DateTimeField(verbose_name="انقضا")
+    attempts = models.PositiveSmallIntegerField(default=0, verbose_name="تلاش")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="زمان صدور")
+
+    class Meta:
+        verbose_name = "کد ورود پیامکی"
+        verbose_name_plural = "کدهای ورود پیامکی"
+        ordering = ["-created_at"]
+
+
+class SmsOutbox(models.Model):
+    phone = models.CharField(max_length=20, verbose_name="گیرنده")
+    body = models.CharField(max_length=500, verbose_name="متن")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="زمان ثبت")
+
+    class Meta:
+        verbose_name = "پیامک خروجی"
+        verbose_name_plural = "پیامک‌های خروجی"
+        ordering = ["-created_at"]
